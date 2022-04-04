@@ -1,0 +1,61 @@
+e2e4 OK
+d2d4 NOK
+g3g5 NOK
+h8h5 NOK
+e7e5 OK
+g1f3 OK
+b8c6 OK
+f1c4 OK
+f8c5 OK
+f3g5 OK
+a7a6 OK
+c4f7 OK # check
+e8f7 NOK # cannot move into check
+e8f8 OK
+g5e6 OK # check
+d7e6 OK # take piece that checks
+f7h5 OK
+g8f6 OK
+f2f4 OK
+e5f4 OK
+d2d3 OK
+f8e8 NOK # cannot move into check
+d8d5 OK
+c1f4 OK
+d5h5 OK
+d1d2 OK
+f6g4 OK
+f4c7 OK
+f8e8 OK
+b1c3 OK
+f8g8 NOK # cannot castle anymore
+h8f8 OK
+e1g1 NOK # cannot castle through check
+d3d4 OK
+c5b6 OK
+e1g1 NOK # cannot castle through check
+c7d6 OK
+b6d4 OK 
+d6f8 OK
+e8f8 OK
+e1g1 NOK # cannot castle into check
+e1c1 OK # long castle
+g4f2 OK
+h1f1 OK
+f2g4 NOK # pinned to king
+f2d4 NOK # pinned to king
+h5h4 OK
+f1f2 OK # check
+d4f2 OK
+d2d6 OK # check
+h4e7 OK # block check
+d6f4 OK # check
+h7h6 NOK # still in check
+e7f7 OK # block check
+d1d7 OK
+f2e3 OK # check
+c1d2 NOK # moves from check into another check
+c1b1 OK
+f8e7 NOK # moves into check
+b7b5 OK
+f4f7 OK # checkmate
