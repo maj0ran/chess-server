@@ -1,97 +1,283 @@
-pub mod board;
+use crate::pieces::*;
+use core::fmt;
 
-use crate::game::board::Board;
-use crate::game::board::Color;
-use crate::game::board::PieceType;
-use crate::game::board::Position;
-use crate::piece;
-use crate::pos;
-use crate::Piece;
-
-pub struct GameState {}
-
-pub struct Game {
-    pub board: Board,
+#[macro_export]
+macro_rules! piece {
+    ($p:expr) => {{
+        let p = match $p {
+            'K' => Piece::new(PieceType::King, Color::White),
+            'k' => Piece::new(PieceType::King, Color::Black),
+            'Q' => Piece::new(PieceType::Queen, Color::White),
+            'q' => Piece::new(PieceType::Queen, Color::Black),
+            'R' => Piece::new(PieceType::Rook, Color::White),
+            'r' => Piece::new(PieceType::Rook, Color::Black),
+            'N' => Piece::new(PieceType::Knight, Color::White),
+            'n' => Piece::new(PieceType::Knight, Color::Black),
+            'B' => Piece::new(PieceType::Bishop, Color::White),
+            'b' => Piece::new(PieceType::Bishop, Color::Black),
+            'P' => Piece::new(PieceType::Pawn, Color::White),
+            'p' => Piece::new(PieceType::Pawn, Color::Black),
+            _ => panic!(),
+        };
+        p
+    }};
 }
 
-impl Game {
-    pub fn new() -> Game {
-        let board = Board::new();
+trait ChessField {
+    fn up(&self) -> Self;
+    fn down(&self) -> Self;
+    fn left(&self) -> Self;
+    fn right(&self) -> Self;
+}
 
-        let mut game = Game { board };
+impl ChessField for String {
+    fn up(&self) -> Self {
+        let mut iter = self.chars();
+        let file = iter.next().unwrap();
+        let rank = iter.next().unwrap();
 
-        game.setup();
-        game
+        let rank = (rank as u8 + 1) as char;
+
+        let mut result = file.to_string();
+        result.push(rank);
+        result
     }
 
-    pub fn setup(&mut self) {
-        self.board.setup();
-        self.spawn(piece!("K"), Some(pos!("e1")));
-        self.spawn(piece!("k"), Some(pos!("e8")));
+    fn down(&self) -> Self {
+        let mut iter = self.chars();
+        let file = iter.next().unwrap();
+        let rank = iter.next().unwrap();
 
-        self.spawn(piece!("Q"), Some(pos!("d1")));
-        self.spawn(piece!("q"), Some(pos!("d8")));
+        let rank = (rank as u8 - 1) as char;
 
-        self.spawn(piece!("B"), Some(pos!("c1")));
-        self.spawn(piece!("b"), Some(pos!("c8")));
-        self.spawn(piece!("B"), Some(pos!("f1")));
-        self.spawn(piece!("b"), Some(pos!("f8")));
-
-        self.spawn(piece!("N"), Some(pos!("b1")));
-        self.spawn(piece!("n"), Some(pos!("b8")));
-        self.spawn(piece!("N"), Some(pos!("g1")));
-        self.spawn(piece!("n"), Some(pos!("g8")));
-
-        self.spawn(piece!("R"), Some(pos!("a1")));
-        self.spawn(piece!("r"), Some(pos!("a8")));
-        self.spawn(piece!("R"), Some(pos!("h1")));
-        self.spawn(piece!("r"), Some(pos!("h8")));
-
-        self.spawn(piece!("P"), Some(pos!("a2")));
-        self.spawn(piece!("P"), Some(pos!("b2")));
-        self.spawn(piece!("P"), Some(pos!("c2")));
-        self.spawn(piece!("P"), Some(pos!("d2")));
-        self.spawn(piece!("P"), Some(pos!("e2")));
-        self.spawn(piece!("P"), Some(pos!("f2")));
-        self.spawn(piece!("P"), Some(pos!("g2")));
-        self.spawn(piece!("P"), Some(pos!("h2")));
-
-        self.spawn(piece!("p"), Some(pos!("a7")));
-        self.spawn(piece!("p"), Some(pos!("b7")));
-        self.spawn(piece!("p"), Some(pos!("c7")));
-        self.spawn(piece!("p"), Some(pos!("d7")));
-        self.spawn(piece!("p"), Some(pos!("e7")));
-        self.spawn(piece!("p"), Some(pos!("f7")));
-        self.spawn(piece!("p"), Some(pos!("g7")));
-        self.spawn(piece!("p"), Some(pos!("h7")));
+        let mut result = file.to_string();
+        result.push(rank);
+        result
     }
 
-    pub fn spawn(&mut self, piece: Piece, pos: Option<Position>) {
-        match pos {
-            Some(e) => self.board.put(e, piece),
-            None => todo!(),
+    fn left(&self) -> Self {
+        let mut iter = self.chars();
+        let file = iter.next().unwrap();
+        let rank = iter.next().unwrap();
+
+        let file = (file as u8 - 1) as char;
+
+        let mut result = file.to_string();
+        result.push(rank);
+        result
+    }
+
+    fn right(&self) -> Self {
+        let mut iter = self.chars();
+        let file = iter.next().unwrap();
+        let rank = iter.next().unwrap();
+
+        let file = (file as u8 + 1) as char;
+
+        let mut result = file.to_string();
+        result.push(rank);
+        result
+    }
+}
+
+pub struct Game {
+    board: Board,
+}
+
+pub struct Board {
+    pub fields: [Option<Piece>; 64],
+    active_player: Color,
+    castle_rights: [bool; 4],  // [K, Q, k, q]
+    en_passant: Option<usize>, // index of field in linear memory
+    half_moves: usize,
+    full_moves: usize,
+}
+
+impl Board {
+    pub fn new() -> Board {
+        println!("{}", String::from("f3").up());
+        println!("{}", String::from("f3").down());
+        println!("{}", String::from("f3").left());
+        println!("{}", String::from("f3").right());
+        Board {
+            fields: [None; 64],
+            active_player: Color::White,
+            castle_rights: [false; 4],
+            en_passant: None,
+            half_moves: 0,
+            full_moves: 0,
         }
     }
 
-    pub fn select(&mut self, pos: Position) -> bool {
-        self.board.select(pos)
+    fn index<S: Into<String>>(field: S) -> usize {
+        let field = field.into();
+        let mut it = field.chars();
+        let s = String::from("sfd");
+        let file = it.next().unwrap() as u8 - 96;
+        let rank = it.next().unwrap() as u8 - 48;
+        let rank = (8 - rank) + 1;
+        let idx: usize = (((rank - 1) * 8) + (file - 1)) as usize;
+
+        idx
     }
 
-    pub fn get_valid_moves(&self) -> Vec<Position> {
-        self.board
-            .get_valid_moves(self.board.selected_field.unwrap())
+    pub fn peek<S: Into<String>>(&mut self, idx: S) -> Option<Piece> {
+        self.fields[Board::index(idx)]
     }
 
-    pub fn move_to(&mut self, src: Position, dst: Position) -> bool {
-        let result = self.board.try_move(src, dst);
-        if result {
-            self.board.active_player = match self.board.active_player {
-                Color::White => Color::Black,
-                Color::Black => Color::White,
-            };
-            true
+    pub fn take<S: Into<String>>(&mut self, idx: S) -> Option<Piece> {
+        self.fields[Board::index(idx)].take()
+    }
+
+    pub fn set<S: Into<String>>(&mut self, idx: S, piece: Option<Piece>) {
+        self.fields[Board::index(idx)] = piece;
+    }
+
+    pub fn get_moves<S: Into<String>>(&mut self, idx: S) -> Vec<String> {
+        let idx = idx.into();
+        let p = self.peek(&idx);
+
+        let x = match p {
+            Some(Piece {
+                piece_type: PieceType::King,
+                ..
+            }) => {
+                let mut all_moves = vec![
+                    idx.up(),
+                    idx.down(),
+                    idx.left(),
+                    idx.right(),
+                    idx.up().left(),
+                    idx.up().right(),
+                    idx.down().left(),
+                    idx.down().right(),
+                ];
+
+                all_moves.retain(|m| Board::index(m) > 0 && Board::index(m) < 64);
+                let color = !p.unwrap().color;
+                let moves: Vec<&String> = all_moves
+                    .iter()
+                    .filter(|m| match self.peek(*m) {
+                        None => true,
+                        Some(Piece { color, .. }) => true,
+                    })
+                    .collect();
+
+                let mut pseudolegal_moves = Vec::<String>::new();
+                for m in moves {
+                    pseudolegal_moves.push(String::from(m.clone()));
+                }
+                pseudolegal_moves
+            }
+            _ => todo!("moving piece is not implemented"),
+        };
+
+        x
+    }
+
+    pub fn load_fen(fen: &str) -> Board {
+        let mut curr_pos = 0;
+        let mut fen_iter = fen.split(" ");
+        let pos_str = fen_iter.next().unwrap();
+        let player_str = fen_iter.next().unwrap();
+        let castle_str = fen_iter.next().unwrap();
+        let en_passant_str = fen_iter.next().unwrap();
+        let half_move_str = fen_iter.next().unwrap();
+        let full_move_str = fen_iter.next().unwrap();
+
+        // iterate through position string
+        let iter = pos_str.chars();
+        let mut fields = [None; 64];
+        for c in iter {
+            if c.is_alphabetic() {
+                fields[curr_pos] = Some(piece!(c));
+                curr_pos += 1;
+            } else if c.is_numeric() {
+                curr_pos += char::to_digit(c, 10).unwrap() as usize;
+            } else if c == '/' {
+                assert!(curr_pos % 8 == 0)
+            }
+        }
+
+        // rest of the string for game state
+        // player next to move
+        let mut iter = player_str.chars();
+        let active_player = iter.next();
+        assert!(active_player == Some('b') || active_player == Some('w'));
+        let active_player = if active_player == Some('w') {
+            Color::White
         } else {
-            false
+            Color::Black
+        };
+
+        // castling rights
+        let mut castle_rights = [false; 4];
+        let iter = castle_str.chars();
+        for c in iter {
+            match c {
+                'K' => castle_rights[0] = true,
+                'Q' => castle_rights[1] = true,
+                'k' => castle_rights[2] = true,
+                'q' => castle_rights[3] = true,
+                _ => {}
+            }
         }
+
+        // en passant field
+        let en_passant = match en_passant_str {
+            "-" => None,
+            _ => Some(Board::index(en_passant_str)),
+        };
+
+        // haf and full move
+        let half_moves = usize::from_str_radix(half_move_str, 10).unwrap();
+        let full_moves = usize::from_str_radix(full_move_str, 10).unwrap();
+
+        Board {
+            fields,
+            active_player,
+            castle_rights,
+            en_passant,
+            half_moves,
+            full_moves,
+        }
+    }
+
+    pub fn move_to<S: Into<String>>(&mut self, src: S, dst: S) {
+        let p = self.take(src);
+        self.set(dst, p);
+    }
+}
+
+impl fmt::Display for Board {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut board_string = String::new();
+
+        // a .. h row
+        board_string += " ";
+        for i in 'a'..='h' {
+            board_string = board_string + " " + i.to_string().as_str() + " ";
+        }
+
+        let mut rank_line = 8;
+        for (i, piece) in self.fields.iter().enumerate() {
+            if i % 8 == 0 {
+                board_string = board_string + "\n\n" + rank_line.to_string().as_str();
+                rank_line -= 1;
+            }
+            let p = &piece;
+            match p {
+                Some(piece) => {
+                    board_string = board_string + " " + format!("{}", piece).as_str() + " "
+                }
+
+                None => board_string = board_string + "   ",
+            }
+        }
+        board_string += "\n";
+        board_string = board_string + format!("{}", self.active_player).as_str() + " ";
+        board_string = board_string + format!("{}", self.half_moves).as_str() + " ";
+        board_string = board_string + format!("{}", self.full_moves).as_str() + " ";
+        write!(f, "{}", board_string)
     }
 }
