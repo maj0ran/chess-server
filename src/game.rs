@@ -23,11 +23,13 @@ macro_rules! piece {
     }};
 }
 
-trait ChessField {
+pub trait ChessField {
     fn up(&self) -> Self;
     fn down(&self) -> Self;
     fn left(&self) -> Self;
     fn right(&self) -> Self;
+    fn file(&self) -> char;
+    fn rank(&self) -> char;
 }
 
 impl ChessField for String {
@@ -78,12 +80,17 @@ impl ChessField for String {
         result.push(rank);
         result
     }
+
+    fn file(&self) -> char {
+        self.chars().nth(0).unwrap()
+    }
+
+    fn rank(&self) -> char {
+        self.chars().nth(1).unwrap()
+    }
 }
 
-pub struct Game {
-    board: Board,
-}
-
+#[allow(dead_code)]
 pub struct Board {
     pub fields: [Option<Piece>; 64],
     active_player: Color,
@@ -94,11 +101,8 @@ pub struct Board {
 }
 
 impl Board {
+    #[allow(dead_code)]
     pub fn new() -> Board {
-        println!("{}", String::from("f3").up());
-        println!("{}", String::from("f3").down());
-        println!("{}", String::from("f3").left());
-        println!("{}", String::from("f3").right());
         Board {
             fields: [None; 64],
             active_player: Color::White,
@@ -112,7 +116,6 @@ impl Board {
     fn index<S: Into<String>>(field: S) -> usize {
         let field = field.into();
         let mut it = field.chars();
-        let s = String::from("sfd");
         let file = it.next().unwrap() as u8 - 96;
         let rank = it.next().unwrap() as u8 - 48;
         let rank = (8 - rank) + 1;
@@ -121,7 +124,7 @@ impl Board {
         idx
     }
 
-    pub fn peek<S: Into<String>>(&mut self, idx: S) -> Option<Piece> {
+    pub fn peek<S: Into<String>>(&self, idx: S) -> Option<Piece> {
         self.fields[Board::index(idx)]
     }
 
@@ -136,12 +139,15 @@ impl Board {
     pub fn get_moves<S: Into<String>>(&mut self, idx: S) -> Vec<String> {
         let idx = idx.into();
         let p = self.peek(&idx);
-
+        if p.is_none() {
+            return Vec::new();
+        }
+        let p = p.unwrap(); // cannot fail because of above early return
         let x = match p {
-            Some(Piece {
+            Piece {
                 piece_type: PieceType::King,
                 ..
-            }) => {
+            } => {
                 let mut all_moves = vec![
                     idx.up(),
                     idx.down(),
@@ -154,12 +160,11 @@ impl Board {
                 ];
 
                 all_moves.retain(|m| Board::index(m) > 0 && Board::index(m) < 64);
-                let color = !p.unwrap().color;
                 let moves: Vec<&String> = all_moves
                     .iter()
                     .filter(|m| match self.peek(*m) {
                         None => true,
-                        Some(Piece { color, .. }) => true,
+                        Some(Piece { color, .. }) => color != p.color,
                     })
                     .collect();
 
@@ -169,7 +174,84 @@ impl Board {
                 }
                 pseudolegal_moves
             }
-            _ => todo!("moving piece is not implemented"),
+            Piece {
+                piece_type: PieceType::Rook,
+                ..
+            } => {
+                let mut all_moves = vec![];
+                let mut prev = idx.clone();
+                while prev.up().rank() <= '8' {
+                    let next = prev.up();
+                    match self.peek(&next) {
+                        None => {
+                            all_moves.push(next.clone());
+                            prev = next;
+                        }
+                        Some(Piece { color, .. }) => {
+                            if color != p.color {
+                                all_moves.push(next.clone());
+                            }
+                            break;
+                        }
+                    };
+                }
+                prev = idx.clone();
+                while prev.down().rank() >= '1' {
+                    let next = prev.down();
+                    match self.peek(&next) {
+                        None => {
+                            all_moves.push(next.clone());
+                            prev = next;
+                        }
+                        Some(Piece { color, .. }) => {
+                            if color != p.color {
+                                all_moves.push(next.clone());
+                            }
+                            break;
+                        }
+                    };
+                }
+                prev = idx.clone();
+                while prev.right().file() <= 'h' {
+                    let next = prev.right();
+                    match self.peek(&next) {
+                        None => {
+                            all_moves.push(next.clone());
+                            prev = next;
+                        }
+                        Some(Piece { color, .. }) => {
+                            if color != p.color {
+                                all_moves.push(next.clone());
+                            }
+                            break;
+                        }
+                    };
+                }
+                prev = idx.clone();
+                while prev.left().file() >= 'a' {
+                    let next = prev.left();
+                    match self.peek(&next) {
+                        None => {
+                            all_moves.push(next.clone());
+                            prev = next;
+                        }
+                        Some(Piece { color, .. }) => {
+                            if color != p.color {
+                                all_moves.push(next.clone());
+                            }
+                            break;
+                        }
+                    };
+                }
+
+                all_moves
+            }
+            _ => {
+                println!("Not Implemented");
+                let mut v = Vec::new();
+                v.push(String::from("Not Implemented"));
+                v
+            }
         };
 
         x

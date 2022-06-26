@@ -1,3 +1,4 @@
+use crate::game::Board;
 use core::fmt;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -33,6 +34,10 @@ pub struct Piece {
     pub color: Color,
 }
 
+pub trait ChessPiece {
+    fn get_moves<S: Into<String>>(&self, board: &Board, pos: S) -> Vec<String>;
+}
+
 impl Piece {
     pub fn new(piece_type: PieceType, color: Color) -> Piece {
         Piece { piece_type, color }
@@ -46,63 +51,63 @@ impl fmt::Display for Piece {
                 piece_type: PieceType::King,
                 color: Color::Black,
                 ..
-            } => "♔".to_string(),
+            } => "♔",
             Piece {
                 piece_type: PieceType::Queen,
                 color: Color::Black,
                 ..
-            } => "♕".to_string(),
+            } => "♕",
             Piece {
                 piece_type: PieceType::Rook,
                 color: Color::Black,
                 ..
-            } => "♖".to_string(),
+            } => "♖",
             Piece {
                 piece_type: PieceType::Bishop,
                 color: Color::Black,
                 ..
-            } => "♗".to_string(),
+            } => "♗",
             Piece {
                 piece_type: PieceType::Knight,
                 color: Color::Black,
                 ..
-            } => "♘".to_string(),
+            } => "♘",
             Piece {
                 piece_type: PieceType::Pawn,
                 color: Color::Black,
                 ..
-            } => "♙".to_string(),
+            } => "♙",
 
             Piece {
                 piece_type: PieceType::King,
                 color: Color::White,
                 ..
-            } => "♚".to_string(),
+            } => "♚",
             Piece {
                 piece_type: PieceType::Queen,
                 color: Color::White,
                 ..
-            } => "♛".to_string(),
+            } => "♛",
             Piece {
                 piece_type: PieceType::Rook,
                 color: Color::White,
                 ..
-            } => "♜".to_string(),
+            } => "♜",
             Piece {
                 piece_type: PieceType::Bishop,
                 color: Color::White,
                 ..
-            } => "♝".to_string(),
+            } => "♝",
             Piece {
                 piece_type: PieceType::Knight,
                 color: Color::White,
                 ..
-            } => "♞".to_string(),
+            } => "♞",
             Piece {
                 piece_type: PieceType::Pawn,
                 color: Color::White,
                 ..
-            } => "♟".to_string(),
+            } => "♟",
         };
 
         write!(f, "{}", symbol)
