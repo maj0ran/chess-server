@@ -1,19 +1,8 @@
-pub struct Rook {
-    color: Color,
-    name: PieceType,
-}
+use crate::pieces::{Board, ChessField, MoveRuleset, Piece, PieceInfo};
 
-impl Rook {
-    pub fn new(color: Color) -> Self {
-        Rook {
-            color,
-            name: PieceType::Rook,
-        }
-    }
-}
-
-impl ChessPiece for Rook {
-    fn get_moves<S: Into<String>>(&self, board: &Board, pos: S) -> Vec<String> {
+pub struct RookMoveRuleset;
+impl MoveRuleset for RookMoveRuleset {
+    fn get_valid_fields<S: Into<String>>(board: &Board, piece: &PieceInfo, pos: S) -> Vec<String> {
         let pos = pos.into();
         let mut all_moves = vec![];
         let mut prev = pos.clone();
@@ -25,7 +14,7 @@ impl ChessPiece for Rook {
                     prev = next;
                 }
                 Some(Piece { color, .. }) => {
-                    if color != self.color {
+                    if color != piece.color {
                         all_moves.push(next.clone());
                     }
                     break;
@@ -41,7 +30,7 @@ impl ChessPiece for Rook {
                     prev = next;
                 }
                 Some(Piece { color, .. }) => {
-                    if color != self.color {
+                    if color != piece.color {
                         all_moves.push(next.clone());
                     }
                     break;
@@ -57,7 +46,7 @@ impl ChessPiece for Rook {
                     prev = next;
                 }
                 Some(Piece { color, .. }) => {
-                    if color != self.color {
+                    if color != piece.color {
                         all_moves.push(next.clone());
                     }
                     break;
@@ -73,7 +62,7 @@ impl ChessPiece for Rook {
                     prev = next;
                 }
                 Some(Piece { color, .. }) => {
-                    if color != self.color {
+                    if color != piece.color {
                         all_moves.push(next.clone());
                     }
                     break;

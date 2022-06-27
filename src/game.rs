@@ -1,93 +1,25 @@
 use crate::pieces::*;
 use core::fmt;
-
 #[macro_export]
 macro_rules! piece {
     ($p:expr) => {{
         let p = match $p {
             'K' => Piece::new(PieceType::King, Color::White),
-            'k' => Piece::new(PieceType::King, Color::Black),
-            'Q' => Piece::new(PieceType::Queen, Color::White),
-            'q' => Piece::new(PieceType::Queen, Color::Black),
-            'R' => Piece::new(PieceType::Rook, Color::White),
-            'r' => Piece::new(PieceType::Rook, Color::Black),
-            'N' => Piece::new(PieceType::Knight, Color::White),
-            'n' => Piece::new(PieceType::Knight, Color::Black),
-            'B' => Piece::new(PieceType::Bishop, Color::White),
-            'b' => Piece::new(PieceType::Bishop, Color::Black),
-            'P' => Piece::new(PieceType::Pawn, Color::White),
-            'p' => Piece::new(PieceType::Pawn, Color::Black),
+            // 'k' => Piece::new(PieceType::King, Color::Black),
+            // 'Q' => Piece::new(PieceType::Queen, Color::White),
+            // 'q' => Piece::new(PieceType::Queen, Color::Black),
+            // 'R' => Piece::new(PieceType::Rook, Color::White),
+            // 'r' => Piece::new(PieceType::Rook, Color::Black),
+            // 'N' => Piece::new(PieceType::Knight, Color::White),
+            // 'n' => Piece::new(PieceType::Knight, Color::Black),
+            // 'B' => Piece::new(PieceType::Bishop, Color::White),
+            // 'b' => Piece::new(PieceType::Bishop, Color::Black),
+            // 'P' => Piece::new(PieceType::Pawn, Color::White),
+            // 'p' => Piece::new(PieceType::Pawn, Color::Black),
             _ => panic!(),
         };
         p
     }};
-}
-
-pub trait ChessField {
-    fn up(&self) -> Self;
-    fn down(&self) -> Self;
-    fn left(&self) -> Self;
-    fn right(&self) -> Self;
-    fn file(&self) -> char;
-    fn rank(&self) -> char;
-}
-
-impl ChessField for String {
-    fn up(&self) -> Self {
-        let mut iter = self.chars();
-        let file = iter.next().unwrap();
-        let rank = iter.next().unwrap();
-
-        let rank = (rank as u8 + 1) as char;
-
-        let mut result = file.to_string();
-        result.push(rank);
-        result
-    }
-
-    fn down(&self) -> Self {
-        let mut iter = self.chars();
-        let file = iter.next().unwrap();
-        let rank = iter.next().unwrap();
-
-        let rank = (rank as u8 - 1) as char;
-
-        let mut result = file.to_string();
-        result.push(rank);
-        result
-    }
-
-    fn left(&self) -> Self {
-        let mut iter = self.chars();
-        let file = iter.next().unwrap();
-        let rank = iter.next().unwrap();
-
-        let file = (file as u8 - 1) as char;
-
-        let mut result = file.to_string();
-        result.push(rank);
-        result
-    }
-
-    fn right(&self) -> Self {
-        let mut iter = self.chars();
-        let file = iter.next().unwrap();
-        let rank = iter.next().unwrap();
-
-        let file = (file as u8 + 1) as char;
-
-        let mut result = file.to_string();
-        result.push(rank);
-        result
-    }
-
-    fn file(&self) -> char {
-        self.chars().nth(0).unwrap()
-    }
-
-    fn rank(&self) -> char {
-        self.chars().nth(1).unwrap()
-    }
 }
 
 #[allow(dead_code)]
@@ -113,7 +45,7 @@ impl Board {
         }
     }
 
-    fn index<S: Into<String>>(field: S) -> usize {
+    pub fn index<S: Into<String>>(field: S) -> usize {
         let field = field.into();
         let mut it = field.chars();
         let file = it.next().unwrap() as u8 - 96;

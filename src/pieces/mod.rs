@@ -1,6 +1,84 @@
 use crate::game::Board;
 use core::fmt;
 
+pub mod king;
+pub mod rook;
+
+struct PieceInfo {
+    id: PieceType,
+    color: Color,
+}
+
+trait MoveRuleset {
+    fn get_valid_fields<S: Into<String>>(board: &Board, piece: &PieceInfo, pos: S) -> Vec<String>;
+}
+
+pub trait ChessField {
+    fn up(&self) -> Self;
+    fn down(&self) -> Self;
+    fn left(&self) -> Self;
+    fn right(&self) -> Self;
+    fn file(&self) -> char;
+    fn rank(&self) -> char;
+}
+
+impl ChessField for String {
+    fn up(&self) -> Self {
+        let mut iter = self.chars();
+        let file = iter.next().unwrap();
+        let rank = iter.next().unwrap();
+
+        let rank = (rank as u8 + 1) as char;
+
+        let mut result = file.to_string();
+        result.push(rank);
+        result
+    }
+
+    fn down(&self) -> Self {
+        let mut iter = self.chars();
+        let file = iter.next().unwrap();
+        let rank = iter.next().unwrap();
+
+        let rank = (rank as u8 - 1) as char;
+
+        let mut result = file.to_string();
+        result.push(rank);
+        result
+    }
+
+    fn left(&self) -> Self {
+        let mut iter = self.chars();
+        let file = iter.next().unwrap();
+        let rank = iter.next().unwrap();
+
+        let file = (file as u8 - 1) as char;
+
+        let mut result = file.to_string();
+        result.push(rank);
+        result
+    }
+
+    fn right(&self) -> Self {
+        let mut iter = self.chars();
+        let file = iter.next().unwrap();
+        let rank = iter.next().unwrap();
+
+        let file = (file as u8 + 1) as char;
+
+        let mut result = file.to_string();
+        result.push(rank);
+        result
+    }
+
+    fn file(&self) -> char {
+        self.chars().nth(0).unwrap()
+    }
+
+    fn rank(&self) -> char {
+        self.chars().nth(1).unwrap()
+    }
+}
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Color {
     Black,

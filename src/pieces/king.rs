@@ -1,27 +1,26 @@
-struct King {
-    color: Color,
-    name: PieceType,
-}
+use crate::pieces::{Board, ChessField, MoveRuleset, Piece, PieceInfo};
 
-impl ChessPiece for King {
-    fn get_moves<S: Into<String>>(&self, board: &Board, pos: S) -> Vec<String> {
+struct KingMoveRuleset;
+impl MoveRuleset for KingMoveRuleset {
+    fn get_valid_fields<S: Into<String>>(board: &Board, piece: &PieceInfo, pos: S) -> Vec<String> {
+        let pos = pos.into();
         let mut all_moves = vec![
-            idx.up(),
-            idx.down(),
-            idx.left(),
-            idx.right(),
-            idx.up().left(),
-            idx.up().right(),
-            idx.down().left(),
-            idx.down().right(),
+            pos.up(),
+            pos.down(),
+            pos.left(),
+            pos.right(),
+            pos.up().left(),
+            pos.up().right(),
+            pos.down().left(),
+            pos.down().right(),
         ];
 
         all_moves.retain(|m| Board::index(m) > 0 && Board::index(m) < 64);
         let moves: Vec<&String> = all_moves
             .iter()
-            .filter(|m| match self.peek(*m) {
+            .filter(|m| match board.peek(*m) {
                 None => true,
-                Some(Piece { color, .. }) => color != p.color,
+                Some(Piece { color, .. }) => color != piece.color,
             })
             .collect();
 
