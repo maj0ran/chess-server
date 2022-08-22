@@ -1,26 +1,15 @@
+use crate::field::Field;
+use crate::piece;
 use crate::pieces::*;
 use core::fmt;
-#[macro_export]
-macro_rules! piece {
-    ($p:expr) => {{
-        let p = match $p {
-            'K' => Piece::new(PieceType::King, Color::White),
-            // 'k' => Piece::new(PieceType::King, Color::Black),
-            // 'Q' => Piece::new(PieceType::Queen, Color::White),
-            // 'q' => Piece::new(PieceType::Queen, Color::Black),
-            // 'R' => Piece::new(PieceType::Rook, Color::White),
-            // 'r' => Piece::new(PieceType::Rook, Color::Black),
-            // 'N' => Piece::new(PieceType::Knight, Color::White),
-            // 'n' => Piece::new(PieceType::Knight, Color::Black),
-            // 'B' => Piece::new(PieceType::Bishop, Color::White),
-            // 'b' => Piece::new(PieceType::Bishop, Color::Black),
-            // 'P' => Piece::new(PieceType::Pawn, Color::White),
-            // 'p' => Piece::new(PieceType::Pawn, Color::Black),
-            _ => panic!(),
-        };
-        p
-    }};
-}
+
+use crate::color::Color;
+use crate::pieces::bishop::move_rules_bishop;
+use crate::pieces::king::move_rules_king;
+use crate::pieces::knight::move_rules_knight;
+use crate::pieces::pawn::move_rules_pawn;
+use crate::pieces::queen::move_rules_queen;
+use crate::pieces::rook::move_rules_rook;
 
 #[allow(dead_code)]
 pub struct Board {
@@ -33,7 +22,6 @@ pub struct Board {
 }
 
 impl Board {
-    #[allow(dead_code)]
     pub fn new() -> Board {
         Board {
             fields: [None; 64],
@@ -45,148 +33,24 @@ impl Board {
         }
     }
 
-    pub fn index<S: Into<String>>(field: S) -> usize {
-        let field = field.into();
-        let mut it = field.chars();
-        let file = it.next().unwrap() as u8 - 96;
-        let rank = it.next().unwrap() as u8 - 48;
+    pub fn index(field: Field) -> usize {
+        let file = field.file as u8 - 96;
+        let rank = field.rank as u8 - 48;
         let rank = (8 - rank) + 1;
         let idx: usize = (((rank - 1) * 8) + (file - 1)) as usize;
-
         idx
     }
 
-    pub fn peek<S: Into<String>>(&self, idx: S) -> Option<Piece> {
-        self.fields[Board::index(idx)]
+    pub fn peek(&self, idx: Field) -> &Option<Piece> {
+        &self.fields[Board::index(idx)]
     }
 
-    pub fn take<S: Into<String>>(&mut self, idx: S) -> Option<Piece> {
+    pub fn take(&mut self, idx: Field) -> Option<Piece> {
         self.fields[Board::index(idx)].take()
     }
 
-    pub fn set<S: Into<String>>(&mut self, idx: S, piece: Option<Piece>) {
+    pub fn set(&mut self, idx: Field, piece: Option<Piece>) {
         self.fields[Board::index(idx)] = piece;
-    }
-
-    pub fn get_moves<S: Into<String>>(&mut self, idx: S) -> Vec<String> {
-        let idx = idx.into();
-        let p = self.peek(&idx);
-        if p.is_none() {
-            return Vec::new();
-        }
-        let p = p.unwrap(); // cannot fail because of above early return
-        let x = match p {
-            Piece {
-                piece_type: PieceType::King,
-                ..
-            } => {
-                let mut all_moves = vec![
-                    idx.up(),
-                    idx.down(),
-                    idx.left(),
-                    idx.right(),
-                    idx.up().left(),
-                    idx.up().right(),
-                    idx.down().left(),
-                    idx.down().right(),
-                ];
-
-                all_moves.retain(|m| Board::index(m) > 0 && Board::index(m) < 64);
-                let moves: Vec<&String> = all_moves
-                    .iter()
-                    .filter(|m| match self.peek(*m) {
-                        None => true,
-                        Some(Piece { color, .. }) => color != p.color,
-                    })
-                    .collect();
-
-                let mut pseudolegal_moves = Vec::<String>::new();
-                for m in moves {
-                    pseudolegal_moves.push(String::from(m.clone()));
-                }
-                pseudolegal_moves
-            }
-            Piece {
-                piece_type: PieceType::Rook,
-                ..
-            } => {
-                let mut all_moves = vec![];
-                let mut prev = idx.clone();
-                while prev.up().rank() <= '8' {
-                    let next = prev.up();
-                    match self.peek(&next) {
-                        None => {
-                            all_moves.push(next.clone());
-                            prev = next;
-                        }
-                        Some(Piece { color, .. }) => {
-                            if color != p.color {
-                                all_moves.push(next.clone());
-                            }
-                            break;
-                        }
-                    };
-                }
-                prev = idx.clone();
-                while prev.down().rank() >= '1' {
-                    let next = prev.down();
-                    match self.peek(&next) {
-                        None => {
-                            all_moves.push(next.clone());
-                            prev = next;
-                        }
-                        Some(Piece { color, .. }) => {
-                            if color != p.color {
-                                all_moves.push(next.clone());
-                            }
-                            break;
-                        }
-                    };
-                }
-                prev = idx.clone();
-                while prev.right().file() <= 'h' {
-                    let next = prev.right();
-                    match self.peek(&next) {
-                        None => {
-                            all_moves.push(next.clone());
-                            prev = next;
-                        }
-                        Some(Piece { color, .. }) => {
-                            if color != p.color {
-                                all_moves.push(next.clone());
-                            }
-                            break;
-                        }
-                    };
-                }
-                prev = idx.clone();
-                while prev.left().file() >= 'a' {
-                    let next = prev.left();
-                    match self.peek(&next) {
-                        None => {
-                            all_moves.push(next.clone());
-                            prev = next;
-                        }
-                        Some(Piece { color, .. }) => {
-                            if color != p.color {
-                                all_moves.push(next.clone());
-                            }
-                            break;
-                        }
-                    };
-                }
-
-                all_moves
-            }
-            _ => {
-                println!("Not Implemented");
-                let mut v = Vec::new();
-                v.push(String::from("Not Implemented"));
-                v
-            }
-        };
-
-        x
     }
 
     pub fn load_fen(fen: &str) -> Board {
@@ -240,7 +104,7 @@ impl Board {
         // en passant field
         let en_passant = match en_passant_str {
             "-" => None,
-            _ => Some(Board::index(en_passant_str)),
+            _ => Some(Board::index(en_passant_str.to_string().into())),
         };
 
         // haf and full move
@@ -257,9 +121,15 @@ impl Board {
         }
     }
 
-    pub fn move_to<S: Into<String>>(&mut self, src: S, dst: S) {
-        let p = self.take(src);
-        self.set(dst, p);
+    pub fn is_valid(&mut self, src: Field, dst: Field) -> bool {
+        let p = self.peek(src);
+        let valid_fields = match p {
+            None => vec![],
+            Some(p) => p.get_legal_fields(self, &src),
+        };
+
+        println!("{:?}", valid_fields);
+        valid_fields.contains(&dst)
     }
 }
 

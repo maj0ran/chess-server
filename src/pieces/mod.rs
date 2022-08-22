@@ -1,103 +1,39 @@
+use crate::color::Color;
+use crate::field::Field;
 use crate::game::Board;
 use core::fmt;
 
+pub mod bishop;
 pub mod king;
+pub mod knight;
+pub mod pawn;
+pub mod queen;
 pub mod rook;
 
-struct PieceInfo {
-    id: PieceType,
-    color: Color,
-}
-
-trait MoveRuleset {
-    fn get_valid_fields<S: Into<String>>(board: &Board, piece: &PieceInfo, pos: S) -> Vec<String>;
-}
-
-pub trait ChessField {
-    fn up(&self) -> Self;
-    fn down(&self) -> Self;
-    fn left(&self) -> Self;
-    fn right(&self) -> Self;
-    fn file(&self) -> char;
-    fn rank(&self) -> char;
-}
-
-impl ChessField for String {
-    fn up(&self) -> Self {
-        let mut iter = self.chars();
-        let file = iter.next().unwrap();
-        let rank = iter.next().unwrap();
-
-        let rank = (rank as u8 + 1) as char;
-
-        let mut result = file.to_string();
-        result.push(rank);
-        result
-    }
-
-    fn down(&self) -> Self {
-        let mut iter = self.chars();
-        let file = iter.next().unwrap();
-        let rank = iter.next().unwrap();
-
-        let rank = (rank as u8 - 1) as char;
-
-        let mut result = file.to_string();
-        result.push(rank);
-        result
-    }
-
-    fn left(&self) -> Self {
-        let mut iter = self.chars();
-        let file = iter.next().unwrap();
-        let rank = iter.next().unwrap();
-
-        let file = (file as u8 - 1) as char;
-
-        let mut result = file.to_string();
-        result.push(rank);
-        result
-    }
-
-    fn right(&self) -> Self {
-        let mut iter = self.chars();
-        let file = iter.next().unwrap();
-        let rank = iter.next().unwrap();
-
-        let file = (file as u8 + 1) as char;
-
-        let mut result = file.to_string();
-        result.push(rank);
-        result
-    }
-
-    fn file(&self) -> char {
-        self.chars().nth(0).unwrap()
-    }
-
-    fn rank(&self) -> char {
-        self.chars().nth(1).unwrap()
-    }
-}
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Color {
-    Black,
-    White,
-}
-
-impl std::ops::Not for Color {
-    type Output = Color;
-
-    fn not(self) -> Color {
-        match self {
-            Color::White => Color::Black,
-            Color::Black => Color::White,
-        }
-    }
+#[macro_export]
+macro_rules! piece {
+    ($p:expr) => {{
+        let p = match $p {
+            'K' => Piece::new(PieceId::King, Color::White, move_rules_king),
+            'k' => Piece::new(PieceId::King, Color::Black, move_rules_king),
+            'Q' => Piece::new(PieceId::Queen, Color::White, move_rules_queen),
+            'q' => Piece::new(PieceId::Queen, Color::Black, move_rules_queen),
+            'R' => Piece::new(PieceId::Rook, Color::White, move_rules_rook),
+            'r' => Piece::new(PieceId::Rook, Color::Black, move_rules_rook),
+            'N' => Piece::new(PieceId::Knight, Color::White, move_rules_knight),
+            'n' => Piece::new(PieceId::Knight, Color::Black, move_rules_knight),
+            'B' => Piece::new(PieceId::Bishop, Color::White, move_rules_bishop),
+            'b' => Piece::new(PieceId::Bishop, Color::Black, move_rules_bishop),
+            'P' => Piece::new(PieceId::Pawn, Color::White, move_rules_pawn),
+            'p' => Piece::new(PieceId::Pawn, Color::Black, move_rules_pawn),
+            _ => panic!(),
+        };
+        p
+    }};
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum PieceType {
+pub enum PieceId {
     King,
     Queen,
     Rook,
@@ -107,88 +43,107 @@ pub enum PieceType {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct Piece {
-    pub piece_type: PieceType,
+pub struct PieceInfo {
+    pub id: PieceId,
     pub color: Color,
 }
 
-pub trait ChessPiece {
-    fn get_moves<S: Into<String>>(&self, board: &Board, pos: S) -> Vec<String>;
+#[derive(Copy, Clone)]
+pub struct Piece {
+    pub info: PieceInfo,
+    pub move_rule: fn(&PieceInfo, &Board, &Field) -> Vec<Field>,
 }
 
 impl Piece {
-    pub fn new(piece_type: PieceType, color: Color) -> Piece {
-        Piece { piece_type, color }
+    pub fn new(
+        id: PieceId,
+        color: Color,
+        move_rule: fn(&PieceInfo, &Board, &Field) -> Vec<Field>,
+    ) -> Piece {
+        Piece {
+            info: PieceInfo { id, color },
+            move_rule,
+        }
+    }
+
+    pub fn get_legal_fields(&self, board: &Board, from: &Field) -> Vec<Field> {
+        (self.move_rule)(&self.info, board, from)
     }
 }
 
-impl fmt::Display for Piece {
+impl fmt::Display for PieceInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let symbol = match self {
-            Piece {
-                piece_type: PieceType::King,
+            PieceInfo {
+                id: PieceId::King,
                 color: Color::Black,
                 ..
             } => "♔",
-            Piece {
-                piece_type: PieceType::Queen,
+            PieceInfo {
+                id: PieceId::Queen,
                 color: Color::Black,
                 ..
             } => "♕",
-            Piece {
-                piece_type: PieceType::Rook,
+            PieceInfo {
+                id: PieceId::Rook,
                 color: Color::Black,
                 ..
             } => "♖",
-            Piece {
-                piece_type: PieceType::Bishop,
+            PieceInfo {
+                id: PieceId::Bishop,
                 color: Color::Black,
                 ..
             } => "♗",
-            Piece {
-                piece_type: PieceType::Knight,
+            PieceInfo {
+                id: PieceId::Knight,
                 color: Color::Black,
                 ..
             } => "♘",
-            Piece {
-                piece_type: PieceType::Pawn,
+            PieceInfo {
+                id: PieceId::Pawn,
                 color: Color::Black,
                 ..
             } => "♙",
 
-            Piece {
-                piece_type: PieceType::King,
+            PieceInfo {
+                id: PieceId::King,
                 color: Color::White,
                 ..
             } => "♚",
-            Piece {
-                piece_type: PieceType::Queen,
+            PieceInfo {
+                id: PieceId::Queen,
                 color: Color::White,
                 ..
             } => "♛",
-            Piece {
-                piece_type: PieceType::Rook,
+            PieceInfo {
+                id: PieceId::Rook,
                 color: Color::White,
                 ..
             } => "♜",
-            Piece {
-                piece_type: PieceType::Bishop,
+            PieceInfo {
+                id: PieceId::Bishop,
                 color: Color::White,
                 ..
             } => "♝",
-            Piece {
-                piece_type: PieceType::Knight,
+            PieceInfo {
+                id: PieceId::Knight,
                 color: Color::White,
                 ..
             } => "♞",
-            Piece {
-                piece_type: PieceType::Pawn,
+            PieceInfo {
+                id: PieceId::Pawn,
                 color: Color::White,
                 ..
             } => "♟",
         };
 
         write!(f, "{}", symbol)
+    }
+}
+
+impl fmt::Display for Piece {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.info)
     }
 }
 
