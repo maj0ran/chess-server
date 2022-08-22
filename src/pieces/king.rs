@@ -1,29 +1,45 @@
-use crate::field::Field;
-use crate::pieces::{Board, Piece, PieceInfo};
+use crate::color::Color;
+use crate::pieces::ChessPiece;
+use crate::pieces::{Game, PieceTrait};
+use crate::tile::Tile;
 
-pub fn move_rules_king(piece: &PieceInfo, board: &Board, pos: &Field) -> Vec<Field> {
-    let mut all_moves = vec![
-        pos.up(),
-        pos.down(),
-        pos.left(),
-        pos.right(),
-        pos.up().left(),
-        pos.up().right(),
-        pos.down().left(),
-        pos.down().right(),
-    ];
-    all_moves.retain(|p| (p.file >= 'a' && p.file <= 'h' && p.rank >= '1' && p.rank <= '8'));
-    let moves: Vec<&Field> = all_moves
-        .iter()
-        .filter(|m| match board.peek(**m) {
-            None => true,
-            Some(Piece { info: other, .. }) => other.color != piece.color,
-        })
-        .collect();
+pub struct King {
+    pub color: Color,
+}
 
-    let mut pseudolegal_moves = Vec::<Field>::new();
-    for m in moves {
-        pseudolegal_moves.push(*m);
+impl PieceTrait for King {
+    fn color(&self) -> crate::color::Color {
+        self.color
     }
-    pseudolegal_moves
+
+    fn id(&self) -> ChessPiece {
+        ChessPiece::King
+    }
+
+    fn get_moves(&self, board: &Game, pos: Tile) -> Vec<Tile> {
+        let mut tiles = vec![];
+
+        for d in [
+            Tile::UP,
+            Tile::DOWN,
+            Tile::LEFT,
+            Tile::RIGHT,
+            Tile::UPLEFT,
+            Tile::UPRIGHT,
+            Tile::DOWNLEFT,
+            Tile::DOWNRIGHT,
+        ] {
+            let dst = pos + d;
+            if let Some(t) = dst {
+                if let Some(p) = board.peek(t) {
+                    if p.color() != self.color() {
+                        tiles.push(t);
+                    }
+                } else {
+                    tiles.push(t);
+                }
+            }
+        }
+        tiles
+    }
 }

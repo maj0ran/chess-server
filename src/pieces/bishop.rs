@@ -1,81 +1,38 @@
-use crate::field::Field;
-use crate::pieces::{Board, Piece, PieceInfo};
+use crate::color::Color;
+use crate::pieces::Game;
+use crate::tile::Tile;
 
-pub fn move_rules_bishop(piece: &PieceInfo, board: &Board, pos: &Field) -> Vec<Field> {
-    let mut all_moves = vec![];
+use super::PieceTrait;
 
-    let mut prev = pos.clone();
-    while prev.right().file <= 'h' && prev.up().rank <= '8' {
-        let next = prev.up().right();
-        match board.peek(next) {
-            None => {
-                all_moves.push(next.clone());
-                prev = next;
-            }
-            Some(Piece {
-                info: other_piece, ..
-            }) => {
-                if other_piece.color != piece.color {
-                    all_moves.push(next.clone());
-                }
-                break;
-            }
-        };
-    }
-    prev = pos.clone();
-    while prev.right().file <= 'h' && prev.down().rank >= '1' {
-        let next = prev.down().right();
-        match board.peek(next) {
-            None => {
-                all_moves.push(next.clone());
-                prev = next;
-            }
-            Some(Piece {
-                info: other_piece, ..
-            }) => {
-                if other_piece.color != piece.color {
-                    all_moves.push(next.clone());
-                }
-                break;
-            }
-        };
-    }
-    prev = pos.clone();
-    while prev.left().file >= 'a' && prev.down().rank >= '1' {
-        let next = prev.left().down();
-        match board.peek(next) {
-            None => {
-                all_moves.push(next.clone());
-                prev = next;
-            }
-            Some(Piece {
-                info: other_piece, ..
-            }) => {
-                if other_piece.color != piece.color {
-                    all_moves.push(next.clone());
-                }
-                break;
-            }
-        };
-    }
-    prev = pos.clone();
-    while prev.left().file >= 'a' && prev.up().rank <= '8' {
-        let next = prev.left();
-        match board.peek(next) {
-            None => {
-                all_moves.push(next.clone());
-                prev = next;
-            }
-            Some(Piece {
-                info: other_piece, ..
-            }) => {
-                if other_piece.color != piece.color {
-                    all_moves.push(next.clone());
-                }
-                break;
-            }
-        };
+pub struct Bishop {
+    pub color: Color,
+}
+
+impl PieceTrait for Bishop {
+    fn color(&self) -> crate::color::Color {
+        self.color
     }
 
-    all_moves
+    fn id(&self) -> super::ChessPiece {
+        super::ChessPiece::Bishop
+    }
+
+    fn get_moves(&self, board: &Game, pos: Tile) -> Vec<Tile> {
+        let dirs = [Tile::UPLEFT, Tile::DOWNLEFT, Tile::UPRIGHT, Tile::DOWNRIGHT];
+
+        let mut tiles = vec![];
+        for d in dirs {
+            let mut ray = board.ray(pos, d);
+            if let Some(t) = ray.last() {
+                if let Some(p) = board.peek(*t) {
+                    if p.color() == self.color() {
+                        let _ = ray.pop();
+                    }
+                }
+            }
+            tiles.append(&mut ray)
+        }
+
+        tiles
+    }
 }

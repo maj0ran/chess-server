@@ -1,43 +1,62 @@
 use crate::color::Color;
-use crate::field::Field;
-use crate::pieces::{Board, Piece, PieceInfo};
+use crate::pieces::{Game, PieceTrait};
+use crate::tile::Tile;
 
-pub fn move_rules_pawn(piece: &PieceInfo, board: &Board, pos: &Field) -> Vec<Field> {
-    let mut all_moves = Vec::<Field>::new();
+use super::ChessPiece;
 
-    let mov = pos.up();
-    if piece.color == Color::White {
-        match board.peek(mov) {
-            None => {
-                all_moves.push(mov);
-                if pos.rank == '2' {
-                    let mov = pos.up().up();
-                    match board.peek(mov) {
-                        None => all_moves.push(mov),
-                        Some(_) => {}
-                    };
-                }
-            }
-            Some(_) => {}
-        }
+pub struct Pawn {
+    pub color: Color,
+}
+impl PieceTrait for Pawn {
+    fn color(&self) -> Color {
+        self.color
     }
 
-    let mov = pos.down();
-    if piece.color == Color::Black {
-        match board.peek(mov) {
-            None => {
-                all_moves.push(mov);
-                if pos.rank == '7' {
-                    let mov = pos.down().down();
-                    match board.peek(mov) {
-                        None => all_moves.push(mov),
-                        Some(_) => {}
-                    };
-                }
-            }
-            Some(_) => {}
-        }
+    fn id(&self) -> ChessPiece {
+        ChessPiece::Pawn
     }
 
-    all_moves
+    fn get_moves(&self, board: &Game, pos: Tile) -> Vec<Tile> {
+        let mut tiles = Vec::<Tile>::new();
+
+        let (forward, attack) = if self.color() == Color::White {
+            let forward = Tile::UP;
+            let attack = [Tile::UPLEFT, Tile::UPRIGHT];
+            (forward, attack)
+        } else {
+            let forward = Tile::DOWN;
+            let attack = [Tile::DOWNLEFT, Tile::DOWNRIGHT];
+            (forward, attack)
+        };
+
+        let dst = pos + forward;
+        if let Some(t) = dst {
+            if board[t].is_none() {
+                tiles.push(t);
+            }
+            let start_rank = if self.color() == Color::White {
+                '2'
+            } else {
+                '7'
+            };
+            if pos.rank == start_rank {
+                let t2 = (t + forward).unwrap();
+                if board[t2].is_none() {
+                    tiles.push(t2);
+                }
+            }
+        }
+        for d in attack {
+            let dst = pos + d;
+            if let Some(t) = dst {
+                if let Some(p) = board.peek(t) {
+                    if p.color() != self.color() {
+                        tiles.push(t);
+                    }
+                }
+            }
+        }
+
+        tiles
+    }
 }

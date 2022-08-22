@@ -1,22 +1,41 @@
 mod color;
-mod field;
 mod game;
 mod pieces;
-use crate::game::*;
+mod tile;
+use crate::{game::*, tile::Tile};
 use std::io;
 
 fn main() -> io::Result<()> {
     let start_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq f3 0 1";
-    //    let start_fen = "RRRRRRKK/KKKrKKKK/8/8/8/8/KKKKKKKK/KKKKKKKK w KQkq f3 0 1";
-    let mut chess = Board::load_fen(start_fen);
+    let mut chess = Game::load_fen(start_fen);
     println!("{}", chess);
 
     loop {
-        let mut src = String::new();
-        let mut dst = String::new();
-        io::stdin().read_line(&mut src)?;
-        io::stdin().read_line(&mut dst)?;
-        chess.is_valid(src.into(), dst.into());
-        println!("{}", chess);
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
+
+        // d2d4 + 'RETURN' = 5 symbols
+        if input.len() != 5 {
+            println!("invalid");
+            continue;
+        }
+
+        let src: Tile = input[0..2].to_string().into();
+        let dst: Tile = input[2..4].to_string().into();
+
+        match chess.make_move(src, dst) {
+            true => {
+                println!("{}", chess);
+            }
+            false => {
+                println!("Invalid Move!: {} -> {}", &src, &dst);
+                print!("Valid Moves are: ");
+                let tiles = chess.get_moves(src);
+                for t in tiles {
+                    print!("{}{} ", src, t)
+                }
+                println!();
+            }
+        }
     }
 }

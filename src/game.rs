@@ -1,59 +1,51 @@
-use crate::field::Field;
 use crate::piece;
 use crate::pieces::*;
+use crate::tile::Tile;
 use core::fmt;
+use std::ops::Index;
+use std::ops::IndexMut;
 
 use crate::color::Color;
-use crate::pieces::bishop::move_rules_bishop;
-use crate::pieces::king::move_rules_king;
-use crate::pieces::knight::move_rules_knight;
-use crate::pieces::pawn::move_rules_pawn;
-use crate::pieces::queen::move_rules_queen;
-use crate::pieces::rook::move_rules_rook;
+use crate::pieces::bishop::Bishop;
+use crate::pieces::king::King;
+use crate::pieces::knight::Knight;
+use crate::pieces::pawn::Pawn;
+use crate::pieces::queen::Queen;
+use crate::pieces::rook::Rook;
 
 #[allow(dead_code)]
-pub struct Board {
-    pub fields: [Option<Piece>; 64],
+pub struct Game {
+    pub tiles: [Option<Box<dyn PieceTrait>>; 64],
     active_player: Color,
-    castle_rights: [bool; 4],  // [K, Q, k, q]
-    en_passant: Option<usize>, // index of field in linear memory
+    castle_rights: [bool; 4], // [K, Q, k, q]
+    en_passant: Option<Tile>, //_index of field in linear memory
     half_moves: usize,
     full_moves: usize,
 }
 
-impl Board {
-    pub fn new() -> Board {
-        Board {
-            fields: [None; 64],
-            active_player: Color::White,
-            castle_rights: [false; 4],
-            en_passant: None,
-            half_moves: 0,
-            full_moves: 0,
+impl Game {
+    pub fn peek(&self, idx: Tile) -> &Option<Box<dyn PieceTrait>> {
+        &self[idx]
+    }
+
+    pub fn take(&mut self, idx: Tile) -> Option<Box<dyn PieceTrait>> {
+        self[idx].take()
+    }
+
+    pub fn ray(&self, src: Tile, dir: (i8, i8)) -> Vec<Tile> {
+        let mut tiles = Vec::<Tile>::new();
+        let mut d = src + dir;
+        while let Some(t) = d {
+            tiles.push(t);
+            if let Some(_) = self.peek(t) {
+                break;
+            }
+            d = t + dir;
         }
+        tiles
     }
 
-    pub fn index(field: Field) -> usize {
-        let file = field.file as u8 - 96;
-        let rank = field.rank as u8 - 48;
-        let rank = (8 - rank) + 1;
-        let idx: usize = (((rank - 1) * 8) + (file - 1)) as usize;
-        idx
-    }
-
-    pub fn peek(&self, idx: Field) -> &Option<Piece> {
-        &self.fields[Board::index(idx)]
-    }
-
-    pub fn take(&mut self, idx: Field) -> Option<Piece> {
-        self.fields[Board::index(idx)].take()
-    }
-
-    pub fn set(&mut self, idx: Field, piece: Option<Piece>) {
-        self.fields[Board::index(idx)] = piece;
-    }
-
-    pub fn load_fen(fen: &str) -> Board {
+    pub fn load_fen(fen: &str) -> Game {
         let mut curr_pos = 0;
         let mut fen_iter = fen.split(" ");
         let pos_str = fen_iter.next().unwrap();
@@ -65,10 +57,10 @@ impl Board {
 
         // iterate through position string
         let iter = pos_str.chars();
-        let mut fields = [None; 64];
+        let mut tiles: [Option<Box<dyn PieceTrait>>; 64] = std::array::from_fn(|_| None);
         for c in iter {
             if c.is_alphabetic() {
-                fields[curr_pos] = Some(piece!(c));
+                tiles[curr_pos] = Some(piece!(c));
                 curr_pos += 1;
             } else if c.is_numeric() {
                 curr_pos += char::to_digit(c, 10).unwrap() as usize;
@@ -104,15 +96,15 @@ impl Board {
         // en passant field
         let en_passant = match en_passant_str {
             "-" => None,
-            _ => Some(Board::index(en_passant_str.to_string().into())),
+            _ => Some(Tile::from(en_passant_str.to_string())),
         };
 
         // haf and full move
         let half_moves = usize::from_str_radix(half_move_str, 10).unwrap();
         let full_moves = usize::from_str_radix(full_move_str, 10).unwrap();
 
-        Board {
-            fields,
+        Game {
+            tiles,
             active_player,
             castle_rights,
             en_passant,
@@ -120,20 +112,61 @@ impl Board {
             full_moves,
         }
     }
-
-    pub fn is_valid(&mut self, src: Field, dst: Field) -> bool {
-        let p = self.peek(src);
-        let valid_fields = match p {
+    pub fn get_moves(&self, tile: Tile) -> Vec<Tile> {
+        match &self[tile] {
+            Some(p) => {
+                if p.color() == self.active_player {
+                    p.get_moves(self, tile)
+                } else {
+                    vec![]
+                }
+            }
             None => vec![],
-            Some(p) => p.get_legal_fields(self, &src),
+        }
+    }
+    fn is_valid(&self, src: Tile, dst: Tile) -> bool {
+        let p = self.peek(src);
+        let tiles = match p {
+            None => vec![],
+            Some(_) => self.get_moves(src),
         };
 
-        println!("{:?}", valid_fields);
-        valid_fields.contains(&dst)
+        tiles.contains(&dst)
+    }
+
+    pub fn make_move(&mut self, src: Tile, dst: Tile) -> bool {
+        if !self.is_valid(src, dst) {
+            return false;
+        } else {
+            self[dst] = self.take(src);
+            self.active_player = !self.active_player;
+            return true;
+        }
     }
 }
 
-impl fmt::Display for Board {
+impl Index<Tile> for Game {
+    type Output = Option<Box<dyn PieceTrait>>;
+
+    fn index(&self, index: Tile) -> &Self::Output {
+        let file = index.file as u8 - 96;
+        let rank = index.rank as u8 - 48;
+        let rank = (8 - rank) + 1;
+        let idx: usize = (((rank - 1) * 8) + (file - 1)) as usize;
+        &self.tiles[idx]
+    }
+}
+
+impl IndexMut<Tile> for Game {
+    fn index_mut(&mut self, index: Tile) -> &mut Self::Output {
+        let file = index.file as u8 - 96;
+        let rank = index.rank as u8 - 48;
+        let rank = (8 - rank) + 1;
+        let idx: usize = (((rank - 1) * 8) + (file - 1)) as usize;
+        &mut self.tiles[idx]
+    }
+}
+impl fmt::Display for Game {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut board_string = String::new();
 
@@ -144,7 +177,7 @@ impl fmt::Display for Board {
         }
 
         let mut rank_line = 8;
-        for (i, piece) in self.fields.iter().enumerate() {
+        for (i, piece) in self.tiles.iter().enumerate() {
             if i % 8 == 0 {
                 board_string = board_string + "\n\n" + rank_line.to_string().as_str();
                 rank_line -= 1;
@@ -159,6 +192,7 @@ impl fmt::Display for Board {
             }
         }
         board_string += "\n";
+        board_string += "               "; // 15 spaces to right-align text under board
         board_string = board_string + format!("{}", self.active_player).as_str() + " ";
         board_string = board_string + format!("{}", self.half_moves).as_str() + " ";
         board_string = board_string + format!("{}", self.full_moves).as_str() + " ";

@@ -1,6 +1,6 @@
-use crate::color::Color;
-use crate::field::Field;
-use crate::game::Board;
+use crate::color::*;
+use crate::game::Game;
+use crate::tile::Tile;
 use core::fmt;
 
 pub mod bishop;
@@ -10,30 +10,8 @@ pub mod pawn;
 pub mod queen;
 pub mod rook;
 
-#[macro_export]
-macro_rules! piece {
-    ($p:expr) => {{
-        let p = match $p {
-            'K' => Piece::new(PieceId::King, Color::White, move_rules_king),
-            'k' => Piece::new(PieceId::King, Color::Black, move_rules_king),
-            'Q' => Piece::new(PieceId::Queen, Color::White, move_rules_queen),
-            'q' => Piece::new(PieceId::Queen, Color::Black, move_rules_queen),
-            'R' => Piece::new(PieceId::Rook, Color::White, move_rules_rook),
-            'r' => Piece::new(PieceId::Rook, Color::Black, move_rules_rook),
-            'N' => Piece::new(PieceId::Knight, Color::White, move_rules_knight),
-            'n' => Piece::new(PieceId::Knight, Color::Black, move_rules_knight),
-            'B' => Piece::new(PieceId::Bishop, Color::White, move_rules_bishop),
-            'b' => Piece::new(PieceId::Bishop, Color::Black, move_rules_bishop),
-            'P' => Piece::new(PieceId::Pawn, Color::White, move_rules_pawn),
-            'p' => Piece::new(PieceId::Pawn, Color::Black, move_rules_pawn),
-            _ => panic!(),
-        };
-        p
-    }};
-}
-
 #[derive(Copy, Clone, Debug)]
-pub enum PieceId {
+pub enum ChessPiece {
     King,
     Queen,
     Rook,
@@ -42,108 +20,78 @@ pub enum PieceId {
     Pawn,
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct PieceInfo {
-    pub id: PieceId,
-    pub color: Color,
+#[macro_export]
+macro_rules! piece {
+    ($p:expr) => {{
+        let p: Box<dyn PieceTrait> = match $p {
+            'K' => Box::new(King {
+                color: Color::White,
+            }),
+            'Q' => Box::new(Queen {
+                color: Color::White,
+            }),
+            'R' => Box::new(Rook {
+                color: Color::White,
+            }),
+            'B' => Box::new(Bishop {
+                color: Color::White,
+            }),
+            'N' => Box::new(Knight {
+                color: Color::White,
+            }),
+            'P' => Box::new(Pawn {
+                color: Color::White,
+            }),
+            'k' => Box::new(King {
+                color: Color::Black,
+            }),
+            'q' => Box::new(Queen {
+                color: Color::Black,
+            }),
+            'r' => Box::new(Rook {
+                color: Color::Black,
+            }),
+            'n' => Box::new(Knight {
+                color: Color::Black,
+            }),
+            'b' => Box::new(Bishop {
+                color: Color::Black,
+            }),
+            'p' => Box::new(Pawn {
+                color: Color::Black,
+            }),
+            _ => panic!(),
+        };
+        p
+    }};
 }
 
-#[derive(Copy, Clone)]
-pub struct Piece {
-    pub info: PieceInfo,
-    pub move_rule: fn(&PieceInfo, &Board, &Field) -> Vec<Field>,
+pub trait PieceTrait {
+    fn color(&self) -> Color;
+    fn id(&self) -> ChessPiece;
+    fn get_moves(&self, board: &Game, pos: Tile) -> Vec<Tile>;
 }
 
-impl Piece {
-    pub fn new(
-        id: PieceId,
-        color: Color,
-        move_rule: fn(&PieceInfo, &Board, &Field) -> Vec<Field>,
-    ) -> Piece {
-        Piece {
-            info: PieceInfo { id, color },
-            move_rule,
-        }
-    }
-
-    pub fn get_legal_fields(&self, board: &Board, from: &Field) -> Vec<Field> {
-        (self.move_rule)(&self.info, board, from)
-    }
-}
-
-impl fmt::Display for PieceInfo {
+impl fmt::Display for dyn PieceTrait {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let symbol = match self {
-            PieceInfo {
-                id: PieceId::King,
-                color: Color::Black,
-                ..
-            } => "♔",
-            PieceInfo {
-                id: PieceId::Queen,
-                color: Color::Black,
-                ..
-            } => "♕",
-            PieceInfo {
-                id: PieceId::Rook,
-                color: Color::Black,
-                ..
-            } => "♖",
-            PieceInfo {
-                id: PieceId::Bishop,
-                color: Color::Black,
-                ..
-            } => "♗",
-            PieceInfo {
-                id: PieceId::Knight,
-                color: Color::Black,
-                ..
-            } => "♘",
-            PieceInfo {
-                id: PieceId::Pawn,
-                color: Color::Black,
-                ..
-            } => "♙",
-
-            PieceInfo {
-                id: PieceId::King,
-                color: Color::White,
-                ..
-            } => "♚",
-            PieceInfo {
-                id: PieceId::Queen,
-                color: Color::White,
-                ..
-            } => "♛",
-            PieceInfo {
-                id: PieceId::Rook,
-                color: Color::White,
-                ..
-            } => "♜",
-            PieceInfo {
-                id: PieceId::Bishop,
-                color: Color::White,
-                ..
-            } => "♝",
-            PieceInfo {
-                id: PieceId::Knight,
-                color: Color::White,
-                ..
-            } => "♞",
-            PieceInfo {
-                id: PieceId::Pawn,
-                color: Color::White,
-                ..
-            } => "♟",
+        let id = self.id();
+        let color = self.color();
+        let symbol = match (id, color) {
+            (ChessPiece::King, Color::Black) => "♔",
+            (ChessPiece::Queen, Color::Black) => "♕",
+            (ChessPiece::Rook, Color::Black) => "♖",
+            (ChessPiece::Bishop, Color::Black) => "♗",
+            (ChessPiece::Knight, Color::Black) => "♘",
+            (ChessPiece::Pawn, Color::Black) => "♙",
+            (ChessPiece::King, Color::White) => "♚",
+            (ChessPiece::Queen, Color::White) => "♛",
+            (ChessPiece::Rook, Color::White) => "♜",
+            (ChessPiece::Bishop, Color::White) => "♝",
+            (ChessPiece::Knight, Color::White) => "♞",
+            (ChessPiece::Pawn, Color::White) => "♟",
         };
 
         write!(f, "{}", symbol)
-    }
-}
-
-impl fmt::Display for Piece {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.info)
     }
 }
 

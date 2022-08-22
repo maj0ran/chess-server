@@ -1,81 +1,36 @@
-use crate::field::Field;
-use crate::pieces::{Board, Piece, PieceInfo};
+use crate::color::Color;
+use crate::pieces::*;
+use crate::tile::Tile;
 
-pub fn move_rules_rook(piece: &PieceInfo, board: &Board, pos: &Field) -> Vec<Field> {
-    let mut all_moves = vec![];
+pub struct Rook {
+    pub color: Color,
+}
 
-    let mut prev = pos.clone();
-    while prev.up().rank <= '8' {
-        let next = prev.up();
-        match board.peek(next) {
-            None => {
-                all_moves.push(next.clone());
-                prev = next;
-            }
-            Some(Piece {
-                info: other_piece, ..
-            }) => {
-                if other_piece.color != piece.color {
-                    all_moves.push(next.clone());
-                }
-                break;
-            }
-        };
-    }
-    prev = pos.clone();
-    while prev.down().rank >= '1' {
-        let next = prev.down();
-        match board.peek(next) {
-            None => {
-                all_moves.push(next.clone());
-                prev = next;
-            }
-            Some(Piece {
-                info: other_piece, ..
-            }) => {
-                if other_piece.color != piece.color {
-                    all_moves.push(next.clone());
-                }
-                break;
-            }
-        };
-    }
-    prev = pos.clone();
-    while prev.right().file <= 'h' {
-        let next = prev.right();
-        match board.peek(next) {
-            None => {
-                all_moves.push(next.clone());
-                prev = next;
-            }
-            Some(Piece {
-                info: other_piece, ..
-            }) => {
-                if other_piece.color != piece.color {
-                    all_moves.push(next.clone());
-                }
-                break;
-            }
-        };
-    }
-    prev = pos.clone();
-    while prev.left().file >= 'a' {
-        let next = prev.left();
-        match board.peek(next) {
-            None => {
-                all_moves.push(next.clone());
-                prev = next;
-            }
-            Some(Piece {
-                info: other_piece, ..
-            }) => {
-                if other_piece.color != piece.color {
-                    all_moves.push(next.clone());
-                }
-                break;
-            }
-        };
+impl PieceTrait for Rook {
+    fn color(&self) -> crate::color::Color {
+        self.color
     }
 
-    all_moves
+    fn id(&self) -> super::ChessPiece {
+        ChessPiece::Rook
+    }
+
+    fn get_moves(&self, board: &Game, pos: Tile) -> Vec<Tile> {
+        let dirs = [Tile::UP, Tile::DOWN, Tile::RIGHT, Tile::LEFT];
+
+        let mut tiles = vec![];
+        for d in dirs {
+            let mut ray = board.ray(pos, d);
+            if let Some(t) = ray.last() {
+                if let Some(p) = board.peek(*t) {
+                    if p.color() == self.color() {
+                        let _ = ray.pop();
+                    }
+                }
+            }
+            tiles.append(&mut ray)
+        }
+
+        tiles
+    }
 }

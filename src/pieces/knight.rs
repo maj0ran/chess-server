@@ -1,24 +1,43 @@
-use crate::field::Field;
-use crate::pieces::{Board, Piece, PieceInfo};
+use crate::color::Color;
+use crate::pieces::*;
+use crate::tile::Tile;
 
-pub fn move_rules_knight(piece: &PieceInfo, board: &Board, pos: &Field) -> Vec<Field> {
-    let mut all_moves = vec![
-        pos.up().up().left(),
-        pos.up().up().right(),
-        pos.down().down().left(),
-        pos.down().down().right(),
-        pos.right().right().up(),
-        pos.right().right().down(),
-        pos.left().left().up(),
-        pos.left().left().down(),
-    ];
+pub struct Knight {
+    pub color: Color,
+}
 
-    all_moves.retain(|p| (p.file >= 'a' && p.file <= 'h' && p.rank >= '1' && p.rank <= '8'));
+impl PieceTrait for Knight {
+    fn color(&self) -> Color {
+        self.color
+    }
 
-    all_moves.retain(|p| match board.peek(*p) {
-        None => true,
-        Some(Piece { info: other, .. }) => other.color != piece.color,
-    });
+    fn id(&self) -> ChessPiece {
+        ChessPiece::Knight
+    }
 
-    all_moves
+    fn get_moves(&self, board: &Game, pos: Tile) -> Vec<Tile> {
+        let mut tiles = vec![];
+        for d in [
+            (2, 1),
+            (2, -1),
+            (-2, 1),
+            (-2, -1),
+            (1, 2),
+            (1, -2),
+            (-1, 2),
+            (-1, -2),
+        ] {
+            let dst = pos + d;
+            if let Some(t) = dst {
+                if let Some(p) = board.peek(t) {
+                    if p.color() != self.color() {
+                        tiles.push(t);
+                    }
+                } else {
+                    tiles.push(t)
+                }
+            }
+        }
+        tiles
+    }
 }
