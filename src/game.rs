@@ -24,6 +24,9 @@ pub struct Game {
 }
 
 impl Game {
+    pub fn new() -> Game {
+        Game::load_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq f3 0 1")
+    }
     pub fn peek(&self, idx: Tile) -> &Option<Box<dyn PieceTrait>> {
         &self[idx]
     }

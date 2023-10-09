@@ -1,11 +1,16 @@
 mod color;
 mod game;
+mod net;
 mod pieces;
+mod server;
 mod tile;
-use crate::{game::*, tile::Tile};
+use crate::{game::*, net::Interface, server::Server, tile::Tile};
 use std::io;
 
 fn main() -> io::Result<()> {
+    let mut server = Server::new();
+    server.run();
+
     let start_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq f3 0 1";
     let mut chess = Game::load_fen(start_fen);
     println!("{}", chess);
