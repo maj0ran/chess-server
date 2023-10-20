@@ -1,3 +1,4 @@
+use log::debug;
 use std::{fmt, ops::Add};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -56,5 +57,25 @@ impl fmt::Display for Tile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = self.file.to_string() + &self.rank.to_string();
         write!(f, "{}", s)
+    }
+}
+
+pub type ChessMove = (Tile, Tile);
+pub trait ToChessMove {
+    fn to_chess(&self) -> Option<(Tile, Tile)>;
+}
+
+impl ToChessMove for String {
+    fn to_chess(&self) -> Option<ChessMove> {
+        debug!("converting {} to chess move", &self[0..4]);
+        let mut iter = self.chars();
+        let file = iter.next().unwrap();
+        let rank = iter.next().unwrap();
+        let src = Tile { file, rank };
+        let file = iter.next().unwrap();
+        let rank = iter.next().unwrap();
+        let dst = Tile { file, rank };
+
+        Some((src, dst))
     }
 }

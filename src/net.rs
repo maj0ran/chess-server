@@ -5,6 +5,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
 use crate::game::Game;
+use crate::tile::{ChessMove, ToChessMove};
 const NEW_GAME: u8 = 1;
 const JOIN_GAME: u8 = 2;
 const SET_NAME: u8 = 3;
@@ -34,6 +35,7 @@ enum Command {
     NewGame(NewGame),
     JoinGame(String),
     Nickname(String),
+    Move(String),
     Invalid = 0xFF,
 }
 
@@ -83,8 +85,6 @@ trait Message {
 impl Message for [u8; BUF_LEN] {
     fn parse(&self) -> Option<Command> {
         let tokens: Vec<&[u8]> = self.split(|s| &b' ' == s).collect();
-        println!("{:?}", tokens);
-
         let cmd = tokens[0];
         let params = &tokens[1..];
 
@@ -114,7 +114,11 @@ impl Message for [u8; BUF_LEN] {
             }
             SET_NAME => Some(Command::Nickname(params[0].to_val())),
             _ => {
-                panic!()
+                let mov = String::from_utf8_lossy(cmd).to_string();
+                debug!("Try to play move: {}", mov);
+                Some(Command::Move(
+                    mov
+                ))
             }
         }
     }
@@ -131,6 +135,9 @@ struct Connection {
 }
 
 impl Connection {
+    fn is_ingame(&self) -> bool {
+        self.chess.is_some()
+    }
     async fn read_message(&mut self) -> Option<[u8; BUF_LEN]> {
         let mut buffer = [0u8; BUF_LEN]; // TODO: make this more global instead of returning
         let len = self.client.read_u8().await;
@@ -160,18 +167,18 @@ impl Connection {
                 None
             }
             Ok(n) => {
-                debug!("read {n} bytes");
+                debug!("{n} bytes received");
                 Some(buffer)
             }
         }
     }
 
-    fn new_game(&self, new_game: NewGame) {
+    fn new_game(&mut self, new_game: NewGame) {
         info!("New Game!");
         info!("name: {:?}", new_game.name);
         info!("side: {:?}", new_game.hoster_side);
         info!("mode: {:?}", new_game.mode);
-        let chess = Game::new();
+        self.chess = Some(Game::new());
     }
 
     fn join_game(&self, id: String) {
@@ -201,6 +208,20 @@ impl Connection {
                 Command::Nickname(name) => self.nickname = name,
                 Command::NewGame(new_game) => self.new_game(new_game),
                 Command::JoinGame(id) => self.join_game(id),
+                Command::Move(mov) => {
+                    if self.is_ingame() {
+                        let (src, dst) = if let Some(mov) = mov.to_chess() {
+                            mov
+                        } else {
+                            warn!("cannot parse move: {}", mov);
+                            continue;
+                        };
+                        let chess = self.chess.as_mut().unwrap();
+                        chess.make_move(src, dst);
+                        println!("{}", chess);
+                        
+                    }
+                }
                 Command::Invalid => warn!("Invalid Command received!: {:?}", msg),
             }
         }
