@@ -15,7 +15,7 @@ use crate::pieces::rook::Rook;
 
 #[allow(dead_code)]
 pub struct Game {
-    pub tiles: [Option<Box<dyn PieceTrait>>; 64],
+    pub tiles: [Option<Box<dyn PieceTrait + Send>>; 64],
     active_player: Color,
     castle_rights: [bool; 4], // [K, Q, k, q]
     en_passant: Option<Tile>, //_index of field in linear memory
@@ -27,11 +27,11 @@ impl Game {
     pub fn new() -> Game {
         Game::load_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq f3 0 1")
     }
-    pub fn peek(&self, idx: Tile) -> &Option<Box<dyn PieceTrait>> {
+    pub fn peek(&self, idx: Tile) -> &Option<Box<dyn PieceTrait + Send>> {
         &self[idx]
     }
 
-    pub fn take(&mut self, idx: Tile) -> Option<Box<dyn PieceTrait>> {
+    pub fn take(&mut self, idx: Tile) -> Option<Box<dyn PieceTrait + Send>> {
         self[idx].take()
     }
 
@@ -60,7 +60,7 @@ impl Game {
 
         // iterate through position string
         let iter = pos_str.chars();
-        let mut tiles: [Option<Box<dyn PieceTrait>>; 64] = std::array::from_fn(|_| None);
+        let mut tiles: [Option<Box<dyn PieceTrait + Send>>; 64] = std::array::from_fn(|_| None);
         for c in iter {
             if c.is_alphabetic() {
                 tiles[curr_pos] = Some(piece!(c));
@@ -149,7 +149,7 @@ impl Game {
 }
 
 impl Index<Tile> for Game {
-    type Output = Option<Box<dyn PieceTrait>>;
+    type Output = Option<Box<dyn PieceTrait + Send>>;
 
     fn index(&self, index: Tile) -> &Self::Output {
         let file = index.file as u8 - 96;

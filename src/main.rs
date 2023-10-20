@@ -2,7 +2,6 @@ mod color;
 mod game;
 mod net;
 mod pieces;
-mod protocol;
 mod server;
 mod tile;
 use crate::server::Server;

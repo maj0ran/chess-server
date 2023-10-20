@@ -23,7 +23,7 @@ pub enum ChessPiece {
 #[macro_export]
 macro_rules! piece {
     ($p:expr) => {{
-        let p: Box<dyn PieceTrait> = match $p {
+        let p: Box<dyn PieceTrait + Send> = match $p {
             'K' => Box::new(King {
                 color: Color::White,
             }),
@@ -72,7 +72,7 @@ pub trait PieceTrait {
     fn get_moves(&self, board: &Game, pos: Tile) -> Vec<Tile>;
 }
 
-impl fmt::Display for dyn PieceTrait {
+impl fmt::Display for dyn PieceTrait + Send {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let id = self.id();
         let color = self.color();

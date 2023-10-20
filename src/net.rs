@@ -127,6 +127,7 @@ pub enum Response {
 struct Connection {
     client: TcpStream,
     nickname: String,
+    chess: Option<Game>,
 }
 
 impl Connection {
@@ -225,6 +226,7 @@ impl Interface {
             let mut hndl = Connection {
                 client: socket,
                 nickname: String::new(),
+                chess: None,
             };
             tokio::spawn(async move {
                 hndl.run().await;
