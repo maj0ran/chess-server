@@ -1,7 +1,4 @@
-use crate::{
-    game::{self, Game},
-    net::{self, Interface},
-};
+use crate::{game::Game, net::Interface};
 
 pub struct Server {
     game: Game,
@@ -15,11 +12,8 @@ impl Server {
             net: Interface::new(),
         }
     }
-    pub fn run(&mut self) {
-        loop {
-            let msg = self.net.wait_for_message();
-            self.game.make_move(msg.0.into(), msg.1.into());
-            println!("{}", self.game)
-        }
+    pub async fn run(&mut self) {
+        println!("Running");
+        let e = self.net.listen().await;
     }
 }
