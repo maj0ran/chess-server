@@ -152,21 +152,25 @@ impl Index<Tile> for Game {
     type Output = Option<Box<dyn PieceTrait + Send>>;
 
     fn index(&self, index: Tile) -> &Self::Output {
-        let file = index.file as u8 - 96;
-        let rank = index.rank as u8 - 48;
-        let rank = (8 - rank) + 1;
-        let idx: usize = (((rank - 1) * 8) + (file - 1)) as usize;
-        &self.tiles[idx]
+        let file: isize = index.file as isize - 96;
+        let rank: isize = index.rank as isize - 48;
+        let rank: isize = (8 - rank) + 1;
+        let idx: isize = ((rank - 1) * 8) + (file - 1);
+        let idx = idx as usize;
+        if idx > 63 {
+            return &None;
+        }
+        &self.tiles[idx as usize]
     }
 }
 
 impl IndexMut<Tile> for Game {
     fn index_mut(&mut self, index: Tile) -> &mut Self::Output {
-        let file = index.file as u8 - 96;
-        let rank = index.rank as u8 - 48;
-        let rank = (8 - rank) + 1;
-        let idx: usize = (((rank - 1) * 8) + (file - 1)) as usize;
-        &mut self.tiles[idx]
+        let file: isize = index.file as isize - 96;
+        let rank: isize = index.rank as isize - 48;
+        let rank: isize = (8 - rank) + 1;
+        let idx: isize = ((rank - 1) * 8) + (file - 1);
+        &mut self.tiles[idx as usize]
     }
 }
 impl fmt::Display for Game {

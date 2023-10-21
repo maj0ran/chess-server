@@ -1,5 +1,6 @@
-use log::debug;
+use log::{debug, error, warn, trace};
 use std::{fmt, ops::Add};
+use crate::util::*;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Tile {
@@ -28,16 +29,10 @@ impl Add<(i8, i8)> for Tile {
         let x = direction.0;
         let y = direction.1;
 
-        let f = Tile {
-            file: (self.file as i8 + x) as u8 as char,
-            rank: (self.rank as i8 + y) as u8 as char,
-        };
-
-        if (f.file < 'a' || f.file > 'h') || f.rank < '1' || f.rank > '8' {
-            None
-        } else {
-            Some(f)
-        }
+        Tile::new(
+            (self.file as i8 + x) as u8 as char,
+            (self.rank as i8 + y) as u8 as char,
+        )
     }
 }
 
@@ -51,6 +46,14 @@ impl Tile {
     pub const UPLEFT: (i8, i8) = (-1, 1);
     pub const DOWNRIGHT: (i8, i8) = (1, -1);
     pub const DOWNLEFT: (i8, i8) = (-1, -1);
+
+    fn new(file: char, rank: char) -> Option<Tile> {
+        if (file < 'a' || file > 'h') || rank < '1' || rank > '8' {
+            None
+        } else {
+        Some(Tile { file, rank })
+        }
+    }
 }
 
 impl fmt::Display for Tile {
@@ -58,6 +61,7 @@ impl fmt::Display for Tile {
         let s = self.file.to_string() + &self.rank.to_string();
         write!(f, "{}", s)
     }
+
 }
 
 pub type ChessMove = (Tile, Tile);
@@ -67,14 +71,22 @@ pub trait ToChessMove {
 
 impl ToChessMove for String {
     fn to_chess(&self) -> Option<ChessMove> {
-        debug!("converting {} to chess move", &self[0..4]);
+        debug!("converting {fg_blue}{style_bold}{}{fg_reset}{style_reset} to chess move", &self[0..4]);
         let mut iter = self.chars();
         let file = iter.next().unwrap();
         let rank = iter.next().unwrap();
-        let src = Tile { file, rank };
+        let src = Tile::new(file,rank);
+        let src = match src {
+            Some(t) => t,
+            None => return None,
+        };
         let file = iter.next().unwrap();
         let rank = iter.next().unwrap();
-        let dst = Tile { file, rank };
+        let dst = Tile::new(file,rank);
+        let dst = match dst {
+            Some(t) => t,
+            None => return None,
+        };
 
         Some((src, dst))
     }

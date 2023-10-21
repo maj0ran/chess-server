@@ -1,3 +1,7 @@
+use crate::util::*;
+use core::fmt;
+use std::ops::{self, RangeTo};
+
 #[allow(unused)]
 use log::{debug, error, info, trace, warn};
 
@@ -5,7 +9,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
 use crate::game::Game;
-use crate::tile::{ChessMove, ToChessMove};
+use crate::tile::ToChessMove;
 const NEW_GAME: u8 = 1;
 const JOIN_GAME: u8 = 2;
 const SET_NAME: u8 = 3;
@@ -29,6 +33,59 @@ impl NewGame {
     }
 }
 
+struct Buffer {
+    buf: [u8; BUF_LEN],
+    len: usize,
+}
+
+impl Buffer {
+    fn new() -> Buffer {
+        Buffer {
+            buf: [0; BUF_LEN],
+            len: 0,
+        }
+    }
+}
+impl ops::Index<usize> for Buffer {
+    type Output = u8;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.buf[index]
+    }
+}
+impl ops::Index<RangeTo<usize>> for Buffer {
+    type Output = [u8];
+
+    fn index(&self, index: RangeTo<usize>) -> &Self::Output {
+        &self.buf[index]
+    }
+}
+impl ops::IndexMut<usize> for Buffer {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.buf[index]
+    }
+}
+impl ops::IndexMut<RangeTo<usize>> for Buffer {
+    fn index_mut(&mut self, index: RangeTo<usize>) -> &mut Self::Output {
+        &mut self.buf[index]
+    }
+}
+
+impl fmt::Display for Buffer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut buf_str = style_bold.to_string();
+        for i in &self.buf[..self.len] {
+            let col = match i {
+                b' ' => fg_green,
+                _ if i < &32 => fg_yellow,
+                _ => fg_blue,
+            };
+            buf_str = buf_str + &format!("{col}[{i}]");
+        }
+        buf_str = buf_str + fg_reset + style_reset;
+        write!(f, "{}", buf_str)
+    }
+}
 #[derive(Debug)]
 #[repr(u8)]
 enum Command {
@@ -82,9 +139,9 @@ impl Parameter<u8> for &[u8] {
 trait Message {
     fn parse(&self) -> Option<Command>;
 }
-impl Message for [u8; BUF_LEN] {
+impl Message for Buffer {
     fn parse(&self) -> Option<Command> {
-        let tokens: Vec<&[u8]> = self.split(|s| &b' ' == s).collect();
+        let tokens: Vec<&[u8]> = self[..self.len].split(|s| &b' ' == s).collect();
         let cmd = tokens[0];
         let params = &tokens[1..];
 
@@ -113,40 +170,39 @@ impl Message for [u8; BUF_LEN] {
                 Some(Command::JoinGame(game_name))
             }
             SET_NAME => Some(Command::Nickname(params[0].to_val())),
-            _ => {
+            _ => { // ingame Move
                 let mov = String::from_utf8_lossy(cmd).to_string();
-                debug!("Try to play move: {}", mov);
-                Some(Command::Move(
-                    mov
-                ))
+                Some(Command::Move(mov))
             }
         }
     }
 }
 
 pub enum Response {
-    Ok = 0x01,
+    Ok = 0x00,
+    Err = 0x01,
 }
 
 struct Connection {
     client: TcpStream,
     nickname: String,
     chess: Option<Game>,
+    read_buf: Buffer,
 }
 
 impl Connection {
     fn is_ingame(&self) -> bool {
         self.chess.is_some()
     }
-    async fn read_message(&mut self) -> Option<[u8; BUF_LEN]> {
-        let mut buffer = [0u8; BUF_LEN]; // TODO: make this more global instead of returning
+    async fn wait_for_message(&mut self) -> bool {
+        // read the first byte which indicates the length.
+        // this value will be discarded and not be part of the read buffer
         let len = self.client.read_u8().await;
-
         let len = match len {
             Ok(n) => {
                 if n as usize > BUF_LEN {
                     error!("message-length too big!: {}", n);
-                    return None;
+                    return false;
                 }
                 n
             }
@@ -155,30 +211,80 @@ impl Connection {
                 panic!("eof");
             }
         };
+    
+       self.read_buf.len = len as usize;
+        // we got a new message so we clear our read buffer
+        for i in 0..BUF_LEN {
+            self.read_buf[i as usize] = 0;
 
-        let n = self.client.read_exact(&mut buffer[..len as usize]).await;
+        }
+        // read the actual message into the read buffer
+        let n = self
+            .client
+            .read_exact(&mut self.read_buf[..len as usize])
+            .await;
         match n {
             Ok(0) => {
                 info!("remote closed connection!");
-                None
+                false
             } // connection closed
             Err(e) => {
                 error!("Error at reading TcpStream: {}", e);
-                None
+                false
             }
             Ok(n) => {
-                debug!("{n} bytes received");
-                Some(buffer)
+                trace!("Buffer Content: {} (Length: {n})", self.read_buf);
+                true
             }
         }
     }
 
     fn new_game(&mut self, new_game: NewGame) {
-        info!("New Game!");
-        info!("name: {:?}", new_game.name);
-        info!("side: {:?}", new_game.hoster_side);
-        info!("mode: {:?}", new_game.mode);
+        info!("New Game! (\"{}\" ({}) hoster side: {:?})", new_game.name, new_game.mode, new_game.hoster_side);
         self.chess = Some(Game::new());
+    }
+
+    fn exec(&mut self, cmd: Command) -> bool {
+        match cmd {
+            Command::Nickname(name) => {
+                self.nickname = name;
+                true
+            }
+            Command::NewGame(new_game) => {
+                self.new_game(new_game);
+                true
+            }
+            Command::JoinGame(id) => {
+                self.join_game(id);
+                true
+            }
+            Command::Move(mov) => {
+                if self.is_ingame() {
+                    let (src, dst) = if let Some(unpacked_mov) = mov.to_chess() {
+                        unpacked_mov
+                    } else {
+                        warn!("cannot parse move: {style_bold}{fg_red}{}{style_reset}{fg_reset}", mov);
+                        return false;
+                    };
+                    let chess = self.chess.as_mut().unwrap(); // we are ingame, so there must be a
+                                                              // chess
+                    if chess.make_move(src, dst) {
+                        debug!("move {style_bold}{fg_green}{}{}{style_reset}{fg_reset} executed!", src, dst);
+                        println!("{}", chess);
+                        true
+                    } else {
+                        info!("illegal chess move");
+                        false
+                    }
+                } else {
+                    false // ingame but not a chess move
+                }
+            }
+            Command::Invalid => {
+                warn!("Invalid Command received!: {:?}", cmd);
+                false
+            }
+        }
     }
 
     fn join_game(&self, id: String) {
@@ -189,40 +295,26 @@ impl Connection {
         loop {
             // only reading the message, no further validation.
             // this blocks the task until a full message is available
-            let msg = if let Some(msg) = self.read_message().await {
-                msg
+            if self.wait_for_message().await {
             } else {
-                warn!("could not read message!");
+                error!("error while waiting for message!");
                 continue;
             };
 
             // now we interpret the message
-            let cmd = if let Some(cmd) = msg.parse() {
+            let cmd = if let Some(cmd) = self.read_buf.parse() {
                 cmd
             } else {
                 error!("invalid command received!");
                 continue;
             };
 
-            match cmd {
-                Command::Nickname(name) => self.nickname = name,
-                Command::NewGame(new_game) => self.new_game(new_game),
-                Command::JoinGame(id) => self.join_game(id),
-                Command::Move(mov) => {
-                    if self.is_ingame() {
-                        let (src, dst) = if let Some(mov) = mov.to_chess() {
-                            mov
-                        } else {
-                            warn!("cannot parse move: {}", mov);
-                            continue;
-                        };
-                        let chess = self.chess.as_mut().unwrap();
-                        chess.make_move(src, dst);
-                        println!("{}", chess);
-                        
-                    }
-                }
-                Command::Invalid => warn!("Invalid Command received!: {:?}", msg),
+            if !self.exec(cmd) {
+                info!("exec failed!");
+                let _ = self.client.write(&[b'0']).await;
+            } else {
+                info!("exec succeed!");
+                let _ = self.client.write(&[b'1']).await;
             }
         }
     }
@@ -248,6 +340,7 @@ impl Interface {
                 client: socket,
                 nickname: String::new(),
                 chess: None,
+                read_buf: Buffer::new(),
             };
             tokio::spawn(async move {
                 hndl.run().await;

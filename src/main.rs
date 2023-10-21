@@ -4,6 +4,7 @@ mod net;
 mod pieces;
 mod server;
 mod tile;
+mod util;
 use crate::server::Server;
 use std::io;
 
