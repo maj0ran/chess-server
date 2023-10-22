@@ -1,3 +1,7 @@
+use crate::util::*;
+use log::error;
+use log::info;
+
 use crate::piece;
 use crate::pieces::*;
 use crate::tile::Tile;
@@ -6,32 +10,32 @@ use std::ops::Index;
 use std::ops::IndexMut;
 
 use crate::color::Color;
-use crate::pieces::bishop::Bishop;
-use crate::pieces::king::King;
-use crate::pieces::knight::Knight;
-use crate::pieces::pawn::Pawn;
-use crate::pieces::queen::Queen;
-use crate::pieces::rook::Rook;
+use crate::pieces::bishop::*;
+use crate::pieces::king::*;
+use crate::pieces::knight::*;
+use crate::pieces::pawn::*;
+use crate::pieces::queen::*;
+use crate::pieces::rook::*;
 
 #[allow(dead_code)]
-pub struct Game {
-    pub tiles: [Option<Box<dyn PieceTrait + Send>>; 64],
+pub struct Chess {
+    pub tiles: [Option<Piece>; 64],
     active_player: Color,
-    castle_rights: [bool; 4], // [K, Q, k, q]
-    en_passant: Option<Tile>, //_index of field in linear memory
+    pub castle_rights: [bool; 4], // [K, Q, k, q]
+    pub en_passant: Option<Tile>,
     half_moves: usize,
     full_moves: usize,
 }
 
-impl Game {
-    pub fn new() -> Game {
-        Game::load_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq f3 0 1")
+impl Chess {
+    pub fn new() -> Chess {
+        Chess::load_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq f3 0 1")
     }
-    pub fn peek(&self, idx: Tile) -> &Option<Box<dyn PieceTrait + Send>> {
+    pub fn peek(&self, idx: Tile) -> &Option<Piece> {
         &self[idx]
     }
 
-    pub fn take(&mut self, idx: Tile) -> Option<Box<dyn PieceTrait + Send>> {
+    pub fn take(&mut self, idx: Tile) -> Option<Piece> {
         self[idx].take()
     }
 
@@ -48,7 +52,7 @@ impl Game {
         tiles
     }
 
-    pub fn load_fen(fen: &str) -> Game {
+    pub fn load_fen(fen: &str) -> Chess {
         let mut curr_pos = 0;
         let mut fen_iter = fen.split(" ");
         let pos_str = fen_iter.next().unwrap();
@@ -60,7 +64,7 @@ impl Game {
 
         // iterate through position string
         let iter = pos_str.chars();
-        let mut tiles: [Option<Box<dyn PieceTrait + Send>>; 64] = std::array::from_fn(|_| None);
+        let mut tiles: [Option<Piece>; 64] = std::array::from_fn(|_| None);
         for c in iter {
             if c.is_alphabetic() {
                 tiles[curr_pos] = Some(piece!(c));
@@ -106,7 +110,7 @@ impl Game {
         let half_moves = usize::from_str_radix(half_move_str, 10).unwrap();
         let full_moves = usize::from_str_radix(full_move_str, 10).unwrap();
 
-        Game {
+        Chess {
             tiles,
             active_player,
             castle_rights,
@@ -115,11 +119,23 @@ impl Game {
             full_moves,
         }
     }
+
+    pub fn get_fen(&self) {
+        let mut fen = String::new();
+        for (i, t) in self.tiles.iter().enumerate() {
+            if i % 8 == 0 {
+                fen = fen + "/";
+            }
+            if let Some(p) = t {
+           //     fen = fen + p.to_fen().to_string().as_str();
+            }
+        }
+    }
     pub fn get_moves(&self, tile: Tile) -> Vec<Tile> {
         match &self[tile] {
             Some(p) => {
-                if p.color() == self.active_player {
-                    p.get_moves(self, tile)
+                if p.color == self.active_player {
+                    (p.get_moves)(self, tile)
                 } else {
                     vec![]
                 }
@@ -136,20 +152,64 @@ impl Game {
 
         tiles.contains(&dst)
     }
-
-    pub fn make_move(&mut self, src: Tile, dst: Tile) -> bool {
+    
+    // This method returns a List of all tiles that has updated.
+    // this approach is helpful for en passant and castling.
+    pub fn make_move(&mut self, src: Tile, dst: Tile) -> Vec<(Tile, Option<Piece>)> {
+        let mut changes: Vec<(Tile, Option<Piece>)> = Vec::new();
         if !self.is_valid(src, dst) {
-            return false;
-        } else {
-            self[dst] = self.take(src);
-            self.active_player = !self.active_player;
-            return true;
+            return vec![];
         }
+        let piece = self.take(src).unwrap(); // cannot fail
+        changes.push((src, None));
+        if self.en_passant.is_some() {
+            if dst == self.en_passant.unwrap() {
+                info!("{fg_magenta}{style_bold}en passant!{fg_reset}{style_reset}");
+                if self.active_player == Color::White {
+                    let _ = self.take((dst + Tile::DOWN).unwrap());
+                    changes.push(((dst + Tile::DOWN).unwrap(), None));
+                } else {
+                    let _ = self.take((dst + Tile::UP).unwrap());
+                    changes.push(((dst + Tile::UP).unwrap(), None));
+                };
+            }
+        }
+    
+        changes.push((dst, Some(piece)));
+        self[dst] = Some(piece);
+
+        let piece = self[dst].as_ref().unwrap(); // this can never fail
+        if piece.typ == ChessPiece::Pawn {
+            let en_passant_tile = if piece.color == Color::White {
+                if src.rank == '2' && dst.rank == '4' {
+                    dst + Tile::DOWN
+                } else {
+                    None
+                }
+            } else {
+                // Black
+                if src.rank == '7' && dst.rank == '5' {
+                    dst + Tile::UP
+                } else {
+                    None
+                }
+            };
+            if en_passant_tile.is_some() {
+                info!(
+                    "en_passant: {style_bold}{fg_magenta}{}{fg_reset}{style_reset}",
+                    en_passant_tile.unwrap()
+                );
+            }
+            self.en_passant = en_passant_tile;
+        };
+        self.active_player = !self.active_player;
+        changes
     }
 }
 
-impl Index<Tile> for Game {
-    type Output = Option<Box<dyn PieceTrait + Send>>;
+// index[0] is a8, index[63] is h1
+impl Index<Tile> for Chess {
+    type Output = Option<Piece>;
 
     fn index(&self, index: Tile) -> &Self::Output {
         let file: isize = index.file as isize - 96;
@@ -164,7 +224,7 @@ impl Index<Tile> for Game {
     }
 }
 
-impl IndexMut<Tile> for Game {
+impl IndexMut<Tile> for Chess {
     fn index_mut(&mut self, index: Tile) -> &mut Self::Output {
         let file: isize = index.file as isize - 96;
         let rank: isize = index.rank as isize - 48;
@@ -173,7 +233,7 @@ impl IndexMut<Tile> for Game {
         &mut self.tiles[idx as usize]
     }
 }
-impl fmt::Display for Game {
+impl fmt::Display for Chess {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut board_string = String::new();
 

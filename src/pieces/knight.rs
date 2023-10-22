@@ -1,21 +1,10 @@
-use crate::color::Color;
 use crate::pieces::*;
 use crate::tile::Tile;
 
-pub struct Knight {
-    pub color: Color,
-}
+pub fn get_moves_knight(board: &Chess, pos: Tile) -> Vec<Tile> {
+        let this = &board[pos];
+        let this = this.as_ref().unwrap();
 
-impl PieceTrait for Knight {
-    fn color(&self) -> Color {
-        self.color
-    }
-
-    fn id(&self) -> ChessPiece {
-        ChessPiece::Knight
-    }
-
-    fn get_moves(&self, board: &Game, pos: Tile) -> Vec<Tile> {
         let mut tiles = vec![];
         for d in [
             (2, 1),
@@ -30,7 +19,7 @@ impl PieceTrait for Knight {
             let dst = pos + d;
             if let Some(t) = dst {
                 if let Some(p) = board.peek(t) {
-                    if p.color() != self.color() {
+                    if p.color != this.color {
                         tiles.push(t);
                     }
                 } else {
@@ -39,5 +28,5 @@ impl PieceTrait for Knight {
             }
         }
         tiles
-    }
+
 }

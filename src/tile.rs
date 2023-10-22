@@ -1,6 +1,6 @@
-use log::{debug, error, warn, trace};
-use std::{fmt, ops::Add};
 use crate::util::*;
+use log::{debug, error, trace, warn};
+use std::{fmt, ops::Add};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Tile {
@@ -47,12 +47,19 @@ impl Tile {
     pub const DOWNRIGHT: (i8, i8) = (1, -1);
     pub const DOWNLEFT: (i8, i8) = (-1, -1);
 
-    fn new(file: char, rank: char) -> Option<Tile> {
+    pub fn new(file: char, rank: char) -> Option<Tile> {
         if (file < 'a' || file > 'h') || rank < '1' || rank > '8' {
             None
         } else {
-        Some(Tile { file, rank })
+            Some(Tile { file, rank })
         }
+    }
+
+    pub fn to_index(&self) -> u8 {
+        let x = (self.file as u8) - 97;
+        let y = (self.rank as u8) - 49;
+
+        (7 - y) * 8 + x 
     }
 }
 
@@ -61,7 +68,6 @@ impl fmt::Display for Tile {
         let s = self.file.to_string() + &self.rank.to_string();
         write!(f, "{}", s)
     }
-
 }
 
 pub type ChessMove = (Tile, Tile);
@@ -71,18 +77,21 @@ pub trait ToChessMove {
 
 impl ToChessMove for String {
     fn to_chess(&self) -> Option<ChessMove> {
-        debug!("converting {fg_blue}{style_bold}{}{fg_reset}{style_reset} to chess move", &self[0..4]);
+        debug!(
+            "converting {fg_blue}{style_bold}{}{fg_reset}{style_reset} to chess move",
+            &self
+        );
         let mut iter = self.chars();
         let file = iter.next().unwrap();
         let rank = iter.next().unwrap();
-        let src = Tile::new(file,rank);
+        let src = Tile::new(file, rank);
         let src = match src {
             Some(t) => t,
             None => return None,
         };
         let file = iter.next().unwrap();
         let rank = iter.next().unwrap();
-        let dst = Tile::new(file,rank);
+        let dst = Tile::new(file, rank);
         let dst = match dst {
             Some(t) => t,
             None => return None,

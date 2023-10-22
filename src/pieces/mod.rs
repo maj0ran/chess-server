@@ -1,5 +1,5 @@
 use crate::color::*;
-use crate::game::Game;
+use crate::game::Chess;
 use crate::tile::Tile;
 use core::fmt;
 
@@ -10,72 +10,110 @@ pub mod pawn;
 pub mod queen;
 pub mod rook;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
+#[repr(u8)]
 pub enum ChessPiece {
-    King,
-    Queen,
-    Rook,
-    Bishop,
-    Knight,
-    Pawn,
+    King = (1 << 1),
+    Queen = (1 << 2),
+    Rook = (1 << 3),
+    Bishop = (1 << 4),
+    Knight = (1 << 5),
+    Pawn = (1 << 6),
 }
+
+#[derive(Copy, Clone)]
+pub struct Piece {
+    pub typ: ChessPiece,
+    pub color: Color,
+    pub get_moves: fn(&Chess, Tile) -> Vec<Tile>,
+}
+
+impl Piece {}
 
 #[macro_export]
 macro_rules! piece {
     ($p:expr) => {{
-        let p: Box<dyn PieceTrait + Send> = match $p {
-            'K' => Box::new(King {
+        let p: Piece = match $p {
+            'K' => Piece {
+                typ: ChessPiece::King,
                 color: Color::White,
-            }),
-            'Q' => Box::new(Queen {
+                get_moves: get_moves_king,
+            },
+            'Q' => Piece {
+                typ: ChessPiece::Queen,
                 color: Color::White,
-            }),
-            'R' => Box::new(Rook {
+                get_moves: get_moves_queen,
+            },
+
+            'R' => Piece {
+                typ: ChessPiece::Rook,
                 color: Color::White,
-            }),
-            'B' => Box::new(Bishop {
+                get_moves: get_moves_rook,
+            },
+
+            'B' => Piece {
+                typ: ChessPiece::Bishop,
                 color: Color::White,
-            }),
-            'N' => Box::new(Knight {
+                get_moves: get_moves_bishop,
+            },
+
+            'N' => Piece {
+                typ: ChessPiece::Knight,
                 color: Color::White,
-            }),
-            'P' => Box::new(Pawn {
+                get_moves: get_moves_knight,
+            },
+            'P' => Piece {
+                typ: ChessPiece::Pawn,
                 color: Color::White,
-            }),
-            'k' => Box::new(King {
+                get_moves: get_moves_pawn,
+            },
+
+            'k' => Piece {
+                typ: ChessPiece::King,
                 color: Color::Black,
-            }),
-            'q' => Box::new(Queen {
+                get_moves: get_moves_king,
+            },
+
+            'q' => Piece {
+                typ: ChessPiece::Queen,
                 color: Color::Black,
-            }),
-            'r' => Box::new(Rook {
+                get_moves: get_moves_queen,
+            },
+
+            'r' => Piece {
+                typ: ChessPiece::Rook,
                 color: Color::Black,
-            }),
-            'n' => Box::new(Knight {
+                get_moves: get_moves_rook,
+            },
+
+            'n' => Piece {
+                typ: ChessPiece::Knight,
                 color: Color::Black,
-            }),
-            'b' => Box::new(Bishop {
+                get_moves: get_moves_knight,
+            },
+
+            'b' => Piece {
+                typ: ChessPiece::Bishop,
                 color: Color::Black,
-            }),
-            'p' => Box::new(Pawn {
+                get_moves: get_moves_bishop,
+            },
+
+            'p' => Piece {
+                typ: ChessPiece::Pawn,
                 color: Color::Black,
-            }),
+                get_moves: get_moves_pawn,
+            },
+
             _ => panic!(),
         };
         p
     }};
 }
 
-pub trait PieceTrait {
-    fn color(&self) -> Color;
-    fn id(&self) -> ChessPiece;
-    fn get_moves(&self, board: &Game, pos: Tile) -> Vec<Tile>;
-}
-
-impl fmt::Display for dyn PieceTrait + Send {
+impl fmt::Display for Piece {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let id = self.id();
-        let color = self.color();
+        let id = self.typ;
+        let color = self.color;
         let symbol = match (id, color) {
             (ChessPiece::King, Color::Black) => "♔",
             (ChessPiece::Queen, Color::Black) => "♕",

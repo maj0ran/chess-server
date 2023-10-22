@@ -1,14 +1,14 @@
-use crate::{game::Game, net::Interface};
+use crate::{game::Chess, net::Interface};
 
 pub struct Server {
-    game: Game,
+    game: Chess,
     net: Interface,
 }
 
 impl Server {
     pub fn new() -> Server {
         Server {
-            game: Game::new(),
+            game: Chess::new(),
             net: Interface::new(),
         }
     }

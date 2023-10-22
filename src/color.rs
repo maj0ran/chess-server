@@ -1,7 +1,7 @@
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Color {
-    Black,
-    White,
+    Black = 0,
+    White = 1,
 }
 
 impl std::ops::Not for Color {

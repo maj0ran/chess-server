@@ -21,3 +21,21 @@ Move-Command in the form {square}{square}[promotion] as in d2d4, f8c6, f7f8Q.
 'D' // offer draw. If the opponent has currently offered  a draw that is not declined, this accepts the draw.
 'E' // decline draw.
 
+**Response**
+
+If in Game Mode, a move will be answered by a respond. The first byte of the respond is the length of the message.
+Each 2 following bytes indicate a field as a linear memory index (a8 = 0, h1 = 63) and a value that represents a piece. This tuple indicates a field that has been updated with a piece.
+
+if Length is 1, then the move was not executed and no change happened. the first byte then indicates an error type (e.g. illegal move).
+
+value for pieces are:
+
+BLACK = 0
+WHITE = 1
+
+KING = 1 << 1
+QUEEN = 1 << 2
+ROOK = 1 << 3
+BISHOP = 1 << 4
+KNIGHT = 1 << 5
+PAWN = 1 << 6
