@@ -49,7 +49,7 @@ struct Response {
 
 #[derive(Debug)]
 #[repr(u8)]
-enum Command {
+pub enum Command {
     NewGame(NewGame),
     JoinGame(String),
     Nickname(String),

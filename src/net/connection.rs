@@ -11,6 +11,19 @@ use crate::util::*;
 use super::buffer::Buffer;
 use super::{Command, NewGame, Response, BUF_LEN};
 
+
+pub struct Player {
+    pub chess: Option<Chess>,
+    pub name: String,
+
+    conn: Connection,
+}
+
+impl Player {
+    pub fn new(name: String, conn: Connection) -> Player {
+        Player { chess: None, name, conn}
+    }
+}
 pub struct Connection {
     pub client: TcpStream,
     pub nickname: String,
@@ -23,7 +36,7 @@ impl Connection {
     fn is_ingame(&self) -> bool {
         self.chess.is_some()
     }
-    async fn wait_for_message(&mut self) -> bool {
+    async fn read(&mut self) -> bool {
         // read the first byte which indicates the length.
         // this value will be discarded and not be part of the read buffer
         let len = self.client.read_u8().await;
@@ -114,18 +127,8 @@ impl Connection {
                         src, dst
                     );
                     println!("{}", chess);
-                    self.out_buf.len = changes.len() * 2 + 1;
-                    self.out_buf[0] = (changes.len() * 2) as u8;
+                    self.out_buf.write_move_response(&changes);
 
-                    for (i, (tile, piece)) in changes.iter().enumerate() {
-                        let tile_byte = tile.to_index();
-                        let piece_byte = match piece {
-                            None => 0,
-                            Some(p) => p.typ as u8 | p.color as u8,
-                        };
-                        self.out_buf[1 + (i * 2)] = tile_byte;
-                        self.out_buf[1 + (i * 2 + 1)] = piece_byte;
-                    }
                     trace!("Out Buffer: {}", self.out_buf);
                     true
                 } else {
@@ -143,11 +146,13 @@ impl Connection {
         info!("Join Game. id: {:?}", id)
     }
     pub async fn run(&mut self) {
-        println!("Hello, {}!", self.nickname);
+        // TODO: Hand shake
+//        self.out_buf.write(&[1, 2, 3, 4]);
+//        self.in_buf.read();
         loop {
             // only reading the message, no further validation.
             // this blocks the task until a full message is available
-            if self.wait_for_message().await {
+            if self.read().await {
             } else {
                 error!("error while waiting for message!");
                 continue;
@@ -161,11 +166,14 @@ impl Connection {
                 continue;
             };
 
+            // and execute the command
             if !self.exec(cmd) {
                 info!("{fg_red}Command failed!{fg_reset}");
             } else {
                 info!("{fg_green}Command executed!{fg_reset}");
             }
+
+            // finally sent respond to client
             let _ = self
                 .client
                 .write_all(&self.out_buf.buf[..self.out_buf.len + 1])

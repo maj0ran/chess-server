@@ -1,11 +1,16 @@
 use core::fmt;
 use std::ops::{self, RangeTo};
 
-use log::{warn, error, debug};
+use log::{debug, error, warn};
 
-use crate::{net::{PlayerSideRequest, *}, util::*};
+use crate::{
+    net::{PlayerSideRequest, *},
+    pieces::Piece,
+    tile::Tile,
+    util::*,
+};
 
-use super::{BUF_LEN, Response, Command, NewGame, Parameter};
+use super::{Command, NewGame, Parameter, BUF_LEN};
 
 pub struct Buffer {
     pub buf: [u8; BUF_LEN],
@@ -17,6 +22,21 @@ impl Buffer {
         Buffer {
             buf: [0; BUF_LEN],
             len: 0,
+        }
+    }
+
+    pub fn write_move_response(&mut self, changes: &[(Tile, Option<Piece>)]) {
+        self.len = changes.len() * 2 + 1;
+        self[0] = (changes.len() * 2) as u8;
+
+        for (i, (tile, piece)) in changes.iter().enumerate() {
+            let tile_byte = tile.to_index();
+            let piece_byte = match piece {
+                None => 0,
+                Some(p) => p.typ as u8 | p.color as u8,
+            };
+            self[1 + (i * 2)] = tile_byte;
+            self[1 + (i * 2 + 1)] = piece_byte;
         }
     }
 
@@ -65,9 +85,9 @@ impl Buffer {
             }
         };
         // we got a new message so we clear our read buffer
-       // //for i in 0..BUF_LEN {
-       //     self[i as usize] = 0;
-       // };
+        // //for i in 0..BUF_LEN {
+        //     self[i as usize] = 0;
+        // };
         ret
     }
 }
