@@ -1,5 +1,4 @@
 use crate::util::*;
-use log::error;
 use log::info;
 
 use crate::piece;

@@ -2,17 +2,17 @@ mod color;
 mod game;
 mod net;
 mod pieces;
-mod server;
 mod tile;
 mod util;
-use crate::server::Server;
 use std::io;
+
+use crate::net::server::Server;
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
     env_logger::init();
     let mut server = Server::new();
-    let _ = server.run().await;
+    let _ = server.listen().await;
 
     println!("Exited Gracefully.");
     Ok(())

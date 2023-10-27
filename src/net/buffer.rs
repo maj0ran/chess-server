@@ -1,10 +1,10 @@
 use core::fmt;
 use std::ops::{self, RangeTo};
-
-use log::{debug, error, warn};
+use bytes;
+use tokio::{net::TcpStream, io::{AsyncReadExt, AsyncWriteExt}};
 
 use crate::{
-    net::{PlayerSideRequest, *},
+    net::{PlayerSideRequest, *, frame::Frame},
     pieces::Piece,
     tile::Tile,
     util::*,
@@ -15,17 +15,81 @@ use super::{Command, NewGame, Parameter, BUF_LEN};
 pub struct Buffer {
     pub buf: [u8; BUF_LEN],
     pub len: usize,
+
+    pub stream: TcpStream,
 }
 
 impl Buffer {
-    pub fn new() -> Buffer {
+    pub fn new(socket: TcpStream) -> Buffer {
         Buffer {
             buf: [0; BUF_LEN],
             len: 0,
+            stream: socket,
         }
     }
+        pub async fn read_frame(&mut self) -> Option<Frame> {
+            log::trace!("In Buffer: {} (Length: {})", &self, self.len);
+            // read the first byte which indicates the length.
+            // this value will be discarded and not be part of the read buffer
+            let len = self.stream.read_u8().await;
+            let len = match len {
+                Ok(n) => {
+                    if n as usize > BUF_LEN {
+                        log::error!("message-length too big!: {}", n);
+                        return None;
+                    }
+                    n
+                }
+                Err(e) => {
+                    log::error!("error at reading message length: {}", e);
+                    panic!("EOF when reading frame");
+                }
+            };
 
-    pub fn write_move_response(&mut self, changes: &[(Tile, Option<Piece>)]) {
+            self.len = len as usize;
+            // read the actual message into the read buffer
+            let n = self
+                
+                .stream
+                .read_exact(&mut self.buf[..len as usize])
+                .await;
+            match n {
+                Ok(0) => {
+                    log::info!("remote closed connection!");
+                    None
+                } // connection closed
+                Err(e) => {
+                    log::error!("Error at reading TcpStream: {}", e);
+                    None
+                }
+                Ok(n) => {
+
+                    Some(Frame {
+                        len: n as u8,
+                        content: self.buf,
+                    })
+                }
+            }
+        }
+
+        pub async fn write(&mut self, frame: Frame) -> bool {
+            trace!("Out Buffer: {} (Length: {})", &self, self.len);
+
+            let r = self
+                .stream
+                .write_all(&frame.content[..frame.len as usize])
+                .await; // send data to client
+                        //
+            match r {
+                Ok(_) => { debug!("wrote {} bytes", frame.len); true },
+                Err(e) => { error!("Error writing stream: {}", e); false },
+            }
+        }
+
+    /*
+     * write a list of all fields that have changed into the buffer for writing out
+     */
+    pub fn fields_to_buffer(&mut self, changes: &[(Tile, Option<Piece>)]) {
         self.len = changes.len() * 2 + 1;
         self[0] = (changes.len() * 2) as u8;
 
@@ -38,57 +102,6 @@ impl Buffer {
             self[1 + (i * 2)] = tile_byte;
             self[1 + (i * 2 + 1)] = piece_byte;
         }
-    }
-
-    pub fn parse(&mut self) -> Option<Command> {
-        let tokens: Vec<&[u8]> = self[..self.len].split(|s| &b' ' == s).collect();
-        let cmd = tokens[0];
-        let params = &tokens[1..];
-        if cmd.len() == 0 {
-            warn!("got message but no content");
-            return None;
-        }
-        debug!("cmd: {}", cmd[0]);
-        let ret = match cmd[0] {
-            NEW_GAME => {
-                if params.len() != 2 {
-                    error!("host: invalid number of params received!: {}", params.len());
-                    return None;
-                }
-                let mode = params[0].to_val();
-                let side: u8 = params[1].to_val();
-                let side = PlayerSideRequest::try_from(side);
-                let side = match side {
-                    Ok(s) => s,
-                    Err(_) => {
-                        warn!("invalid Side chosen! default to random");
-                        PlayerSideRequest::Random
-                    }
-                };
-                let new_game = NewGame::new(mode, side);
-                Some(Command::NewGame(new_game))
-            }
-
-            JOIN_GAME => {
-                if params.len() != 1 {
-                    error!("join: invalid number of params received!: {}", params.len());
-                    return None;
-                }
-                let game_name = params[0].to_val();
-                Some(Command::JoinGame(game_name))
-            }
-            SET_NAME => Some(Command::Nickname(params[0].to_val())),
-            _ => {
-                // ingame Move
-                let mov = String::from_utf8_lossy(cmd).to_string();
-                Some(Command::Move(mov))
-            }
-        };
-        // we got a new message so we clear our read buffer
-        // //for i in 0..BUF_LEN {
-        //     self[i as usize] = 0;
-        // };
-        ret
     }
 }
 

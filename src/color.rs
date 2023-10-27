@@ -13,4 +13,4 @@ impl std::ops::Not for Color {
             Color::Black => Color::White,
         }
     }
-            }
+}

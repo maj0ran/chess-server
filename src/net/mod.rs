@@ -1,20 +1,17 @@
-mod buffer;
-mod connection;
+pub mod buffer;
+pub mod connection;
+pub mod client;
+pub mod frame;
+pub mod server;
+use std::fmt;
 
+use crate::net::client::Client;
+use tokio::net::TcpListener;
 use crate::net::buffer::Buffer;
-use crate::net::connection::Connection;
-use crate::util::*;
-use core::fmt;
-use std::ops::{self, RangeTo};
+use crate::net::connection::Connection::Connection;
 
+pub use log::{error, warn, info, debug, trace};
 #[allow(unused)]
-use log::{debug, error, info, trace, warn};
-
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpStream};
-
-use crate::game::Chess;
-use crate::tile::ToChessMove;
 
 // bytes representing commands to server
 const NEW_GAME: u8 = 0xA;
@@ -24,13 +21,13 @@ const SET_NAME: u8 = 0xC;
 // read and write buffer have a static maximum length
 // we don't really need more for chess
 const BUF_LEN: usize = 64;
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
+pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 #[derive(Debug)]
-struct NewGame {
-    mode: String,
-    hoster_side: PlayerSideRequest,
-    name: String,
+pub struct NewGame {
+    pub mode: String,
+    pub hoster_side: PlayerSideRequest,
+    pub name: String,
 }
 impl NewGame {
     pub fn new(mode: String, side: PlayerSideRequest) -> NewGame {
@@ -57,9 +54,22 @@ pub enum Command {
     Invalid = 0xFF,
 }
 
+impl fmt::Display for Command {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let str = match self {
+            Command::NewGame(c) => "New Game",
+            Command::JoinGame(_) => "Join Game",
+            Command::Nickname(_) => "Setting Nickname",
+            Command::Move(_) => "Make Chess Move",
+            Command::Invalid => "Invalid Comand sent!",
+        };
+        write!(f, "{}", str)
+    }
+}
+
 #[repr(u8)]
 #[derive(Debug)]
-enum PlayerSideRequest {
+pub enum PlayerSideRequest {
     Black = 0,
     White = 1,
     Random = 2,
@@ -95,33 +105,3 @@ impl Parameter<u8> for &[u8] {
     }
 }
 
-
-pub struct Interface {
-    _listener: Option<TcpListener>,
-}
-
-impl Interface {
-    pub fn new() -> Interface {
-        Interface { _listener: None }
-    }
-
-    pub async fn listen(&self) -> Result<()> {
-        info!("Listening...");
-        let listener = TcpListener::bind("127.0.0.1:7878").await?;
-
-        loop {
-            let (socket, addr) = listener.accept().await?;
-            info!("got connection from {}!", addr);
-            let mut hndl = Connection {
-                client: socket,
-                nickname: String::new(),
-                chess: None,
-                in_buf: Buffer::new(),
-                out_buf: Buffer::new(),
-            };
-            tokio::spawn(async move {
-                hndl.run().await;
-            });
-        }
-    }
-}
