@@ -126,7 +126,7 @@ impl Chess {
                 fen = fen + "/";
             }
             if let Some(p) = t {
-           //     fen = fen + p.to_fen().to_string().as_str();
+                //     fen = fen + p.to_fen().to_string().as_str();
             }
         }
     }
@@ -151,30 +151,34 @@ impl Chess {
 
         tiles.contains(&dst)
     }
-    
+
     // This method returns a List of all tiles that has updated.
     // this approach is helpful for en passant and castling.
     pub fn make_move(&mut self, src: Tile, dst: Tile) -> Vec<(Tile, Option<Piece>)> {
-        let mut changes: Vec<(Tile, Option<Piece>)> = Vec::new();
+        let mut tiles: Vec<(Tile, Option<Piece>)> = Vec::new();
+        // check if the move is valid
         if !self.is_valid(src, dst) {
             return vec![];
         }
-        let piece = self.take(src).unwrap(); // cannot fail
-        changes.push((src, None));
+
+        let mut piece = self.take(src).unwrap(); // cannot fail
+        piece.move_count += 1;
+        let piece = piece; // de-mut, because I don't trust myself
+        tiles.push((src, None)); // we move a piece, so the source tile gets empty
+
+        // special rule for en passant
         if self.en_passant.is_some() {
             if dst == self.en_passant.unwrap() {
-                info!("{fg_magenta}{style_bold}en passant!{fg_reset}{style_reset}");
                 if self.active_player == Color::White {
                     let _ = self.take((dst + Tile::DOWN).unwrap());
-                    changes.push(((dst + Tile::DOWN).unwrap(), None));
+                    tiles.push(((dst + Tile::DOWN).unwrap(), None));
                 } else {
                     let _ = self.take((dst + Tile::UP).unwrap());
-                    changes.push(((dst + Tile::UP).unwrap(), None));
+                    tiles.push(((dst + Tile::UP).unwrap(), None));
                 };
             }
         }
-    
-        changes.push((dst, Some(piece)));
+        tiles.push((dst, Some(piece)));
         self[dst] = Some(piece);
 
         let piece = self[dst].as_ref().unwrap(); // this can never fail
@@ -202,7 +206,7 @@ impl Chess {
             self.en_passant = en_passant_tile;
         };
         self.active_player = !self.active_player;
-        changes
+        tiles
     }
 }
 

@@ -133,7 +133,8 @@ impl Client {
                         "executed move: {style_bold}{fg_green}{}{}{style_reset}{fg_reset}!",
                         src, dst
                     );
-                    println!("{}", self.chess.as_ref().unwrap());
+                    println!("{}", self.chess.as_ref().unwrap()); // cannot fail because inside
+                                                                  // is_ingame()
                     self.conn.buf.fields_to_buffer(&fields);
                     self.conn.create_frame()
                 } else {
