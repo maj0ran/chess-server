@@ -37,7 +37,8 @@ impl Chess {
     pub fn take(&mut self, idx: Tile) -> Option<Piece> {
         self[idx].take()
     }
-
+    /* shoots a ray from a tile. returns all tiles on this ray until a piece is hit
+     * but INCLUDING the tile with the hitten piece */
     pub fn ray(&self, src: Tile, dir: (i8, i8)) -> Vec<Tile> {
         let mut tiles = Vec::<Tile>::new();
         let mut d = src + dir;
@@ -155,7 +156,7 @@ impl Chess {
     // This method returns a List of all tiles that has updated.
     // this approach is helpful for en passant and castling.
     pub fn make_move(&mut self, src: Tile, dst: Tile) -> Vec<(Tile, Option<Piece>)> {
-        let mut tiles: Vec<(Tile, Option<Piece>)> = Vec::new();
+        let mut updated_tiles: Vec<(Tile, Option<Piece>)> = Vec::new();
         // check if the move is valid
         if !self.is_valid(src, dst) {
             return vec![];
@@ -164,24 +165,32 @@ impl Chess {
         let mut piece = self.take(src).unwrap(); // cannot fail
         piece.move_count += 1;
         let piece = piece; // de-mut, because I don't trust myself
-        tiles.push((src, None)); // we move a piece, so the source tile gets empty
 
-        // special rule for en passant
+        /* first change: we move a piece, so source tile gets empty */
+        updated_tiles.push((src, None));
+
+        /* special rule for en passant.
+         * not only the destination-tile gets updated, but also the en passant tile */
         if self.en_passant.is_some() {
             if dst == self.en_passant.unwrap() {
                 if self.active_player == Color::White {
                     let _ = self.take((dst + Tile::DOWN).unwrap());
-                    tiles.push(((dst + Tile::DOWN).unwrap(), None));
+                    updated_tiles.push(((dst + Tile::DOWN).unwrap(), None));
                 } else {
                     let _ = self.take((dst + Tile::UP).unwrap());
-                    tiles.push(((dst + Tile::UP).unwrap(), None));
+                    updated_tiles.push(((dst + Tile::UP).unwrap(), None));
                 };
             }
         }
-        tiles.push((dst, Some(piece)));
+
+        // TODO: Castling. Maybe here, or further down
+
+        /* now the destination tile gets updated with our moved piece */
+        updated_tiles.push((dst, Some(piece)));
         self[dst] = Some(piece);
 
-        let piece = self[dst].as_ref().unwrap(); // this can never fail
+        /* if we did move a pawn 2 ranks forward, update the en_passant field */
+        let piece = self[dst].as_ref().unwrap(); // cannot fail
         if piece.typ == ChessPiece::Pawn {
             let en_passant_tile = if piece.color == Color::White {
                 if src.rank == '2' && dst.rank == '4' {
@@ -205,8 +214,11 @@ impl Chess {
             }
             self.en_passant = en_passant_tile;
         };
+
+        /* it's the opponents turn now */
         self.active_player = !self.active_player;
-        tiles
+
+        updated_tiles
     }
 }
 
@@ -234,6 +246,14 @@ impl IndexMut<Tile> for Chess {
         let rank: isize = (8 - rank) + 1;
         let idx: isize = ((rank - 1) * 8) + (file - 1);
         &mut self.tiles[idx as usize]
+    }
+}
+
+impl Index<&str> for Chess {
+    type Output = Option<Piece>;
+
+    fn index(&self, index: &str) -> &Self::Output {
+        &self[Tile::from(index.to_string())]
     }
 }
 impl fmt::Display for Chess {

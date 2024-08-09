@@ -37,6 +37,7 @@ impl Add<(i8, i8)> for Tile {
 }
 
 impl Tile {
+    // for ray casting
     pub const UP: (i8, i8) = (0, 1);
     pub const DOWN: (i8, i8) = (0, -1);
     pub const RIGHT: (i8, i8) = (1, 0);
@@ -47,6 +48,7 @@ impl Tile {
     pub const DOWNRIGHT: (i8, i8) = (1, -1);
     pub const DOWNLEFT: (i8, i8) = (-1, -1);
 
+    /* a tile can only exist within the range a1 - h8 */
     pub fn new(file: char, rank: char) -> Option<Tile> {
         if (file < 'a' || file > 'h') || rank < '1' || rank > '8' {
             None
@@ -59,7 +61,7 @@ impl Tile {
         let x = (self.file as u8) - 97;
         let y = (self.rank as u8) - 49;
 
-        (7 - y) * 8 + x 
+        (7 - y) * 8 + x
     }
 }
 
