@@ -1,5 +1,3 @@
-use crate::util::*;
-use log::{debug, error, trace, warn};
 use std::{fmt, ops::Add};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -69,36 +67,5 @@ impl fmt::Display for Tile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = self.file.to_string() + &self.rank.to_string();
         write!(f, "{}", s)
-    }
-}
-
-pub type ChessMove = (Tile, Tile);
-pub trait ToChessMove {
-    fn to_chess(&self) -> Option<(Tile, Tile)>;
-}
-
-impl ToChessMove for String {
-    fn to_chess(&self) -> Option<ChessMove> {
-        debug!(
-            "converting {fg_blue}{style_bold}{}{fg_reset}{style_reset} to chess move",
-            &self
-        );
-        let mut iter = self.chars();
-        let file = iter.next().unwrap();
-        let rank = iter.next().unwrap();
-        let src = Tile::new(file, rank);
-        let src = match src {
-            Some(t) => t,
-            None => return None,
-        };
-        let file = iter.next().unwrap();
-        let rank = iter.next().unwrap();
-        let dst = Tile::new(file, rank);
-        let dst = match dst {
-            Some(t) => t,
-            None => return None,
-        };
-
-        Some((src, dst))
     }
 }

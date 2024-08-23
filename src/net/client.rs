@@ -1,9 +1,9 @@
+use crate::chessmove::*;
 use crate::game::Chess;
-use crate::net::connection::Connection::Connection;
+use crate::net::connection::connection::Connection;
 use crate::net::frame::Frame;
 use crate::net::Command;
 use crate::net::*;
-use crate::tile::ToChessMove;
 use crate::util::*;
 use crate::{pieces::Piece, tile::Tile};
 
@@ -31,24 +31,12 @@ impl Client {
         self.chess = Some(Chess::new());
     }
 
-    pub fn make_move(&mut self, src: Tile, dst: Tile) -> Vec<(Tile, Option<Piece>)> {
+    pub fn make_move(&mut self, chessmove: ChessMove) -> Vec<(Tile, Option<Piece>)> {
         if self.chess.is_none() {
             return vec![];
         }
 
-        let changes = self.chess.as_mut().unwrap().make_move(src, dst);
-
-        if changes.is_empty() {
-            info!(
-                "illegal chess move: {style_bold}{fg_red}{}{}{style_reset}{fg_reset}",
-                src, dst
-            );
-            // TODO: this belongs elsewhere
-
-            //self.conn.buf[0] = 1;
-            //self.conn.buf[1] = 1;
-            //self.conn.buf.len = 2;
-        }
+        let changes = self.chess.as_mut().unwrap().make_move(chessmove);
 
         changes
     }
@@ -117,7 +105,7 @@ impl Client {
             }
             Command::Move(mov) => {
                 if self.conn.is_ingame() {
-                    let (src, dst) = if let Some(unpacked_mov) = mov.to_chess() {
+                    let chessmove = if let Some(unpacked_mov) = mov.parse() {
                         unpacked_mov
                     } else {
                         warn!(
@@ -126,13 +114,8 @@ impl Client {
                         );
                         return null_frame;
                     };
-                    let fields = self.make_move(src, dst);
-                    debug!("make move!");
+                    let fields = self.make_move(chessmove);
 
-                    debug!(
-                        "executed move: {style_bold}{fg_green}{}{}{style_reset}{fg_reset}!",
-                        src, dst
-                    );
                     println!("{}", self.chess.as_ref().unwrap()); // cannot fail because inside
                                                                   // is_ingame()
                     self.conn.buf.fields_to_buffer(&fields);
@@ -142,7 +125,7 @@ impl Client {
                     null_frame
                 }
             }
-            Command::Invalid => {
+            Command::_Invalid => {
                 warn!("Invalid Command received!: {:?}", cmd);
                 null_frame
             }

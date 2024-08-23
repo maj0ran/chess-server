@@ -1,7 +1,7 @@
 use crate::pieces::Chess;
 use crate::tile::Tile;
 
-use super::{ChessPiece, Color};
+use super::ChessPiece;
 
 pub fn get_moves_king(board: &Chess, pos: Tile) -> Vec<Tile> {
     let this = board[pos].as_ref().unwrap();

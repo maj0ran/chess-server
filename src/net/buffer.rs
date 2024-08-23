@@ -1,16 +1,18 @@
 use core::fmt;
 use std::ops::{self, RangeTo};
-use bytes;
-use tokio::{net::TcpStream, io::{AsyncReadExt, AsyncWriteExt}};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::TcpStream,
+};
 
 use crate::{
-    net::{PlayerSideRequest, *, frame::Frame},
+    net::{frame::Frame, *},
     pieces::Piece,
     tile::Tile,
     util::*,
 };
 
-use super::{Command, NewGame, Parameter, BUF_LEN};
+use super::BUF_LEN;
 
 pub struct Buffer {
     pub buf: [u8; BUF_LEN],
@@ -27,64 +29,63 @@ impl Buffer {
             stream: socket,
         }
     }
-        pub async fn read_frame(&mut self) -> Option<Frame> {
-            log::trace!("In Buffer: {} (Length: {})", &self, self.len);
-            // read the first byte which indicates the length.
-            // this value will be discarded and not be part of the read buffer
-            let len = self.stream.read_u8().await;
-            let len = match len {
-                Ok(n) => {
-                    if n as usize > BUF_LEN {
-                        log::error!("message-length too big!: {}", n);
-                        return None;
-                    }
-                    n
+    pub async fn read_frame(&mut self) -> Option<Frame> {
+        log::trace!("In Buffer: {} (Length: {})", &self, self.len);
+        // read the first byte which indicates the length.
+        // this value will be discarded and not be part of the read buffer
+        let len = self.stream.read_u8().await;
+        let len = match len {
+            Ok(n) => {
+                if n as usize > BUF_LEN {
+                    log::error!("message-length too big!: {}", n);
+                    return None;
                 }
-                Err(e) => {
-                    log::error!("error at reading message length: {}", e);
-                    panic!("EOF when reading frame");
-                }
-            };
+                n
+            }
+            Err(e) => {
+                log::error!("error at reading message length: {}", e);
+                panic!("EOF when reading frame");
+            }
+        };
 
-            self.len = len as usize;
-            // read the actual message into the read buffer
-            let n = self
-                
-                .stream
-                .read_exact(&mut self.buf[..len as usize])
-                .await;
-            match n {
-                Ok(0) => {
-                    log::info!("remote closed connection!");
-                    None
-                } // connection closed
-                Err(e) => {
-                    log::error!("Error at reading TcpStream: {}", e);
-                    None
-                }
-                Ok(n) => {
+        self.len = len as usize;
+        // read the actual message into the read buffer
+        let n = self.stream.read_exact(&mut self.buf[..len as usize]).await;
+        match n {
+            Ok(0) => {
+                log::info!("remote closed connection!");
+                None
+            } // connection closed
+            Err(e) => {
+                log::error!("Error at reading TcpStream: {}", e);
+                None
+            }
+            Ok(n) => Some(Frame {
+                len: n as u8,
+                content: self.buf,
+            }),
+        }
+    }
 
-                    Some(Frame {
-                        len: n as u8,
-                        content: self.buf,
-                    })
-                }
+    pub async fn write(&mut self, frame: Frame) -> bool {
+        trace!("Out Buffer: {} (Length: {})", &self, self.len);
+
+        let r = self
+            .stream
+            .write_all(&frame.content[..frame.len as usize])
+            .await; // send data to client
+                    //
+        match r {
+            Ok(_) => {
+                debug!("wrote {} bytes", frame.len);
+                true
+            }
+            Err(e) => {
+                error!("Error writing stream: {}", e);
+                false
             }
         }
-
-        pub async fn write(&mut self, frame: Frame) -> bool {
-            trace!("Out Buffer: {} (Length: {})", &self, self.len);
-
-            let r = self
-                .stream
-                .write_all(&frame.content[..frame.len as usize])
-                .await; // send data to client
-                        //
-            match r {
-                Ok(_) => { debug!("wrote {} bytes", frame.len); true },
-                Err(e) => { error!("Error writing stream: {}", e); false },
-            }
-        }
+    }
 
     /*
      * write a list of all fields that have changed into the buffer for writing out

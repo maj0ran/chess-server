@@ -1,16 +1,15 @@
 pub mod buffer;
-pub mod connection;
 pub mod client;
+pub mod connection;
 pub mod frame;
 pub mod server;
 use std::fmt;
 
-use crate::net::client::Client;
-use tokio::net::TcpListener;
 use crate::net::buffer::Buffer;
-use crate::net::connection::Connection::Connection;
+use crate::net::client::Client;
+use crate::net::connection::connection::Connection;
 
-pub use log::{error, warn, info, debug, trace};
+pub use log::{debug, error, info, trace, warn};
 #[allow(unused)]
 
 // bytes representing commands to server
@@ -39,7 +38,7 @@ impl NewGame {
     }
 }
 
-struct Response {
+struct _Response {
     len: u8,
     content: [u8; BUF_LEN],
 }
@@ -51,17 +50,17 @@ pub enum Command {
     JoinGame(String),
     Nickname(String),
     Move(String),
-    Invalid = 0xFF,
+    _Invalid = 0xFF,
 }
 
 impl fmt::Display for Command {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let str = match self {
-            Command::NewGame(c) => "New Game",
+            Command::NewGame(_) => "New Game",
             Command::JoinGame(_) => "Join Game",
             Command::Nickname(_) => "Setting Nickname",
             Command::Move(_) => "Make Chess Move",
-            Command::Invalid => "Invalid Comand sent!",
+            Command::_Invalid => "Invalid Comand sent!",
         };
         write!(f, "{}", str)
     }
@@ -104,4 +103,3 @@ impl Parameter<u8> for &[u8] {
         self[0]
     }
 }
-

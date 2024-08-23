@@ -1,4 +1,6 @@
+use crate::chessmove::ChessMove;
 use crate::util::*;
+use log::debug;
 use log::info;
 
 use crate::piece;
@@ -37,8 +39,11 @@ impl Chess {
     pub fn take(&mut self, idx: Tile) -> Option<Piece> {
         self[idx].take()
     }
-    /* shoots a ray from a tile. returns all tiles on this ray until a piece is hit
-     * but INCLUDING the tile with the hitten piece */
+
+    /*
+     * shoots a ray from a tile. returns all tiles on this ray until a piece is hit,
+     * INCLUDING the tile with the hitten piece
+     */
     pub fn ray(&self, src: Tile, dir: (i8, i8)) -> Vec<Tile> {
         let mut tiles = Vec::<Tile>::new();
         let mut d = src + dir;
@@ -52,6 +57,9 @@ impl Chess {
         tiles
     }
 
+    /*
+     * construct a game from a FEN string
+     */
     pub fn load_fen(fen: &str) -> Chess {
         let mut curr_pos = 0;
         let mut fen_iter = fen.split(" ");
@@ -120,13 +128,13 @@ impl Chess {
         }
     }
 
-    pub fn get_fen(&self) {
+    pub fn _get_fen(&self) {
         let mut fen = String::new();
         for (i, t) in self.tiles.iter().enumerate() {
             if i % 8 == 0 {
                 fen = fen + "/";
             }
-            if let Some(p) = t {
+            if let Some(_p) = t {
                 //     fen = fen + p.to_fen().to_string().as_str();
             }
         }
@@ -143,7 +151,10 @@ impl Chess {
             None => vec![],
         }
     }
-    fn is_valid(&self, src: Tile, dst: Tile) -> bool {
+    fn is_valid(&self, chessmove: ChessMove) -> bool {
+        let src = chessmove.src;
+        let dst = chessmove.dst;
+
         let p = self.peek(src);
         let tiles = match p {
             None => vec![],
@@ -153,12 +164,21 @@ impl Chess {
         tiles.contains(&dst)
     }
 
-    // This method returns a List of all tiles that has updated.
-    // this approach is helpful for en passant and castling.
-    pub fn make_move(&mut self, src: Tile, dst: Tile) -> Vec<(Tile, Option<Piece>)> {
+    /*
+     * This method returns a List of all tiles that has updated.
+     * This approach is helpful for en passant and castling.
+     */
+    pub fn make_move(&mut self, chessmove: ChessMove) -> Vec<(Tile, Option<Piece>)> {
+        let src = chessmove.src;
+        let dst = chessmove.dst;
         let mut updated_tiles: Vec<(Tile, Option<Piece>)> = Vec::new();
+
         // check if the move is valid
-        if !self.is_valid(src, dst) {
+        if !self.is_valid(chessmove) {
+            info!(
+                "illegal chess move: {style_bold}{fg_red}{}{}{style_reset}{fg_reset}",
+                src, dst
+            );
             return vec![];
         }
 
@@ -218,6 +238,10 @@ impl Chess {
         /* it's the opponents turn now */
         self.active_player = !self.active_player;
 
+        debug!(
+            "executed move: {style_bold}{fg_green}{}{}{style_reset}{fg_reset}!",
+            src, dst
+        );
         updated_tiles
     }
 }
