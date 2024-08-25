@@ -111,7 +111,7 @@ impl Chess {
         // en passant field
         let en_passant = match en_passant_str {
             "-" => None,
-            _ => Some(Tile::from(en_passant_str.to_string())),
+            _ => Some(Tile::from(en_passant_str)),
         };
 
         // haf and full move
@@ -201,13 +201,65 @@ impl Chess {
                     updated_tiles.push(((dst + Tile::UP).unwrap(), None));
                 };
             }
+        } // TODO: piece.color instead of self.active_player
+
+        // TODO: This can be done more elegant without seperating code blocks in white and black
+        if piece.typ == ChessPiece::King && piece.color == Color::White {
+            if src.file == 'e' && dst.file == 'g' {
+                self["f1"] = self["h1"].take();
+                updated_tiles.push((Tile::from("h1"), None));
+                updated_tiles.push((Tile::from("f1"), self["f1"]));
+            } else if src.file == 'e' && dst.file == 'c' {
+                self["d1"] = self["a1"].take();
+                updated_tiles.push((Tile::from("a1"), None));
+                updated_tiles.push((Tile::from("d1"), self["d1"]));
+            }
         }
-
-        // TODO: Castling. Maybe here, or further down
-
+        if piece.typ == ChessPiece::King && piece.color == Color::Black {
+            if src.file == 'e' && dst.file == 'g' {
+                self["f8"] = self["h8"].take();
+                updated_tiles.push((Tile::from("h8"), None));
+                updated_tiles.push((Tile::from("f8"), self["f8"]));
+            } else if src.file == 'e' && dst.file == 'c' {
+                self["d8"] = self["a8"].take();
+                updated_tiles.push((Tile::from("a8"), None));
+                updated_tiles.push((Tile::from("d8"), self["d8"]));
+            }
+        }
         /* now the destination tile gets updated with our moved piece */
         updated_tiles.push((dst, Some(piece)));
         self[dst] = Some(piece);
+
+        /* update castling rights */
+        // if King moves, lose both castling rights
+        if piece.typ == ChessPiece::King {
+            if piece.color == Color::White {
+                self.castle_rights[0] = false;
+                self.castle_rights[1] = false;
+            } else {
+                self.castle_rights[2] = false;
+                self.castle_rights[3] = false;
+            }
+        }
+
+        if piece.typ == ChessPiece::Rook {
+            // king-side rook moves
+            if src.file == 'h' {
+                if piece.color == Color::White {
+                    self.castle_rights[0] = false;
+                } else {
+                    self.castle_rights[2] = false;
+                }
+            }
+            // queen-side rook moves
+            if src.file == 'a' {
+                if piece.color == Color::White {
+                    self.castle_rights[1] = false;
+                } else {
+                    self.castle_rights[3] = false;
+                }
+            }
+        }
 
         /* if we did move a pawn 2 ranks forward, update the en_passant field */
         let piece = self[dst].as_ref().unwrap(); // cannot fail
@@ -277,9 +329,16 @@ impl Index<&str> for Chess {
     type Output = Option<Piece>;
 
     fn index(&self, index: &str) -> &Self::Output {
-        &self[Tile::from(index.to_string())]
+        &self[Tile::from(index)]
     }
 }
+
+impl IndexMut<&str> for Chess {
+    fn index_mut(&mut self, index: &str) -> &mut Self::Output {
+        &mut self[Tile::from(index)]
+    }
+}
+
 impl fmt::Display for Chess {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut board_string = String::new();

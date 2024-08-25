@@ -6,8 +6,8 @@ pub struct Tile {
     pub rank: char,
 }
 
-impl From<String> for Tile {
-    fn from(item: String) -> Self {
+impl From<&str> for Tile {
+    fn from(item: &str) -> Self {
         let item = item.trim();
         assert!(item.len() == 2);
 

@@ -2,10 +2,19 @@ use log::debug;
 
 use crate::{pieces::ChessPiece, tile::Tile, util::*};
 
+pub enum SpecialMove {
+    QueenPromotion,
+    KnightPromotion,
+    RookPromotion,
+    BishopPromotion,
+    KingsideCastle,
+    QueensideCastle,
+}
+
 pub struct ChessMove {
     pub src: Tile,
     pub dst: Tile,
-    pub promotion: Option<ChessPiece>,
+    pub special: Option<SpecialMove>,
 }
 
 pub trait ToChessMove {
@@ -20,6 +29,7 @@ impl ToChessMove for String {
         );
 
         let mut iter = self.chars();
+
         let file = iter.next().unwrap();
         let rank = iter.next().unwrap();
         let src = Tile::new(file, rank);
@@ -35,21 +45,17 @@ impl ToChessMove for String {
             None => return None,
         };
 
-        let promotion = match iter.next() {
+        let special = match iter.next() {
             Some(p) => match p {
-                'Q' => Some(ChessPiece::Queen),
-                'N' => Some(ChessPiece::Knight),
-                'R' => Some(ChessPiece::Rook),
-                'B' => Some(ChessPiece::Bishop),
+                'Q' => Some(SpecialMove::QueenPromotion),
+                'N' => Some(SpecialMove::KnightPromotion),
+                'R' => Some(SpecialMove::RookPromotion),
+                'B' => Some(SpecialMove::BishopPromotion),
                 _ => None,
             },
             None => None,
         };
 
-        Some(ChessMove {
-            src,
-            dst,
-            promotion,
-        })
+        Some(ChessMove { src, dst, special })
     }
 }
