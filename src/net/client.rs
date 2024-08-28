@@ -71,9 +71,7 @@ impl Client {
             // and execute the command
             let response = self.exec(cmd);
             // finally sent respond to client
-            if self.conn.buf.write(response).await {
-                info!("{fg_green}Command executed!{fg_reset}");
-            } else {
+            if !self.conn.buf.write(response).await {
                 info!("{fg_red}sending command failed!: {fg_reset}");
             }
         }
@@ -116,8 +114,6 @@ impl Client {
                     };
                     let fields = self.make_move(chessmove);
 
-                    println!("{}", self.chess.as_ref().unwrap()); // cannot fail because inside
-                                                                  // is_ingame()
                     self.conn.buf.fields_to_buffer(&fields);
                     self.conn.create_frame()
                 } else {

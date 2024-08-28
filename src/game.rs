@@ -194,12 +194,21 @@ impl Chess {
             }
         }
     }
+
+    /* get the tiles controlled by the piece on the given tile
+     * A controled tile is a tile that is attacked by a piece, e.g. a empty tile or a tile with an
+     * opponent piece. For pawns, the diagonal tiles are attacking tiles.
+     */
     pub fn get_tiles_controlled(&self, tile: Tile) -> Vec<Tile> {
         match &self[tile] {
             Some(p) => (p.get_tiles_controlled)(self, tile),
             None => vec![],
         }
     }
+
+    /* get all tiles the piece on the given tile can move to.
+     * these can be different from the controlled tiles, e.g. for pawns
+     */
     pub fn get_moves(&self, tile: Tile) -> Vec<Tile> {
         match &self[tile] {
             Some(p) => {
@@ -212,17 +221,38 @@ impl Chess {
             None => vec![],
         }
     }
-    fn is_valid(&self, chessmove: ChessMove) -> bool {
+
+    /* check if a given move is legal */
+    fn is_valid(&self, chessmove: &ChessMove) -> bool {
         let src = chessmove.src;
         let dst = chessmove.dst;
-
         let p = self.peek(src);
         let tiles = match p {
             None => vec![],
             Some(_) => self.get_moves(src),
         };
 
-        tiles.contains(&dst)
+        let is_valid = tiles.contains(&dst);
+
+        if is_valid {
+            if p.unwrap().typ == ChessPiece::Pawn && (dst.rank == '8' || dst.rank == '1') {
+                match &chessmove.special {
+                    Some(promotion) => match promotion {
+                        crate::chessmove::SpecialMove::QueenPromotion => true,
+                        crate::chessmove::SpecialMove::KnightPromotion => true,
+                        crate::chessmove::SpecialMove::RookPromotion => true,
+                        crate::chessmove::SpecialMove::BishopPromotion => true,
+                        crate::chessmove::SpecialMove::KingsideCastle => todo!(),
+                        crate::chessmove::SpecialMove::QueensideCastle => todo!(),
+                    },
+                    None => false,
+                }
+            } else {
+                is_valid
+            }
+        } else {
+            false
+        }
     }
 
     /*
@@ -232,10 +262,11 @@ impl Chess {
     pub fn make_move(&mut self, chessmove: ChessMove) -> Vec<(Tile, Option<Piece>)> {
         let src = chessmove.src;
         let dst = chessmove.dst;
+        let promotion = &chessmove.special;
         let mut updated_tiles: Vec<(Tile, Option<Piece>)> = Vec::new();
 
         // check if the move is valid
-        if !self.is_valid(chessmove) {
+        if !self.is_valid(&chessmove) {
             info!(
                 "illegal chess move: {style_bold}{fg_red}{}{}{style_reset}{fg_reset}",
                 src, dst
@@ -243,26 +274,26 @@ impl Chess {
             return vec![];
         }
 
-        let piece = self.take(src).unwrap(); // cannot fail
-        let piece = piece; // de-mut, because I don't trust myself
+        let mut piece = self.take(src).unwrap(); // cannot fail
 
         /* first change: we move a piece, so source tile gets empty */
         updated_tiles.push((src, None));
 
         /* special rule for en passant.
          * not only the destination-tile gets updated, but also the en passant tile */
-        if self.en_passant.is_some() {
-            if dst == self.en_passant.unwrap() {
-                if self.active_player == Color::White {
-                    let _ = self.take((dst + Tile::DOWN).unwrap());
-                    updated_tiles.push(((dst + Tile::DOWN).unwrap(), None));
-                } else {
-                    let _ = self.take((dst + Tile::UP).unwrap());
-                    updated_tiles.push(((dst + Tile::UP).unwrap(), None));
-                };
-            }
-        } // TODO: piece.color instead of self.active_player
-
+        if piece.typ == ChessPiece::Pawn {
+            if self.en_passant.is_some() {
+                if dst == self.en_passant.unwrap() {
+                    if self.active_player == Color::White {
+                        let _ = self.take((dst + Tile::DOWN).unwrap());
+                        updated_tiles.push(((dst + Tile::DOWN).unwrap(), None));
+                    } else {
+                        let _ = self.take((dst + Tile::UP).unwrap());
+                        updated_tiles.push(((dst + Tile::UP).unwrap(), None));
+                    };
+                }
+            } // TODO: piece.color instead of  self.active_player
+        }
         // TODO: This can be done more elegant without seperating code blocks in white and black
         if piece.typ == ChessPiece::King && piece.color == Color::White {
             if src.file == 'e' && dst.file == 'g' {
@@ -285,6 +316,30 @@ impl Chess {
                 updated_tiles.push((Tile::from("a8"), None));
                 updated_tiles.push((Tile::from("d8"), self["d8"]));
             }
+        }
+
+        match promotion {
+            Some(promotion) => {
+                if piece.typ == ChessPiece::Pawn && (dst.rank == '8' || dst.rank == '1') {
+                    let c = match promotion {
+                        crate::chessmove::SpecialMove::QueenPromotion => 'Q',
+                        crate::chessmove::SpecialMove::KnightPromotion => 'N',
+                        crate::chessmove::SpecialMove::RookPromotion => 'R',
+                        crate::chessmove::SpecialMove::BishopPromotion => 'B',
+                        crate::chessmove::SpecialMove::KingsideCastle => todo!(),
+                        crate::chessmove::SpecialMove::QueensideCastle => todo!(),
+                    };
+
+                    let c = if piece.color == Color::White {
+                        c
+                    } else {
+                        c.to_lowercase().next().unwrap()
+                    };
+
+                    piece = piece!(c);
+                }
+            }
+            None => {}
         }
         /* now the destination tile gets updated with our moved piece */
         updated_tiles.push((dst, Some(piece)));
