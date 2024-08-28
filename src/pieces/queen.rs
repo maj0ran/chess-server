@@ -1,6 +1,10 @@
 use crate::pieces::Chess;
 use crate::tile::Tile;
 
+pub fn get_tiles_control_queen(board: &Chess, pos: Tile) -> Vec<Tile> {
+    get_moves_queen(board, pos)
+}
+
 pub fn get_moves_queen(board: &Chess, pos: Tile) -> Vec<Tile> {
     let this = board[pos].as_ref().unwrap();
     let dirs = [

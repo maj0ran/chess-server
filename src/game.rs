@@ -28,6 +28,36 @@ pub struct Chess {
     full_moves: usize,
 }
 
+pub struct ChessboardIterator<'a> {
+    board: &'a Chess,
+    pub index: usize,
+}
+
+impl<'a> Iterator for ChessboardIterator<'a> {
+    type Item = Option<Piece>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.board.tiles.len() {
+            return None;
+        }
+        let tile = Some(self.board.tiles[self.index]);
+        self.index += 1;
+        tile
+    }
+}
+
+impl<'a> IntoIterator for &'a Chess {
+    type Item = Option<Piece>;
+    type IntoIter = ChessboardIterator<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        ChessboardIterator {
+            board: self,
+            index: 0,
+        }
+    }
+}
+
 impl Chess {
     pub fn new() -> Chess {
         Chess::load_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq f3 0 1")
@@ -38,6 +68,31 @@ impl Chess {
 
     pub fn take(&mut self, idx: Tile) -> Option<Piece> {
         self[idx].take()
+    }
+
+    pub fn is_attacked(&self, tile: Tile, by_player: Color) -> bool {
+        let mut tiles_under_attack: Vec<Tile> = vec![];
+        let mut iter = Tile::all().into_iter();
+        while let Some(t) = iter.next() {
+            match self[t] {
+                Some(piece) => {
+                    if piece.color == by_player {
+                        let mut attacking_tiles = self.get_tiles_controlled(t);
+                        let mut s: String = String::new();
+
+                        for x in &attacking_tiles {
+                            s.push_str(x.to_string().as_str());
+                            s.push_str(" ");
+                        }
+                        info!("{} on {} ->: {:?}", piece, t, s);
+
+                        tiles_under_attack.append(&mut attacking_tiles);
+                    }
+                }
+                None => {}
+            }
+        }
+        tiles_under_attack.contains(&tile)
     }
 
     /*
@@ -139,6 +194,12 @@ impl Chess {
             }
         }
     }
+    pub fn get_tiles_controlled(&self, tile: Tile) -> Vec<Tile> {
+        match &self[tile] {
+            Some(p) => (p.get_tiles_controlled)(self, tile),
+            None => vec![],
+        }
+    }
     pub fn get_moves(&self, tile: Tile) -> Vec<Tile> {
         match &self[tile] {
             Some(p) => {
@@ -165,7 +226,7 @@ impl Chess {
     }
 
     /*
-     * This method returns a List of all tiles that has updated.
+     * This method returns a List of all tiles that were updated.
      * This approach is helpful for en passant and castling.
      */
     pub fn make_move(&mut self, chessmove: ChessMove) -> Vec<(Tile, Option<Piece>)> {
@@ -182,8 +243,7 @@ impl Chess {
             return vec![];
         }
 
-        let mut piece = self.take(src).unwrap(); // cannot fail
-        piece.move_count += 1;
+        let piece = self.take(src).unwrap(); // cannot fail
         let piece = piece; // de-mut, because I don't trust myself
 
         /* first change: we move a piece, so source tile gets empty */

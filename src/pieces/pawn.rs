@@ -2,6 +2,25 @@ use crate::color::Color;
 use crate::pieces::Chess;
 use crate::tile::Tile;
 
+pub fn get_tiles_control_pawn(board: &Chess, pos: Tile) -> Vec<Tile> {
+    let this = board[pos].as_ref().unwrap();
+    let mut tiles = Vec::<Tile>::new();
+
+    let attack = if this.color == Color::White {
+        [Tile::UPLEFT, Tile::UPRIGHT]
+    } else {
+        [Tile::DOWNLEFT, Tile::DOWNRIGHT]
+    };
+
+    // filters out tiles over the edge
+    for tile in attack {
+        if let Some(t) = pos + tile {
+            tiles.push(t);
+        }
+    }
+    tiles
+}
+
 pub fn get_moves_pawn(board: &Chess, pos: Tile) -> Vec<Tile> {
     let this = board[pos].as_ref().unwrap();
 

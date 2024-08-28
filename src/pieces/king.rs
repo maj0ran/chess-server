@@ -3,6 +3,33 @@ use crate::tile::Tile;
 
 use super::{ChessPiece, Color};
 
+pub fn get_tiles_control_king(board: &Chess, pos: Tile) -> Vec<Tile> {
+    let this = board[pos].as_ref().unwrap();
+    let mut tiles = vec![];
+
+    for d in [
+        Tile::UP,
+        Tile::DOWN,
+        Tile::LEFT,
+        Tile::RIGHT,
+        Tile::UPLEFT,
+        Tile::UPRIGHT,
+        Tile::DOWNLEFT,
+        Tile::DOWNRIGHT,
+    ] {
+        if let Some(t) = pos + d {
+            if let Some(p) = board.peek(t) {
+                if p.color != this.color {
+                    tiles.push(t);
+                }
+            } else {
+                tiles.push(t);
+            }
+        }
+    }
+    tiles
+}
+
 pub fn get_moves_king(board: &Chess, pos: Tile) -> Vec<Tile> {
     let this = board[pos].as_ref().unwrap();
     let mut tiles = vec![];
@@ -48,8 +75,11 @@ pub fn get_moves_king(board: &Chess, pos: Tile) -> Vec<Tile> {
             // check if the ray ended at a rook
             Some(tile) => match board[*tile] {
                 Some(p) => {
-                    if p.typ == ChessPiece::Rook && p.color == this.color && p.move_count == 0 {
-                        if let Some(castling_tile) = pos + (2, 0) {
+                    if p.typ == ChessPiece::Rook && p.color == this.color {
+                        let castling_tile = (pos + (2, 0)).unwrap();
+                        if !board.is_attacked((pos + (2, 0)).unwrap(), !this.color)
+                            && !board.is_attacked((pos + (1, 0)).unwrap(), !this.color)
+                        {
                             tiles.push(castling_tile);
                         }
                     }
@@ -69,8 +99,11 @@ pub fn get_moves_king(board: &Chess, pos: Tile) -> Vec<Tile> {
             // check if the ray ended at a rook
             Some(tile) => match board[*tile] {
                 Some(p) => {
-                    if p.typ == ChessPiece::Rook && p.color == this.color && p.move_count == 0 {
-                        if let Some(castling_tile) = pos + (-2, 0) {
+                    if p.typ == ChessPiece::Rook && p.color == this.color {
+                        let castling_tile = (pos - (2, 0)).unwrap();
+                        if !board.is_attacked((pos - (2, 0)).unwrap(), !this.color)
+                            && !board.is_attacked((pos - (1, 0)).unwrap(), !this.color)
+                        {
                             tiles.push(castling_tile);
                         }
                     }
