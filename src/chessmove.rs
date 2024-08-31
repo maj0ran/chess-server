@@ -1,4 +1,4 @@
-use log::debug;
+use log::{debug, info, warn};
 
 use crate::{pieces::ChessPiece, tile::Tile, util::*};
 
@@ -28,21 +28,32 @@ impl ToChessMove for String {
             &self
         );
 
-        let mut iter = self.chars();
+        // chess moves are 4 or 5 chars long (d2d4 or b7b8Q)
+        if self.len() > 5 || self.len() < 4 {
+            warn!("could not parse chess move: {}", self);
+            return None;
+        }
 
+        let mut iter = self.chars();
         let file = iter.next().unwrap();
         let rank = iter.next().unwrap();
         let src = Tile::new(file, rank);
         let src = match src {
             Some(t) => t,
-            None => return None,
+            None => {
+                warn!("could not parse chess move: {}", self);
+                return None;
+            }
         };
         let file = iter.next().unwrap();
         let rank = iter.next().unwrap();
         let dst = Tile::new(file, rank);
         let dst = match dst {
             Some(t) => t,
-            None => return None,
+            None => {
+                warn!("could not parse chess move: {}", self);
+                return None;
+            }
         };
 
         let special = match iter.next() {
