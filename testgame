@@ -1,0 +1,93 @@
+d2d4 OK
+d7d5 OK
+c2c4 OK
+d5c4 OK
+g1f3 OK
+g8f6 OK
+e2e3 OK
+e7e6 OK
+f1c4 OK
+b8d7 OK
+e1g1 OK # short castle
+f6g4 OK
+e3e4 OK
+a7a6 OK
+d4d5 OK
+e6d5 OK
+e4d5 OK
+c7c5 OK
+d5c6 OK # en passant
+b7c6 OK
+b1c3 OK
+f7f6 OK
+c1f4 OK
+f8b4 OK
+c3e4 OK
+e8g8 NOK # castling through check
+d7e5 OK
+f4e5 OK
+d8d1 OK
+f1d1 OK
+g4e5 OK
+f3e5 OK
+f6e5 OK
+a2a3 OK
+b4a5 OK
+b2b4 OK
+a5b6 OK
+d1e1 OK
+c8f5 OK
+a1c1 OK
+e8c8 OK # long castle
+c4e6 OK # check
+f5e6 OK
+c1c6 OK # check
+c8b7 OK
+c6e6 OK
+b6d4 OK
+g2g3 OK
+d8f8 OK
+e6e7 OK # check
+b7c6 OK
+e7g7 OK
+f8g8 OK
+g7g8 OK
+h8g8 OK
+e1c1 OK
+c6d7 OK
+a3a4 OK
+d7e6 OK
+b4b5 OK
+a6b5 OK
+a4b5 OK
+e6d7 OK
+b5b6 OK
+g8g6 OK
+b6b7 OK
+e4f6 OK # check
+f6g4 OK
+e7d7 OK
+b7b8N OK # check
+d7e6 OK
+c1c4 OK
+d4b2 OK
+g4h6 OK
+e6d5 OK
+c4c7 OK
+e5e4 OK
+c7h7 OK
+e4e3 OK
+f2f3 OK
+e3e2 OK
+h7b7 OK
+e2e1Q OK # check
+g1g2 OK
+e1d2 OK # check
+g2h3 OK
+d2h6 OK # check
+h3g2 OK
+h6d2 OK # check
+g2g1 OK
+b2d4 OK
+g1f1 OK
+d2f2 OK # checkmate

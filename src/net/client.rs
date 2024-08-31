@@ -1,3 +1,9 @@
+use std::sync::Arc;
+use std::sync::Mutex;
+
+use server::Server;
+use tokio::net::TcpStream;
+
 use crate::chessmove::*;
 use crate::game::Chess;
 use crate::net::connection::connection::Connection;
@@ -8,18 +14,19 @@ use crate::util::*;
 use crate::{pieces::Piece, tile::Tile};
 
 pub struct Client {
-    pub chess: Option<Chess>,
     pub name: String,
-
-    conn: Connection,
+    conn: TcpStream,
+    buf: Buffer,
+    pub chess: Arc<Mutex<Chess>>,
 }
 
 impl Client {
-    pub fn new(name: String, conn: Connection) -> Client {
+    pub fn new(name: String, conn: TcpStream, chess: Arc<Mutex<Chess>>) -> Client {
         Client {
-            chess: None,
             name,
             conn,
+            buf: Buffer::new(),
+            chess,
         }
     }
 
@@ -28,15 +35,11 @@ impl Client {
             "New Game! (\"{}\" ({}) hoster side: {:?})",
             new_game.name, new_game.mode, new_game.hoster_side
         );
-        self.chess = Some(Chess::new());
     }
 
     pub fn make_move(&mut self, chessmove: ChessMove) -> Vec<(Tile, Option<Piece>)> {
-        if self.chess.is_none() {
-            return vec![];
-        }
-
-        let changes = self.chess.as_mut().unwrap().make_move(chessmove);
+        let mut chess = self.chess.lock().unwrap();
+        let changes = chess.make_move(chessmove);
 
         changes
     }
@@ -44,87 +47,65 @@ impl Client {
     pub fn join_game(&self, id: String) {
         info!("Join Game. id: {:?}", id)
     }
-    pub async fn run(&mut self) {
-        // TODO: Hand shake
-        //        self.out_buf.write(&[1, 2, 3, 4]);
-        //        self.in_buf.read();
-        loop {
-            // only reading the message, no further validation.
-            // this blocks the task until a full message is available
-            let frame: Option<Frame> = self.conn.buf.read_frame().await;
-            let frame = if let Some(f) = frame {
-                f
-            } else {
-                continue;
-            };
+    pub async fn read(&mut self) -> Option<Command> {
+        // only reading the message, no further validation.
+        // this blocks the task until a full message is available
+        let frame: Option<Frame> = self.buf.read_frame(&mut self.conn).await;
 
-            // now we interpret the message
-            let cmd = if let Some(cmd) = frame.parse() {
-                cmd
-            } else {
-                error!("{fg_red}invalid command received: !{fg_reset}");
-                continue;
-            };
+        debug!("got new message");
+        let frame = if let Some(f) = frame {
+            f
+        } else {
+            warn!("error reading message");
+            return None;
+        };
 
-            info!("{fg_green}Received command: {cmd}!{fg_reset}");
+        // now we interpret the message
+        let cmd = if let Some(cmd) = frame.parse() {
+            cmd
+        } else {
+            error!("{fg_red}invalid command received: !{fg_reset}");
+            return None;
+        };
 
-            // and execute the command
-            let response = self.exec(cmd);
-            // finally sent respond to client
-            if !self.conn.buf.write(response).await {
-                info!("{fg_red}sending command failed!: {fg_reset}");
+        info!("{fg_green}Received command: {cmd}!{fg_reset}");
+
+        Some(cmd)
+        // and execute the command
+        // let response = self.exec(cmd);
+        // finally sent respond to client
+        // if !self.buf.write(&mut self.conn, response).await {
+        //     info!("{fg_red}sending command failed!: {fg_reset}");
+        // }
+    }
+    pub fn exec(&mut self, cmd: Command) -> Result<()> {
+        match cmd {
+            Command::Nickname(name) => Ok(()),
+            Command::NewGame(new_game) => Ok(()),
+            Command::JoinGame(id) => Ok(()),
+            Command::Move(mov) => {
+                let chessmove = match mov.parse() {
+                    Some(cm) => cm,
+                    None => {
+                        warn!("could not parse move: {}", mov);
+                        return Ok(());
+                    }
+                };
+                let mut chess = self.chess.lock().unwrap();
+                chess.make_move(chessmove);
+                Ok(())
+            }
+            Command::_Invalid => {
+                warn!("Invalid Command received!: {:?}", cmd);
+                Ok(())
             }
         }
     }
 
-    pub fn exec(&mut self, cmd: Command) -> Frame {
-        let null_frame = self.conn.create_frame();
-        match cmd {
-            Command::Nickname(name) => {
-                self.name = name;
-                Frame {
-                    len: 0,
-                    content: self.conn.buf.buf,
-                }
-            }
-            Command::NewGame(new_game) => {
-                self.new_game(new_game);
-                Frame {
-                    len: 0,
-                    content: self.conn.buf.buf,
-                }
-            }
-            Command::JoinGame(id) => {
-                self.join_game(id);
-                Frame {
-                    len: 0,
-                    content: self.conn.buf.buf,
-                }
-            }
-            Command::Move(mov) => {
-                if self.conn.is_ingame() {
-                    let chessmove = if let Some(unpacked_mov) = mov.parse() {
-                        unpacked_mov
-                    } else {
-                        warn!(
-                            "cannot parse move: {style_bold}{fg_red}{}{style_reset}{fg_reset}",
-                            mov
-                        );
-                        return null_frame;
-                    };
-                    let fields = self.make_move(chessmove);
-
-                    self.conn.buf.fields_to_buffer(&fields);
-                    self.conn.create_frame()
-                } else {
-                    warn!("received chess move but not in a game");
-                    null_frame
-                }
-            }
-            Command::_Invalid => {
-                warn!("Invalid Command received!: {:?}", cmd);
-                null_frame
-            }
+    pub fn create_frame(&self) -> Frame {
+        Frame {
+            len: self.buf.len as u8,
+            content: self.buf.buf,
         }
     }
 }

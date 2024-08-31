@@ -14,7 +14,7 @@ use crate::net::server::Server;
 async fn main() -> io::Result<()> {
     env_logger::init();
 
-    let server = Server::new();
+    let mut server = Server::new();
     let _ = server.listen().await;
 
     println!("Exited Gracefully.");

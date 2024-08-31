@@ -14,16 +14,19 @@ pub struct Frame {
 }
 
 /*
-* Frame Format:
-* first Byte is either
-* - 0xA 0x32 <param> to create a new game with params
-* params are seperated by 0x32 (space)
-* - [a-h] followed by another 3-4 bytes to indicate a chess move like d2d4
+* Frame Format
+* ------------
+* - first byte is length of the message
+* - second byte is either:
+* --- 0xA 0x32 <param> to create a new game with params
+*     params are seperated by 0x32 (space)
+* --- [a-h] followed by another 3-4 bytes to indicate a chess move like d2d4
 */
 impl Frame {
     //  pub fn create(content: &[u8]) -> Frame {
     //      let len = content.len() as u8;
     //  }
+    //
 
     pub fn parse(&self) -> Option<Command> {
         let tokens: Vec<&[u8]> = self.content[..self.len as usize]

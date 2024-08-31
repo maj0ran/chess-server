@@ -14,11 +14,5 @@ pub mod connection {
             // self.player.chess.is_some()
             true
         }
-        pub fn create_frame(&self) -> Frame {
-            Frame {
-                len: self.buf.len as u8,
-                content: self.buf.buf,
-            }
-        }
     }
 }

@@ -17,23 +17,20 @@ use super::BUF_LEN;
 pub struct Buffer {
     pub buf: [u8; BUF_LEN],
     pub len: usize,
-
-    pub stream: TcpStream,
 }
 
 impl Buffer {
-    pub fn new(socket: TcpStream) -> Buffer {
+    pub fn new() -> Buffer {
         Buffer {
             buf: [0; BUF_LEN],
             len: 0,
-            stream: socket,
         }
     }
-    pub async fn read_frame(&mut self) -> Option<Frame> {
+    pub async fn read_frame(&mut self, conn: &mut TcpStream) -> Option<Frame> {
         log::trace!("In Buffer: {} (Length: {})", &self, self.len);
         // read the first byte which indicates the length.
         // this value will be discarded and not be part of the read buffer
-        let len = self.stream.read_u8().await;
+        let len = conn.read_u8().await;
         let len = match len {
             Ok(n) => {
                 if n as usize > BUF_LEN {
@@ -50,7 +47,7 @@ impl Buffer {
 
         self.len = len as usize;
         // read the actual message into the read buffer
-        let n = self.stream.read_exact(&mut self.buf[..len as usize]).await;
+        let n = conn.read_exact(&mut self.buf[..len as usize]).await;
         match n {
             Ok(0) => {
                 log::info!("remote closed connection!");
@@ -67,17 +64,23 @@ impl Buffer {
         }
     }
 
-    pub async fn write(&mut self, frame: Frame) -> bool {
+    pub fn write_frame(&mut self, data: &[u8]) {
+        self[0] = data.len() as u8;
+        self.len = self[0] as usize + 1;
+        for (i, val) in data.iter().enumerate() {
+            self[i + 1] = *val;
+        }
+    }
+
+    pub async fn write(&mut self, conn: &mut TcpStream) -> bool {
         trace!("Out Buffer: {} (Length: {})", &self, self.len);
 
-        let r = self
-            .stream
-            .write_all(&frame.content[..frame.len as usize])
-            .await; // send data to client
-                    //
+        let len = self.len;
+        let r = conn.write_all(&self[..len as usize]).await; // send data to client
+                                                             //
         match r {
             Ok(_) => {
-                debug!("wrote {} bytes", frame.len);
+                debug!("wrote {} bytes", len);
                 true
             }
             Err(e) => {
