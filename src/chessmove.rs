@@ -1,4 +1,4 @@
-use log::{debug, info, warn};
+use log::{debug, info, trace, warn};
 
 use crate::{pieces::ChessPiece, tile::Tile, util::*};
 
@@ -23,7 +23,7 @@ pub trait ToChessMove {
 
 impl ToChessMove for String {
     fn parse(&self) -> Option<ChessMove> {
-        debug!(
+        trace!(
             "converting {fg_blue}{style_bold}{}{fg_reset}{style_reset} to chess move",
             &self
         );

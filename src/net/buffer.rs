@@ -26,43 +26,6 @@ impl Buffer {
             len: 0,
         }
     }
-    pub async fn read_frame(&mut self, conn: &mut TcpStream) -> Option<Frame> {
-        log::trace!("In Buffer: {} (Length: {})", &self, self.len);
-        // read the first byte which indicates the length.
-        // this value will be discarded and not be part of the read buffer
-        let len = conn.read_u8().await;
-        let len = match len {
-            Ok(n) => {
-                if n as usize > BUF_LEN {
-                    log::error!("message-length too big!: {}", n);
-                    return None;
-                }
-                n
-            }
-            Err(e) => {
-                log::error!("error at reading message length: {}", e);
-                panic!("EOF when reading frame");
-            }
-        };
-
-        self.len = len as usize;
-        // read the actual message into the read buffer
-        let n = conn.read_exact(&mut self.buf[..len as usize]).await;
-        match n {
-            Ok(0) => {
-                log::info!("remote closed connection!");
-                None
-            } // connection closed
-            Err(e) => {
-                log::error!("Error at reading TcpStream: {}", e);
-                None
-            }
-            Ok(n) => Some(Frame {
-                len: n as u8,
-                content: self.buf,
-            }),
-        }
-    }
 
     pub fn write_frame(&mut self, data: &[u8]) {
         self[0] = data.len() as u8;

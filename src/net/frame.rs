@@ -1,4 +1,9 @@
+use std::io::Cursor;
 use std::io::Read;
+
+use bytes::Buf;
+use bytes::BytesMut;
+use tokio::io::AsyncReadExt;
 
 use crate::net::Command;
 use crate::net::NewGame;
@@ -8,9 +13,10 @@ use crate::net::*;
 use super::Parameter;
 use super::BUF_LEN;
 
+pub enum Frame2 {}
+
 pub struct Frame {
     pub len: u8,
-    pub content: [u8; BUF_LEN],
 }
 
 /*
@@ -28,18 +34,25 @@ impl Frame {
     //  }
     //
 
-    pub fn parse(&self) -> Option<Command> {
-        let tokens: Vec<&[u8]> = self.content[..self.len as usize]
-            .split(|s| &b' ' == s)
-            .collect();
-        let cmd = tokens[0];
+    pub fn parse(src: &mut Cursor<&BytesMut>) -> Option<Command> {
+        let len = src.get_u8();
+        let cmd = src.get_u8();
+
+        match cmd as char {
+            'M' => {
+                // a chess move
+                let chessmove = &src.get_ref()[2..len as usize];
+            }
+            'D' => {} // sending a draw request / response
+            'N' => {} // create new game
+        }
         let params = &tokens[1..];
         if cmd.len() == 0 {
             log::warn!("got message but no content");
             return None;
         }
 
-        let ret = match cmd[0] {
+        let ret = match cmd {
             NEW_GAME => {
                 if params.len() != 2 {
                     log::error!("host: invalid number of params received!: {}", params.len());

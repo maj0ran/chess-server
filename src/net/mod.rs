@@ -1,13 +1,13 @@
 pub mod buffer;
-pub mod client;
 pub mod connection;
 pub mod frame;
+pub mod handler;
 pub mod server;
 use std::fmt;
 
 use crate::net::buffer::Buffer;
-use crate::net::client::Client;
 use crate::net::connection::connection::Connection;
+use crate::net::handler::Handler;
 
 pub use log::{debug, error, info, trace, warn};
 #[allow(unused)]
