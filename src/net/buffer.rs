@@ -1,22 +1,18 @@
 use core::fmt;
-use std::ops::{self, RangeTo};
+use std::ops::{self, Range, RangeTo};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
 };
 
-use crate::{
-    net::{frame::Frame, *},
-    pieces::Piece,
-    tile::Tile,
-    util::*,
-};
+use crate::{net::*, pieces::Piece, tile::Tile, util::*};
 
 use super::BUF_LEN;
 
 pub struct Buffer {
     pub buf: [u8; BUF_LEN],
     pub len: usize,
+    cursor: usize,
 }
 
 impl Buffer {
@@ -24,33 +20,37 @@ impl Buffer {
         Buffer {
             buf: [0; BUF_LEN],
             len: 0,
+            cursor: 0,
         }
     }
 
-    pub fn write_frame(&mut self, data: &[u8]) {
-        self[0] = data.len() as u8;
-        self.len = self[0] as usize + 1;
-        for (i, val) in data.iter().enumerate() {
-            self[i + 1] = *val;
-        }
+    /* touches the cursor */
+    pub fn get_byte(&mut self) -> u8 {
+        let byte = self.buf[self.cursor];
+        self.cursor += 1;
+        byte
     }
 
+    pub fn get_to_end(&mut self) -> &[u8] {
+        &self.buf[self.cursor..self.len]
+    }
     pub async fn write(&mut self, conn: &mut TcpStream) -> bool {
         trace!("Out Buffer: {} (Length: {})", &self, self.len);
 
-        let len = self.len;
-        let r = conn.write_all(&self[..len as usize]).await; // send data to client
-                                                             //
-        match r {
-            Ok(_) => {
-                debug!("wrote {} bytes", len);
-                true
-            }
-            Err(e) => {
-                error!("Error writing stream: {}", e);
-                false
-            }
-        }
+        //    let len = self.len;
+        //    let r = conn.write_all(&self[..len as usize]).await; // send data to client
+        //                                                         //
+        //    match r {
+        //        Ok(_) => {
+        //            debug!("wrote {} bytes", len);
+        //            true
+        //        }
+        //        Err(e) => {
+        //            error!("Error writing stream: {}", e);
+        //            false
+        //        }
+        //    }
+        true
     }
 
     /*
@@ -83,6 +83,14 @@ impl ops::Index<RangeTo<usize>> for Buffer {
     type Output = [u8];
 
     fn index(&self, index: RangeTo<usize>) -> &Self::Output {
+        &self.buf[index]
+    }
+}
+
+impl ops::Index<Range<usize>> for Buffer {
+    type Output = [u8];
+
+    fn index(&self, index: Range<usize>) -> &Self::Output {
         &self.buf[index]
     }
 }

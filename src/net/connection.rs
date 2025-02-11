@@ -1,20 +1,18 @@
 pub mod connection {
 
-    use std::io::Cursor;
+    use crate::net::BUF_LEN;
+    use tokio::{
+        io::{AsyncReadExt, AsyncWriteExt},
+        net::TcpStream,
+    };
 
-    use crate::{net::BUF_LEN, util::*};
-    use bytes::BytesMut;
-    use log::{debug, error, warn};
-    use tokio::{io::AsyncReadExt, net::TcpStream};
-
-    use crate::net::{frame::Frame, Command};
+    use crate::net::Command;
 
     use super::super::buffer::Buffer;
 
     pub struct Connection {
         pub stream: TcpStream,
         pub buf: Buffer,
-        pub buffer: BytesMut,
     }
 
     impl Connection {
@@ -22,43 +20,16 @@ pub mod connection {
             Connection {
                 stream: socket,
                 buf: Buffer::new(),
-                buffer: BytesMut::with_capacity(64),
             }
         }
-
-        pub async fn read(&mut self) -> Option<Command> {
-            // only reading the message, no further validation.
-            // this blocks the task until a full message is available
-            let frame: Option<Frame> = self.read_frame().await;
-
-            let frame = if let Some(f) = frame {
-                f
-            } else {
-                warn!("error reading message");
-                return None;
-            };
-            let mut buf = Cursor::new(&self.buffer);
-            // now we interpret the message
-            let cmd = if let Some(cmd) = Frame::parse(&mut buf) {
-                cmd
-            } else {
-                error!("{fg_red}invalid command received: !{fg_reset}");
-                return None;
-            };
-
-            debug!("{fg_green}received command: {cmd}!{fg_reset}");
-
-            Some(cmd)
-            // and execute the command
-            // let response = self.exec(cmd);
-            // finally sent respond to client
-            // if !self.buf.write(&mut self.conn, response).await {
-            //     info!("{fg_red}sending command failed!: {fg_reset}");
-            // }
+        // reads a message from client into a buffer and parses it to a command
+        pub async fn read(&mut self) {
+            self.read_frame().await; // TODO: error handling, see also inside read_frame
+            log::debug!("frame is ready in buffer!");
         }
 
-        pub async fn read_frame(&mut self) -> Option<Frame> {
-            log::trace!("In Buffer: {} (Length: {})", &self.buf, self.buf.len);
+        /* raw reading from a stream and writing into it's own buffer */
+        pub async fn read_frame(&mut self) -> bool {
             // read the first byte which indicates the length.
             // this value will be discarded and not be part of the read buffer
             let len = self.stream.read_u8().await;
@@ -66,7 +37,9 @@ pub mod connection {
                 Ok(n) => {
                     if n as usize > BUF_LEN {
                         log::error!("message-length too big!: {}", n);
-                        return None;
+                        return false;
+                    } else {
+                        log::trace!("receiving bytes: {}", len.as_ref().unwrap());
                     }
                     n
                 }
@@ -76,18 +49,49 @@ pub mod connection {
                 }
             };
 
-            // read the actual message into the read buffer
+            // read {len} bytes from stream and write the actual message into our buffer
             let n = self.stream.read_exact(&mut self.buf[..len as usize]).await;
             match n {
                 Ok(0) => {
                     log::info!("remote closed connection!");
-                    None
+                    return false;
                 } // connection closed
                 Err(e) => {
                     log::error!("Error at reading TcpStream: {}", e);
-                    None
+                    return false;
                 }
-                Ok(n) => Some(Frame { len: n as u8 }),
+                Ok(n) => {
+                    assert!(n == len as usize); // should always be true because of read_exact()
+                                                // specification
+
+                    self.buf.len = len as usize;
+                    log::trace!("received frame!: {} (Length: {})", &self.buf, self.buf.len);
+                    true
+                }
+            }
+        }
+
+        pub async fn write_out(&mut self, data: &[u8]) -> bool {
+            self.buf[0] = data.len() as u8;
+            self.buf.len = self.buf[0] as usize + 1;
+            for (i, val) in data.iter().enumerate() {
+                self.buf[i + 1] = *val;
+            }
+
+            let r = self
+                .stream
+                .write_all(&self.buf[..data.len() as usize])
+                .await;
+            //
+            match r {
+                Ok(_) => {
+                    log::debug!("wrote {} bytes", data.len());
+                    true
+                }
+                Err(e) => {
+                    log::error!("Error writing stream: {}", e);
+                    false
+                }
             }
         }
     }

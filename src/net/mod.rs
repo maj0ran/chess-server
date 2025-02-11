@@ -16,6 +16,8 @@ pub use log::{debug, error, info, trace, warn};
 const NEW_GAME: u8 = 0xA;
 const JOIN_GAME: u8 = 0xB;
 const SET_NAME: u8 = 0xC;
+const MAKE_MOVE: u8 = 0xD;
+const UPDATE_BOARD: u8 = 0xE;
 
 // read and write buffer have a static maximum length
 // we don't really need more for chess
@@ -50,6 +52,7 @@ pub enum Command {
     JoinGame(String),
     Nickname(String),
     Move(String),
+    Update(Vec<String>),
     _Invalid = 0xFF,
 }
 
@@ -60,6 +63,7 @@ impl fmt::Display for Command {
             Command::JoinGame(_) => "Join Game",
             Command::Nickname(_) => "Setting Nickname",
             Command::Move(_) => "Make Chess Move",
+            Command::Update(_) => "Update Command",
             Command::_Invalid => "Invalid Comand sent!",
         };
         write!(f, "{}", str)
@@ -93,6 +97,7 @@ impl TryFrom<u8> for PlayerSideRequest {
 trait Parameter<T> {
     fn to_val(&self) -> T;
 }
+
 impl Parameter<String> for &[u8] {
     fn to_val(&self) -> String {
         String::from_utf8_lossy(self).to_string()

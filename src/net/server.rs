@@ -5,7 +5,6 @@ use crate::{game::Chess, pieces::Piece, tile::Tile};
 use super::*;
 
 use bytes::BytesMut;
-use frame::Frame;
 use tokio::{net::TcpListener, sync::broadcast};
 
 pub struct Server {
@@ -42,6 +41,8 @@ impl Server {
                 buffer: BytesMut::zeroed(64),
             };
 
+            info!("handler initialized with name: {}", handler.name);
+
             tokio::spawn(async move {
                 loop {
                     handler.run().await;
@@ -49,6 +50,4 @@ impl Server {
             });
         }
     }
-
-    pub fn send_to(client: Handler, msg: Frame) {}
 }

@@ -1,3 +1,5 @@
+mod testclient;
+
 #[cfg(test)]
 pub mod testgames {
 
@@ -15,7 +17,6 @@ pub mod testgames {
 
     use crate::chessmove::{ChessMove, ToChessMove};
     use crate::net::buffer::Buffer;
-    use crate::net::frame::Frame;
     pub struct TestClient {
         stream: TcpStream,
         buffer: Buffer,

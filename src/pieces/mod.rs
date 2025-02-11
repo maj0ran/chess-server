@@ -43,6 +43,23 @@ impl Piece {
             get_tiles_controlled: get_tiles_controlled_function,
         }
     }
+
+    pub fn as_byte(&self) -> char {
+        match (self.typ, self.color) {
+            (ChessPiece::King, Color::Black) => 'k',
+            (ChessPiece::King, Color::White) => 'K',
+            (ChessPiece::Queen, Color::Black) => 'q',
+            (ChessPiece::Queen, Color::White) => 'Q',
+            (ChessPiece::Rook, Color::Black) => 'r',
+            (ChessPiece::Rook, Color::White) => 'R',
+            (ChessPiece::Bishop, Color::Black) => 'b',
+            (ChessPiece::Bishop, Color::White) => 'B',
+            (ChessPiece::Knight, Color::Black) => 'n',
+            (ChessPiece::Knight, Color::White) => 'N',
+            (ChessPiece::Pawn, Color::Black) => 'p',
+            (ChessPiece::Pawn, Color::White) => 'P',
+        }
+    }
 }
 
 #[macro_export]
@@ -154,5 +171,11 @@ impl fmt::Display for Piece {
 impl fmt::Display for Color {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self)
+    }
+}
+
+impl fmt::Debug for Piece {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        fmt::Display::fmt(self, f)
     }
 }
