@@ -1,11 +1,7 @@
-use core::fmt;
-use std::ops::{self, Range, RangeTo};
-use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
-    net::TcpStream,
-};
-
 use crate::{net::*, pieces::Piece, tile::Tile, util::*};
+use core::fmt;
+use smol::net::*;
+use std::ops::{self, Range, RangeTo};
 
 use super::BUF_LEN;
 

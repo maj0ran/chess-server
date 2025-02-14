@@ -9,14 +9,18 @@ mod util;
 use std::io;
 
 use crate::net::server::Server;
+use smol::*;
 
-#[tokio::main]
-async fn main() -> io::Result<()> {
-    env_logger::init();
+use smol_macros::main;
 
-    let mut server = Server::new();
-    let _ = server.listen().await;
+main! {
+    async fn main() -> io::Result<()> {
+        env_logger::init();
 
-    println!("Exited Gracefully.");
-    Ok(())
+        let mut server = Server::new();
+        let _ = server.listen().await;
+
+        println!("Exited Gracefully.");
+        Ok(())
+    }
 }

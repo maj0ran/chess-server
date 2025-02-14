@@ -3,7 +3,6 @@ use std::io::Read;
 
 use bytes::Buf;
 use bytes::BytesMut;
-use tokio::io::AsyncReadExt;
 
 use crate::net::Command;
 use crate::net::NewGame;

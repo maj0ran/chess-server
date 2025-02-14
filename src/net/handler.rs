@@ -1,9 +1,7 @@
-use std::borrow::Borrow;
+use smol::lock::Mutex;
 use std::sync::Arc;
-use std::sync::Mutex;
 
 use bytes::BytesMut;
-use tokio::sync::broadcast;
 
 use crate::chessmove::*;
 use crate::game::Chess;
@@ -16,7 +14,6 @@ pub struct Handler {
     pub name: String,
     pub chess: Arc<Mutex<Chess>>,
     pub conn: Connection,
-    pub notify_move: broadcast::Receiver<Vec<(Tile, Option<Piece>)>>,
     pub buffer: BytesMut,
 }
 
@@ -25,22 +22,8 @@ impl Handler {
         debug!("running handler: {}", self.name);
         // handler switches between two tasks: listening to the net client and listening for
         // processed moves on the server
-        let cmd = tokio::select! {
-             _ = self.conn.read() => { self.handle_request().await; true },
-             res = self.notify_move.recv() => {
-                 match res {
-                     Ok(res) => {
-                         for r in res {
-                            println!("{:?}", r);
-                         }
-                     },
-                     Err(_) => todo!(),
-                 }
-                 false
-             }
-        };
-
-        // TODO: here response
+        let res = self.conn.read().await;
+        self.handle_request().await;
     }
 
     fn parse(&self) -> Option<Command> {
@@ -119,8 +102,8 @@ impl Handler {
         );
     }
 
-    pub fn make_move(&mut self, chessmove: ChessMove) -> Vec<(Tile, Option<Piece>)> {
-        let mut chess = self.chess.lock().unwrap();
+    pub async fn make_move(&mut self, chessmove: ChessMove) -> Vec<(Tile, Option<Piece>)> {
+        let mut chess = self.chess.lock().await;
         let changes = chess.make_move(chessmove);
 
         changes
@@ -142,7 +125,7 @@ impl Handler {
                         return Ok(());
                     }
                 };
-                let mut chess = self.chess.lock().unwrap();
+                let mut chess = self.chess.lock().await;
                 let updated_tiles = chess.make_move(chessmove);
                 /* build response message */
                 let msg = build_update_message(updated_tiles);

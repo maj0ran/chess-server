@@ -1,27 +1,23 @@
-use std::sync::{Arc, Mutex};
-
-use crate::{game::Chess, pieces::Piece, tile::Tile};
+use crate::game::Chess;
+use smol::lock::Mutex;
+use std::sync::Arc;
 
 use super::*;
 
 use bytes::BytesMut;
-use tokio::{net::TcpListener, sync::broadcast};
-
+use smol::net::*;
 pub struct Server {
     _listener: Option<TcpListener>,
     pub chess: Arc<Mutex<Chess>>,
     clients: Vec<Arc<Mutex<Handler>>>,
-    notify_move: broadcast::Sender<Vec<(Tile, Option<Piece>)>>,
 }
 
 impl Server {
     pub fn new() -> Server {
-        let (notify_move, _) = broadcast::channel(16);
         Server {
             _listener: None,
             chess: Arc::new(Mutex::new(Chess::new())),
             clients: vec![],
-            notify_move,
         }
     }
 
@@ -37,17 +33,17 @@ impl Server {
                 name: "Marian".to_string(),
                 chess: self.chess.clone(),
                 conn: Connection::new(socket),
-                notify_move: self.notify_move.subscribe(),
                 buffer: BytesMut::zeroed(64),
             };
 
             info!("handler initialized with name: {}", handler.name);
 
-            tokio::spawn(async move {
+            smol::spawn(async move {
                 loop {
                     handler.run().await;
                 }
-            });
+            })
+            .detach();
         }
     }
 }
