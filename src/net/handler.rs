@@ -1,4 +1,5 @@
 use smol::lock::Mutex;
+use std::ops::Deref;
 use std::sync::Arc;
 
 use bytes::BytesMut;
@@ -10,11 +11,14 @@ use crate::net::Command;
 use crate::net::*;
 use crate::{pieces::Piece, tile::Tile};
 
+use super::server::ServerState;
+
 pub struct Handler {
     pub name: String,
-    pub chess: Arc<Mutex<Chess>>,
+    pub chess: Option<Arc<Mutex<Chess>>>,
     pub conn: Connection,
     pub buffer: BytesMut,
+    pub server_state: Arc<ServerState>,
 }
 
 impl Handler {
@@ -22,10 +26,17 @@ impl Handler {
         debug!("running handler: {}", self.name);
         // handler switches between two tasks: listening to the net client and listening for
         // processed moves on the server
+        //
+        /* wait for data on the connection; write into buffer on receive. */
         let res = self.conn.read().await;
         self.handle_request().await;
     }
 
+    /*
+     * parsing the byte-encoded content of the buffer.
+     * this will convert the data into a Command struct.
+     * The command can then later be executed by the chess server
+     */
     fn parse(&self) -> Option<Command> {
         let len = self.conn.buf.len;
         if len == 0 {
@@ -33,14 +44,11 @@ impl Handler {
             return None;
         }
 
-        log::debug!("parsing message with length {}", len);
-
         let content = &self.conn.buf[..len];
         let cmd = content[0];
-        let params = &content[2..len];
-        log::info!("got len: {}, cmd: {}", len, cmd);
+        let params = &content[1..len];
+        log::info!("received msg! len: {}, cmd: {}", len, cmd);
         let params: Vec<&[u8]> = params.split(|c| *c == b' ' as u8).collect();
-        log::debug!("{:?}", params);
 
         let ret = match cmd {
             NEW_GAME => {
@@ -88,9 +96,24 @@ impl Handler {
         ret
     }
 
+    /*
+     * read from buffer and execute the given command
+     */
     async fn handle_request(&mut self) -> bool {
         let cmd = self.parse(); // parse the current buffer state
-        self.exec(cmd.unwrap()).await;
+        let cmd = match cmd {
+            Some(c) => c,
+            None => {
+                warn!("could not parse request!");
+                Command::_Invalid
+            }
+        };
+
+        let res = self.exec(cmd).await;
+        match res {
+            Ok(_) => {}
+            Err(e) => warn!("request handling failed!: {e}"),
+        }
 
         true
     }
@@ -103,7 +126,12 @@ impl Handler {
     }
 
     pub async fn make_move(&mut self, chessmove: ChessMove) -> Vec<(Tile, Option<Piece>)> {
-        let mut chess = self.chess.lock().await;
+        if self.chess.is_none() {
+            log::warn!("not in a game!");
+            return vec![];
+        }
+
+        let mut chess = self.chess.as_ref().unwrap().lock().await;
         let changes = chess.make_move(chessmove);
 
         changes
@@ -115,7 +143,11 @@ impl Handler {
     pub async fn exec(&mut self, cmd: Command) -> Result<()> {
         match cmd {
             Command::Nickname(name) => Ok(()),
-            Command::NewGame(new_game) => Ok(()),
+            Command::NewGame(new_game) => {
+                let chess = Arc::new(Mutex::new(Chess::new()));
+                self.server_state.games.insert(1, chess);
+                Ok(())
+            }
             Command::JoinGame(id) => Ok(()),
             Command::Move(mov) => {
                 let chessmove = match mov.parse() {
@@ -125,7 +157,7 @@ impl Handler {
                         return Ok(());
                     }
                 };
-                let mut chess = self.chess.lock().await;
+                let mut chess = self.chess.as_ref().unwrap().lock().await;
                 let updated_tiles = chess.make_move(chessmove);
                 /* build response message */
                 let msg = build_update_message(updated_tiles);

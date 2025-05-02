@@ -8,18 +8,18 @@ pub mod testgames {
     use std::fs::File;
     use std::io::{self, BufRead};
     use std::time::Duration;
-    use tokio::time::sleep;
 
-    use tokio::{
-        io::{AsyncReadExt, AsyncWriteExt},
-        net::TcpStream,
-    };
+    use smol::io::AsyncReadExt;
+    use smol::io::AsyncWriteExt;
+    use smol::net::TcpStream;
+    use smol::Timer;
+    use smol_macros::test;
 
     use crate::chessmove::{ChessMove, ToChessMove};
     use crate::net::buffer::Buffer;
+    use crate::net::connection::connection::Connection;
     pub struct TestClient {
-        stream: TcpStream,
-        buffer: Buffer,
+        conn: Connection,
     }
 
     trait NetDataStream {
@@ -45,53 +45,52 @@ pub mod testgames {
             };
 
             let buffer = Buffer::new();
-            TestClient { stream, buffer }
+            let conn = Connection::new(stream);
+            TestClient { conn }
         }
 
         async fn send(&mut self) -> Result<(), Box<dyn Error>> {
-            sleep(Duration::from_millis(100)).await;
+            Timer::after(Duration::from_millis(100)).await;
 
             Ok(())
         }
     }
+    test! {
+        async fn testgame() {
+            env_logger::init();
+            let mut client = TestClient::new().await;
+            // send new game
+            let bytes: [u8; 4] = [10, 65, 32, 1];
+            client.conn.write_out(&bytes).await;
 
-    #[tokio::test]
-    async fn testgame() {
-        env_logger::init();
-        let mut client = TestClient::new().await;
-        // send new game
-        let bytes: [u8; 5] = [10, 32, 65, 32, 1];
-        client.buffer.write_frame(&bytes);
-        client.buffer.write(&mut client.stream).await;
+            let file = File::open("testgame").unwrap();
+            let moves = io::BufReader::new(file).lines();
+            for full_line in moves {
+                Timer::after(Duration::from_millis(100)).await;
+                match full_line {
+                    Ok(line) => {
+                        let without_comment: Vec<&str> = line.split("#").collect();
+                        let without_comment = without_comment.first().unwrap();
+                        let testmove: Vec<&str> = without_comment.split(" ").collect();
+                        let mov = testmove[0];
+                        let expected = testmove[1];
+                        let chessmove: Option<ChessMove> = mov.to_string().parse();
 
-        let file = File::open("testgame").unwrap();
-        let moves = io::BufReader::new(file).lines();
-        for full_line in moves {
-            sleep(Duration::from_millis(100)).await;
-            match full_line {
-                Ok(line) => {
-                    let without_comment: Vec<&str> = line.split("#").collect();
-                    let without_comment = without_comment.first().unwrap();
-                    let testmove: Vec<&str> = without_comment.split(" ").collect();
-                    let mov = testmove[0];
-                    let expected = testmove[1];
-                    let chessmove: Option<ChessMove> = mov.to_string().parse();
-
-                    match chessmove {
-                        Some(m) => {
-                            let data = m.to_bytes();
-                            debug!("sending: {:?}", data);
-                            client.buffer.write_frame(data.as_slice());
-                            client.buffer.write(&mut client.stream).await;
+                        match chessmove {
+                            Some(m) => {
+                                let data: Vec<u8> = std::iter::once(0xD).chain(m.to_bytes()).collect();
+                                debug!("sending: {:?}", data);
+                                client.conn.write_out(data.as_slice()).await;
+                            }
+                            None => todo!(),
                         }
-                        None => todo!(),
                     }
+                    Err(_) => todo!(),
                 }
-                Err(_) => todo!(),
             }
-        }
-        loop {
-            let _ = client.send().await;
+            loop {
+                let _ = client.send().await;
+            }
         }
     }
 }

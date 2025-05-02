@@ -9,4 +9,5 @@ smol-macros = "0.1.1"
 env_logger = "0.10.0"
 log = "0.4.20"
 bytes = "1.5.0"
+dashmap = "5"
 

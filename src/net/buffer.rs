@@ -1,6 +1,5 @@
-use crate::{net::*, pieces::Piece, tile::Tile, util::*};
+use crate::util::*;
 use core::fmt;
-use smol::net::*;
 use std::ops::{self, Range, RangeTo};
 
 use super::BUF_LEN;
@@ -8,7 +7,6 @@ use super::BUF_LEN;
 pub struct Buffer {
     pub buf: [u8; BUF_LEN],
     pub len: usize,
-    cursor: usize,
 }
 
 impl Buffer {
@@ -16,54 +14,6 @@ impl Buffer {
         Buffer {
             buf: [0; BUF_LEN],
             len: 0,
-            cursor: 0,
-        }
-    }
-
-    /* touches the cursor */
-    pub fn get_byte(&mut self) -> u8 {
-        let byte = self.buf[self.cursor];
-        self.cursor += 1;
-        byte
-    }
-
-    pub fn get_to_end(&mut self) -> &[u8] {
-        &self.buf[self.cursor..self.len]
-    }
-    pub async fn write(&mut self, conn: &mut TcpStream) -> bool {
-        trace!("Out Buffer: {} (Length: {})", &self, self.len);
-
-        //    let len = self.len;
-        //    let r = conn.write_all(&self[..len as usize]).await; // send data to client
-        //                                                         //
-        //    match r {
-        //        Ok(_) => {
-        //            debug!("wrote {} bytes", len);
-        //            true
-        //        }
-        //        Err(e) => {
-        //            error!("Error writing stream: {}", e);
-        //            false
-        //        }
-        //    }
-        true
-    }
-
-    /*
-     * write a list of all fields that have changed into the buffer for writing out
-     */
-    pub fn fields_to_buffer(&mut self, changes: &[(Tile, Option<Piece>)]) {
-        self.len = changes.len() * 2 + 1;
-        self[0] = (changes.len() * 2) as u8;
-
-        for (i, (tile, piece)) in changes.iter().enumerate() {
-            let tile_byte = tile.to_index();
-            let piece_byte = match piece {
-                None => 0,
-                Some(p) => p.typ as u8 | p.color as u8,
-            };
-            self[1 + (i * 2)] = tile_byte;
-            self[1 + (i * 2 + 1)] = piece_byte;
         }
     }
 }

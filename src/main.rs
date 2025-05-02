@@ -9,7 +9,6 @@ mod util;
 use std::io;
 
 use crate::net::server::Server;
-use smol::*;
 
 use smol_macros::main;
 

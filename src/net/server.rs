@@ -1,23 +1,36 @@
+use super::*;
 use crate::game::Chess;
+use dashmap::DashMap;
 use smol::lock::Mutex;
 use std::sync::Arc;
 
-use super::*;
-
 use bytes::BytesMut;
 use smol::net::*;
+
+pub struct ServerState {
+    pub games: Arc<DashMap<usize, Arc<Mutex<Chess>>>>,
+}
+
+impl ServerState {
+    pub fn new() -> Arc<ServerState> {
+        Arc::new(ServerState {
+            games: Arc::new(DashMap::new()),
+        })
+    }
+}
+
 pub struct Server {
     _listener: Option<TcpListener>,
-    pub chess: Arc<Mutex<Chess>>,
     clients: Vec<Arc<Mutex<Handler>>>,
+    pub state: Arc<ServerState>,
 }
 
 impl Server {
     pub fn new() -> Server {
         Server {
             _listener: None,
-            chess: Arc::new(Mutex::new(Chess::new())),
             clients: vec![],
+            state: ServerState::new(),
         }
     }
 
@@ -31,9 +44,10 @@ impl Server {
 
             let mut handler = Handler {
                 name: "Marian".to_string(),
-                chess: self.chess.clone(),
+                chess: None,
                 conn: Connection::new(socket),
                 buffer: BytesMut::zeroed(64),
+                server_state: self.state.clone(),
             };
 
             info!("handler initialized with name: {}", handler.name);

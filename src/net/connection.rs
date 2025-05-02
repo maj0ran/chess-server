@@ -1,6 +1,5 @@
 pub mod connection {
 
-    use crate::net::Command;
     use crate::net::BUF_LEN;
     use smol::io::AsyncReadExt;
     use smol::io::AsyncWriteExt;
