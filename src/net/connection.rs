@@ -1,11 +1,18 @@
 pub mod connection {
 
+    use crate::chessmove::ChessMove;
+    use crate::chessmove::ToChessMove;
+    use crate::net::Command;
+    use crate::net::NewGame;
+    use crate::net::Parameter;
+    use crate::net::PlayerSideRequest;
     use crate::net::BUF_LEN;
     use smol::io::AsyncReadExt;
     use smol::io::AsyncWriteExt;
     use smol::net::TcpStream;
 
     use super::super::buffer::Buffer;
+    use crate::net::*;
 
     pub struct Connection {
         pub stream: TcpStream,
@@ -20,14 +27,13 @@ pub mod connection {
             }
         }
         // reads a message from client into a buffer and parses it to a command
-        pub async fn read(&mut self) {
+        pub async fn read(&mut self) -> Option<Command> {
             self.read_frame().await; // TODO: error handling, see also inside read_frame
-            log::debug!("frame is ready in buffer!");
+            self.parse()
         }
 
         /* raw reading from a stream and writing into it's own buffer */
         pub async fn read_frame(&mut self) -> bool {
-            log::debug!("trying to read frame...");
             // read the first byte which indicates the length.
             // this value will be discarded and not be part of the read buffer
             let mut len = [0u8; 1];
@@ -37,8 +43,6 @@ pub mod connection {
                     if len as usize > BUF_LEN {
                         log::error!("message-length too big!: {} bytes", len);
                         return false;
-                    } else {
-                        log::trace!("receiving bytes: {}", len);
                     }
                     self.buf[0]
                 }
@@ -87,6 +91,78 @@ pub mod connection {
                     false
                 }
             }
+        }
+        /*
+         * parsing the byte-encoded content of the buffer.
+         * this will convert the data into a Command struct.
+         * The command can then later be executed by the chess server
+         */
+        fn parse(&self) -> Option<Command> {
+            let len = self.buf.len;
+            if len == 0 {
+                log::warn!("parse: zero-length message");
+                return None;
+            }
+
+            let content = &self.buf[..len];
+            let cmd = content[0];
+            let params = &content[1..len];
+            let params: Vec<&[u8]> = params.split(|c| *c == b' ' as u8).collect();
+
+            let ret = match cmd {
+                NEW_GAME => {
+                    if params.len() != 2 {
+                        log::error!("host: invalid number of params received!: {}", params.len());
+                        return None;
+                    }
+                    let mode = params[0].to_val();
+                    let side: u8 = params[1].to_val();
+                    let side = PlayerSideRequest::try_from(side);
+                    let side = match side {
+                        Ok(s) => s,
+                        Err(_) => {
+                            log::warn!("invalid side chosen! default to random");
+                            PlayerSideRequest::Random
+                        }
+                    };
+                    let new_game = NewGame::new(mode, side);
+                    Some(Command::NewGame(new_game))
+                }
+
+                JOIN_GAME => {
+                    if params.len() != 1 {
+                        log::error!("join: invalid number of params received!: {}", params.len());
+                        return None;
+                    }
+                    let game_name = params[0].to_val();
+                    Some(Command::JoinGame(game_name))
+                }
+                SET_NAME => Some(Command::Nickname(params[0].to_val())),
+                MAKE_MOVE => {
+                    // ingame Move
+                    let x = String::from_utf8(params[0].to_vec()).unwrap();
+                    let mov: Option<ChessMove> = x.parse();
+                    let mov = match mov {
+                        Some(m) => m,
+                        None => {
+                            log::warn!(
+                                "[NetClient] got MOVE opcode but could not parse chess move!"
+                            );
+                            return None;
+                        }
+                    };
+                    Some(Command::Move(1, mov))
+                }
+                _ => {
+                    log::error!("parse: invalid command");
+                    None
+                }
+            };
+            // we got a new message so we clear our read buffer
+            // //for i in 0..BUF_LEN {
+            //     self[i as usize] = 0;
+            // };
+            ret
         }
     }
 }

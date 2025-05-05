@@ -3,14 +3,11 @@ mod testclient;
 #[cfg(test)]
 pub mod testgames {
 
-    use log::debug;
     use std::error::Error;
     use std::fs::File;
     use std::io::{self, BufRead};
     use std::time::Duration;
 
-    use smol::io::AsyncReadExt;
-    use smol::io::AsyncWriteExt;
     use smol::net::TcpStream;
     use smol::Timer;
     use smol_macros::test;
@@ -79,7 +76,7 @@ pub mod testgames {
                         match chessmove {
                             Some(m) => {
                                 let data: Vec<u8> = std::iter::once(0xD).chain(m.to_bytes()).collect();
-                                debug!("sending: {:?}", data);
+                                log::debug!("sending: {:?}", data);
                                 client.conn.write_out(data.as_slice()).await;
                             }
                             None => todo!(),

@@ -1,28 +1,30 @@
 pub mod buffer;
 pub mod connection;
 pub mod frame;
+pub mod game;
 pub mod handler;
+pub mod manager;
 pub mod server;
+use smol::channel::Sender;
 use std::fmt;
 
-use crate::net::buffer::Buffer;
-use crate::net::connection::connection::Connection;
-use crate::net::handler::Handler;
+use crate::net::handler::NetClient;
+use crate::pieces::Piece;
+use crate::{chessmove::ChessMove, tile::Tile};
 
-pub use log::{debug, error, info, trace, warn};
-#[allow(unused)]
+pub type GameId = usize;
+pub type ClientId = usize;
 
 // bytes representing commands to server
-const NEW_GAME: u8 = 0xA;
-const JOIN_GAME: u8 = 0xB;
-const SET_NAME: u8 = 0xC;
-const MAKE_MOVE: u8 = 0xD;
-const UPDATE_BOARD: u8 = 0xE;
-
+pub const NEW_GAME: u8 = 0xA;
+pub const JOIN_GAME: u8 = 0xB;
+pub const SET_NAME: u8 = 0xC;
+pub const MAKE_MOVE: u8 = 0xD;
+pub const UPDATE_BOARD: u8 = 0xE;
 // read and write buffer have a static maximum length
 // we don't really need more for chess
 const BUF_LEN: usize = 64;
-pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
+pub type Result<T> = std::result::Result<T, ServerError>;
 
 #[derive(Debug)]
 pub struct NewGame {
@@ -51,9 +53,16 @@ pub enum Command {
     NewGame(NewGame),
     JoinGame(String),
     Nickname(String),
-    Move(String),
-    Update(Vec<String>),
+    Move(GameId, ChessMove),
+    Update(Vec<(Tile, Option<Piece>)>),
+    Register(Sender<ServerMessage>),
     _Invalid = 0xFF,
+}
+
+#[derive(Debug)]
+pub struct ServerMessage {
+    client_id: ClientId,
+    cmd: Command,
 }
 
 impl fmt::Display for Command {
@@ -62,9 +71,10 @@ impl fmt::Display for Command {
             Command::NewGame(_) => "New Game",
             Command::JoinGame(_) => "Join Game",
             Command::Nickname(_) => "Setting Nickname",
-            Command::Move(_) => "Make Chess Move",
+            Command::Move(_, _) => "Make Chess Move",
             Command::Update(_) => "Update Command",
             Command::_Invalid => "Invalid Comand sent!",
+            Command::Register(_) => todo!(),
         };
         write!(f, "{}", str)
     }
@@ -107,4 +117,43 @@ impl Parameter<u8> for &[u8] {
     fn to_val(&self) -> u8 {
         self[0]
     }
+}
+
+// --- Error Types ---
+#[derive(Debug, thiserror::Error)]
+pub enum ServerError {
+    #[error("Network I/O error: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("Client disconnected")]
+    ClientDisconnected,
+    #[error("Channel send error")]
+    SendError, // Could be more specific
+    #[error("Game logic error: {0}")]
+    GameError(String),
+    #[error("Invalid command: {0}")]
+    InvalidCommand(String),
+    #[error("Resource not found: {0}")]
+    NotFound(String),
+}
+
+// --- Client -> Server Commands ---
+#[derive(Debug)]
+pub enum ClientCommand {
+    CreateGame,
+    JoinGame(GameId),
+    SpectateGame(GameId),
+    MakeMove(String), // Placeholder for move data
+    ChatMessage(String),
+    // Add other commands like Resign, OfferDraw, etc.
+}
+
+// --- Server -> Client Messages ---
+
+// --- Message for GameManager Task ---
+// This wraps client commands with metadata needed by the manager
+#[derive(Debug)]
+pub enum ManagerMessage {
+    NewClient(ClientId, Sender<ServerMessage>), // Tell manager about a new client and how to talk back
+    ClientDisconnected(ClientId),
+    ClientCommand(ClientId, ClientCommand),
 }

@@ -1,7 +1,6 @@
-use log::{debug, info, trace, warn};
+use crate::{tile::Tile, util::*};
 
-use crate::{pieces::ChessPiece, tile::Tile, util::*};
-
+#[derive(Debug)]
 pub enum SpecialMove {
     QueenPromotion,
     KnightPromotion,
@@ -11,6 +10,7 @@ pub enum SpecialMove {
     QueensideCastle,
 }
 
+#[derive(Debug)]
 pub struct ChessMove {
     pub src: Tile,
     pub dst: Tile,
@@ -23,14 +23,14 @@ pub trait ToChessMove {
 
 impl ToChessMove for String {
     fn parse(&self) -> Option<ChessMove> {
-        trace!(
+        log::trace!(
             "converting {fg_blue}{style_bold}{}{fg_reset}{style_reset} to chess move",
             &self
         );
 
         // chess moves are 4 or 5 chars long (d2d4 or b7b8Q)
         if self.len() > 5 || self.len() < 4 {
-            warn!("could not parse chess move: {}", self);
+            log::warn!("could not parse chess move: {}", self);
             return None;
         }
 
@@ -41,7 +41,7 @@ impl ToChessMove for String {
         let src = match src {
             Some(t) => t,
             None => {
-                warn!("could not parse chess move: {}", self);
+                log::warn!("could not parse chess move: {}", self);
                 return None;
             }
         };
@@ -51,7 +51,7 @@ impl ToChessMove for String {
         let dst = match dst {
             Some(t) => t,
             None => {
-                warn!("could not parse chess move: {}", self);
+                log::warn!("could not parse chess move: {}", self);
                 return None;
             }
         };

@@ -183,16 +183,17 @@ impl Chess {
         }
     }
 
-    pub fn _get_fen(&self) {
+    pub fn get_fen(&self) -> String {
         let mut fen = String::new();
         for (i, t) in self.tiles.iter().enumerate() {
             if i % 8 == 0 {
                 fen = fen + "/";
             }
-            if let Some(_p) = t {
-                //     fen = fen + p.to_fen().to_string().as_str();
+            if let Some(p) = t {
+                fen = fen + p.to_string().as_str();
             }
         }
+        fen
     }
 
     /* get the tiles controlled by the piece on the given tile

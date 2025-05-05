@@ -1,192 +1,128 @@
-use smol::lock::Mutex;
-use std::ops::Deref;
-use std::sync::Arc;
+use smol::channel::{unbounded, Receiver, Sender};
+use smol::future;
+use smol::net::TcpStream;
 
-use bytes::BytesMut;
-
-use crate::chessmove::*;
-use crate::game::Chess;
 use crate::net::connection::connection::Connection;
-use crate::net::Command;
+use crate::net::ServerMessage;
 use crate::net::*;
 use crate::{pieces::Piece, tile::Tile};
 
-use super::server::ServerState;
-
-pub struct Handler {
-    pub name: String,
-    pub chess: Option<Arc<Mutex<Chess>>>,
-    pub conn: Connection,
-    pub buffer: BytesMut,
-    pub server_state: Arc<ServerState>,
+pub struct ServerInterface {
+    pub tx: Sender<ServerMessage>,
+    pub rx: Receiver<ServerMessage>,
 }
 
-impl Handler {
-    pub async fn run(&mut self) {
-        debug!("running handler: {}", self.name);
-        // handler switches between two tasks: listening to the net client and listening for
-        // processed moves on the server
-        //
-        /* wait for data on the connection; write into buffer on receive. */
-        let res = self.conn.read().await;
-        self.handle_request().await;
+pub struct NetClient {
+    id: ClientId,
+
+    pub conn: Connection,
+    pub srv: ServerInterface,
+}
+
+impl NetClient {
+    /*
+     * create a new network handler.
+     * this is the interface to the remote network client.
+     */
+    pub async fn new(id: ClientId, socket: TcpStream, tx: Sender<ServerMessage>) -> Self {
+        // 1-to-1 channel Client-Server
+        // client sents up the channel through which server communicates to client.
+        let (srv_tx, rx) = unbounded();
+        tx.send(ServerMessage {
+            client_id: id,
+            cmd: Command::Register(srv_tx),
+        })
+        .await;
+
+        NetClient {
+            id: 1,
+            conn: Connection::new(socket),
+            srv: ServerInterface { tx, rx },
+        }
     }
 
-    /*
-     * parsing the byte-encoded content of the buffer.
-     * this will convert the data into a Command struct.
-     * The command can then later be executed by the chess server
-     */
-    fn parse(&self) -> Option<Command> {
-        let len = self.conn.buf.len;
-        if len == 0 {
-            log::warn!("parse: zero-length message");
-            return None;
+    pub async fn send_message(&self, cmd: Command) -> Result<()> {
+        let client_id = self.id;
+        let msg = ServerMessage { client_id, cmd };
+        match self.srv.tx.send(msg).await {
+            Ok(_) => Ok(()),
+            Err(_) => todo!(),
         }
-
-        let content = &self.conn.buf[..len];
-        let cmd = content[0];
-        let params = &content[1..len];
-        log::info!("received msg! len: {}, cmd: {}", len, cmd);
-        let params: Vec<&[u8]> = params.split(|c| *c == b' ' as u8).collect();
-
-        let ret = match cmd {
-            NEW_GAME => {
-                if params.len() != 2 {
-                    log::error!("host: invalid number of params received!: {}", params.len());
-                    return None;
-                }
-                let mode = params[0].to_val();
-                let side: u8 = params[1].to_val();
-                let side = PlayerSideRequest::try_from(side);
-                let side = match side {
-                    Ok(s) => s,
-                    Err(_) => {
-                        log::warn!("invalid side chosen! default to random");
-                        PlayerSideRequest::Random
-                    }
-                };
-                let new_game = NewGame::new(mode, side);
-                Some(Command::NewGame(new_game))
-            }
-
-            JOIN_GAME => {
-                if params.len() != 1 {
-                    log::error!("join: invalid number of params received!: {}", params.len());
-                    return None;
-                }
-                let game_name = params[0].to_val();
-                Some(Command::JoinGame(game_name))
-            }
-            SET_NAME => Some(Command::Nickname(params[0].to_val())),
-            MAKE_MOVE => {
-                // ingame Move
-                let mov = params[0].to_val();
-                Some(Command::Move(mov))
-            }
-            _ => {
-                log::error!("parse: invalid command");
-                None
-            }
-        };
-        // we got a new message so we clear our read buffer
-        // //for i in 0..BUF_LEN {
-        //     self[i as usize] = 0;
-        // };
-        ret
     }
 
     /*
      * read from buffer and execute the given command
      */
-    async fn handle_request(&mut self) -> bool {
-        let cmd = self.parse(); // parse the current buffer state
+    pub async fn handle_request(&mut self, cmd: Option<Command>) -> bool {
         let cmd = match cmd {
             Some(c) => c,
             None => {
-                warn!("could not parse request!");
+                log::warn!("could not parse request!");
                 Command::_Invalid
             }
         };
 
-        let res = self.exec(cmd).await;
-        match res {
-            Ok(_) => {}
-            Err(e) => warn!("request handling failed!: {e}"),
+        match cmd {
+            Command::Update(items) => {
+                log::info!("[ClientHandler] received Update from GameManager");
+                let update_msg = NetClient::build_update_message(items);
+                self.conn.write_out(update_msg.as_slice()).await;
+            }
+            _ => {
+                let res = self.send_message(cmd).await;
+                log::info!("[ClientHandler] received Command from Network");
+                match res {
+                    Ok(_) => {}
+                    Err(e) => log::warn!("request handling failed!: {e}"),
+                }
+            }
         }
 
         true
     }
 
-    pub fn new_game(&mut self, new_game: NewGame) {
-        info!(
-            "New Game! (\"{}\" ({}) hoster side: {:?})",
-            new_game.name, new_game.mode, new_game.hoster_side
-        );
-    }
+    /*
+     * run the handler.
+     * this listens for new incoming messages on the network interface.
+     */
+    pub async fn run(&mut self) {
+        let conn = &mut self.conn;
+        let srv = &mut self.srv;
 
-    pub async fn make_move(&mut self, chessmove: ChessMove) -> Vec<(Tile, Option<Piece>)> {
-        if self.chess.is_none() {
-            log::warn!("not in a game!");
-            return vec![];
-        }
-
-        let mut chess = self.chess.as_ref().unwrap().lock().await;
-        let changes = chess.make_move(chessmove);
-
-        changes
-    }
-
-    pub fn join_game(&self, id: String) {
-        info!("Join Game. id: {:?}", id)
-    }
-    pub async fn exec(&mut self, cmd: Command) -> Result<()> {
-        match cmd {
-            Command::Nickname(name) => Ok(()),
-            Command::NewGame(new_game) => {
-                let chess = Arc::new(Mutex::new(Chess::new()));
-                self.server_state.games.insert(1, chess);
-                Ok(())
-            }
-            Command::JoinGame(id) => Ok(()),
-            Command::Move(mov) => {
-                let chessmove = match mov.parse() {
-                    Some(cm) => cm,
-                    None => {
-                        warn!("could not parse move: {}", mov);
-                        return Ok(());
-                    }
-                };
-                let mut chess = self.chess.as_ref().unwrap().lock().await;
-                let updated_tiles = chess.make_move(chessmove);
-                /* build response message */
-                let msg = build_update_message(updated_tiles);
-
-                self.conn.write_out(msg.as_slice()).await;
-
-                Ok(())
-            }
-            Command::_Invalid => {
-                warn!("Invalid Command received!: {:?}", cmd);
-                Ok(())
-            }
-            Command::Update(vec) => todo!(),
-        }
-    }
-}
-
-fn build_update_message(tiles: Vec<(Tile, Option<Piece>)>) -> Vec<u8> {
-    let mut msg = vec![UPDATE_BOARD]; // vector with update opcode as first entry
-    for u in &tiles {
-        let mut tile = u.0.to_string().as_bytes().to_owned();
-        let piece = match u.1 {
-            Some(p) => p.as_byte(),
-            None => 'X', // tile updated to 'empty'
+        let f1 = async {
+            let cmd = conn.read().await;
+            cmd
         };
 
-        msg.append(&mut tile);
-        msg.push(piece as u8); // each updated tile is 5 bytes
+        let f2 = async {
+            let msg = srv.rx.recv().await;
+            match msg {
+                Ok(msg) => Some(msg.cmd),
+                Err(e) => {
+                    log::warn!("[ClientHandler] error receiving channel message!: {}", e);
+                    None
+                }
+            }
+        };
+
+        let cmd = future::or(f1, f2).await;
+
+        self.handle_request(cmd).await;
     }
 
-    msg
+    fn build_update_message(tiles: Vec<(Tile, Option<Piece>)>) -> Vec<u8> {
+        let mut msg = vec![UPDATE_BOARD]; // vector with update opcode as first entry
+        for u in &tiles {
+            let mut tile = u.0.to_string().as_bytes().to_owned();
+            let piece = match u.1 {
+                Some(p) => p.as_byte(),
+                None => 'X', // tile updated to 'empty'
+            };
+
+            msg.append(&mut tile);
+            msg.push(piece as u8); // each updated tile is 5 bytes
+        }
+
+        msg
+    }
 }

@@ -1,60 +1,80 @@
+use super::manager::GameManager;
 use super::*;
-use crate::game::Chess;
-use dashmap::DashMap;
-use smol::lock::Mutex;
-use std::sync::Arc;
-
-use bytes::BytesMut;
+use smol::channel::{unbounded, Receiver, Sender};
 use smol::net::*;
 
-pub struct ServerState {
-    pub games: Arc<DashMap<usize, Arc<Mutex<Chess>>>>,
+pub struct Client {
+    pub id: ClientId,
+    pub tx: Sender<ServerMessage>,
 }
 
-impl ServerState {
-    pub fn new() -> Arc<ServerState> {
-        Arc::new(ServerState {
-            games: Arc::new(DashMap::new()),
-        })
+impl Client {
+    pub fn new(tx: Sender<ServerMessage>) -> Self {
+        Client { id: 1, tx }
     }
 }
 
 pub struct Server {
     _listener: Option<TcpListener>,
-    clients: Vec<Arc<Mutex<Handler>>>,
-    pub state: Arc<ServerState>,
+    clients: Vec<Client>,
+
+    client_tx: Sender<ServerMessage>,
+    game_manager_rx: Receiver<ServerMessage>,
+
+    client_id_counter: ClientId,
 }
 
 impl Server {
     pub fn new() -> Server {
+        let (srv_tx, srv_rx) = unbounded();
         Server {
             _listener: None,
             clients: vec![],
-            state: ServerState::new(),
+            client_tx: srv_tx,
+            game_manager_rx: srv_rx,
+            client_id_counter: 0,
         }
     }
 
-    pub async fn listen(&mut self) -> Result<()> {
-        info!("Listening...");
+    pub async fn create_client(
+        &mut self,
+        socket: TcpStream,
+        tx_channel: Sender<ServerMessage>,
+    ) -> NetClient {
+        self.client_id_counter += 1;
+        NetClient::new(self.client_id_counter, socket, tx_channel).await
+    }
+
+    /*
+     * run the server.
+     * this creates the GameManager task and listens for incoming connections,
+     * which will then converted to client tasks.
+     */
+    pub async fn run(&mut self) -> Result<()> {
+        // N-to-1 channel Client-Server
+        // server sets up the channel through which clients communicate to server.
+        let (client_tx, srv_rx) = unbounded();
+
+        let mut game_manager = GameManager::new(srv_rx);
+        smol::spawn(async move {
+            loop {
+                game_manager.run().await;
+            }
+        })
+        .detach();
+
+        log::info!("start Listening.");
         let listener = TcpListener::bind("127.0.0.1:7878").await?;
 
         loop {
             let (socket, addr) = listener.accept().await?;
-            info!("got connection from {}!", addr);
+            let mut net_client = self.create_client(socket, client_tx.clone()).await;
 
-            let mut handler = Handler {
-                name: "Marian".to_string(),
-                chess: None,
-                conn: Connection::new(socket),
-                buffer: BytesMut::zeroed(64),
-                server_state: self.state.clone(),
-            };
-
-            info!("handler initialized with name: {}", handler.name);
+            log::info!("accepted connection from {}!", addr);
 
             smol::spawn(async move {
                 loop {
-                    handler.run().await;
+                    net_client.run().await;
                 }
             })
             .detach();

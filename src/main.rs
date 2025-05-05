@@ -17,7 +17,7 @@ main! {
         env_logger::init();
 
         let mut server = Server::new();
-        let _ = server.listen().await;
+        let _ = server.run().await;
 
         println!("Exited Gracefully.");
         Ok(())
