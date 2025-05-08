@@ -1,6 +1,6 @@
 use super::manager::GameManager;
 use super::*;
-use smol::channel::{unbounded, Receiver, Sender};
+use smol::channel::{unbounded, Sender};
 use smol::net::*;
 
 pub struct Client {
@@ -16,22 +16,14 @@ impl Client {
 
 pub struct Server {
     _listener: Option<TcpListener>,
-    clients: Vec<Client>,
-
-    client_tx: Sender<ServerMessage>,
-    game_manager_rx: Receiver<ServerMessage>,
 
     client_id_counter: ClientId,
 }
 
 impl Server {
     pub fn new() -> Server {
-        let (srv_tx, srv_rx) = unbounded();
         Server {
             _listener: None,
-            clients: vec![],
-            client_tx: srv_tx,
-            game_manager_rx: srv_rx,
             client_id_counter: 0,
         }
     }
@@ -63,7 +55,7 @@ impl Server {
         })
         .detach();
 
-        log::info!("start Listening.");
+        log::info!("start listening.");
         let listener = TcpListener::bind("127.0.0.1:7878").await?;
 
         loop {

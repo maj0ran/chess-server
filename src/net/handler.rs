@@ -28,11 +28,17 @@ impl NetClient {
         // 1-to-1 channel Client-Server
         // client sents up the channel through which server communicates to client.
         let (srv_tx, rx) = unbounded();
-        tx.send(ServerMessage {
-            client_id: id,
-            cmd: Command::Register(srv_tx),
-        })
-        .await;
+        let res = tx
+            .send(ServerMessage {
+                client_id: id,
+                cmd: Command::Register(srv_tx),
+            })
+            .await;
+
+        match res {
+            Ok(_) => {}
+            Err(e) => log::error!("got new client but failed to register with game manager: {e}"),
+        }
 
         NetClient {
             id: 1,
@@ -64,13 +70,13 @@ impl NetClient {
 
         match cmd {
             Command::Update(items) => {
-                log::info!("[ClientHandler] received Update from GameManager");
+                log::info!("received Update from GameManager");
                 let update_msg = NetClient::build_update_message(items);
                 self.conn.write_out(update_msg.as_slice()).await;
             }
             _ => {
                 let res = self.send_message(cmd).await;
-                log::info!("[ClientHandler] received Command from Network");
+                log::info!("received Command from Network");
                 match res {
                     Ok(_) => {}
                     Err(e) => log::warn!("request handling failed!: {e}"),

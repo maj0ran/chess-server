@@ -3,9 +3,8 @@ pub mod connection {
     use crate::chessmove::ChessMove;
     use crate::chessmove::ToChessMove;
     use crate::net::Command;
-    use crate::net::NewGame;
+    use crate::net::NewGameParams;
     use crate::net::Parameter;
-    use crate::net::PlayerSideRequest;
     use crate::net::BUF_LEN;
     use smol::io::AsyncReadExt;
     use smol::io::AsyncWriteExt;
@@ -111,31 +110,31 @@ pub mod connection {
 
             let ret = match cmd {
                 opcode::NEW_GAME => {
-                    if params.len() != 2 {
+                    if params.len() != 3 {
                         log::error!("host: invalid number of params received!: {}", params.len());
                         return None;
                     }
-                    let mode = params[0].to_val();
-                    let side: u8 = params[1].to_val();
-                    let side = PlayerSideRequest::try_from(side);
-                    let side = match side {
-                        Ok(s) => s,
-                        Err(_) => {
-                            log::warn!("invalid side chosen! default to random");
-                            PlayerSideRequest::Random
-                        }
+                    let mode = params[0].to_param();
+                    let time = params[1].to_param();
+                    let time_inc = params[2].to_param();
+                    let game_params = NewGameParams {
+                        mode,
+                        time,
+                        time_inc,
                     };
-                    let new_game = NewGame::new(mode, side);
-                    Some(Command::NewGame(new_game))
+                    Some(Command::NewGame(game_params))
                 }
 
                 opcode::JOIN_GAME => {
-                    if params.len() != 1 {
+                    if params.len() != 2 {
                         log::error!("join: invalid number of params received!: {}", params.len());
                         return None;
                     }
-                    let game_id = params[0].to_val();
-                    Some(Command::JoinGame(game_id))
+                    let game_id = params[0].to_param();
+                    let side = params[1].to_param();
+
+                    let join_params = JoinGameParams { game_id, side };
+                    Some(Command::JoinGame(join_params))
                 }
                 opcode::MAKE_MOVE => {
                     // ingame Move
