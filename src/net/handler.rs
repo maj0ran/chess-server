@@ -111,7 +111,7 @@ impl NetClient {
     }
 
     fn build_update_message(tiles: Vec<(Tile, Option<Piece>)>) -> Vec<u8> {
-        let mut msg = vec![UPDATE_BOARD]; // vector with update opcode as first entry
+        let mut msg = vec![opcode::UPDATE_BOARD]; // vector with update opcode as first entry
         for u in &tiles {
             let mut tile = u.0.to_string().as_bytes().to_owned();
             let piece = match u.1 {

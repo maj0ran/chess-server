@@ -110,7 +110,7 @@ pub mod connection {
             let params: Vec<&[u8]> = params.split(|c| *c == b' ' as u8).collect();
 
             let ret = match cmd {
-                NEW_GAME => {
+                opcode::NEW_GAME => {
                     if params.len() != 2 {
                         log::error!("host: invalid number of params received!: {}", params.len());
                         return None;
@@ -129,16 +129,15 @@ pub mod connection {
                     Some(Command::NewGame(new_game))
                 }
 
-                JOIN_GAME => {
+                opcode::JOIN_GAME => {
                     if params.len() != 1 {
                         log::error!("join: invalid number of params received!: {}", params.len());
                         return None;
                     }
-                    let game_name = params[0].to_val();
-                    Some(Command::JoinGame(game_name))
+                    let game_id = params[0].to_val();
+                    Some(Command::JoinGame(game_id))
                 }
-                SET_NAME => Some(Command::Nickname(params[0].to_val())),
-                MAKE_MOVE => {
+                opcode::MAKE_MOVE => {
                     // ingame Move
                     let x = String::from_utf8(params[0].to_vec()).unwrap();
                     let mov: Option<ChessMove> = x.parse();

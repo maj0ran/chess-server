@@ -15,12 +15,24 @@ use crate::{chessmove::ChessMove, tile::Tile};
 pub type GameId = usize;
 pub type ClientId = usize;
 
-// bytes representing commands to server
-pub const NEW_GAME: u8 = 0xA;
-pub const JOIN_GAME: u8 = 0xB;
-pub const SET_NAME: u8 = 0xC;
-pub const MAKE_MOVE: u8 = 0xD;
-pub const UPDATE_BOARD: u8 = 0xE;
+/*
+ * we do NOT use an enum here, because rust safety concerns disallow us to map conveniently u8 <->
+ * enum in both directions as in C. Because the mapping is non-exhaustive (not all u8 values map to
+ * an opcode), a cast from u8 to enum could lead to undefined behavior. This is only fixed by
+ * defining the mapping two times, first in enum OpCode { FOO = 1 } and second in impl From<u8> ...
+ * with a match for every u8 => OpCode. This duplicated definition is ugly and error-prone. Using a
+ * crate that gives us an magic macro would be another choice, but I want to minimize my
+ * dependencies.
+ * This solution seems to be the least invasive, and stupid enough for code that
+ * doesn't want to hate itself.
+ */
+mod opcode {
+    pub const NEW_GAME: u8 = 0xA;
+    pub const JOIN_GAME: u8 = 0xB;
+    pub const MAKE_MOVE: u8 = 0xC;
+    pub const UPDATE_BOARD: u8 = 0xD;
+}
+
 // read and write buffer have a static maximum length
 // we don't really need more for chess
 const BUF_LEN: usize = 64;
