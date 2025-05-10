@@ -13,7 +13,6 @@ pub mod testgames {
     use smol_macros::test;
 
     use crate::chessmove::{ChessMove, ToChessMove};
-    use crate::net::buffer::Buffer;
     use crate::net::connection::connection::Connection;
     pub struct TestClient {
         conn: Connection,
@@ -41,7 +40,6 @@ pub mod testgames {
                 Err(_) => panic!(),
             };
 
-            let buffer = Buffer::new();
             let conn = Connection::new(stream);
             TestClient { conn }
         }
