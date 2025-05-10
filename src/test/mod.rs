@@ -68,7 +68,7 @@ pub mod testgames {
                         let without_comment = without_comment.first().unwrap();
                         let testmove: Vec<&str> = without_comment.split(" ").collect();
                         let mov = testmove[0];
-                        let expected = testmove[1];
+                      //  let expected = testmove[1];
                         let chessmove: Option<ChessMove> = mov.to_string().parse();
 
                         match chessmove {
