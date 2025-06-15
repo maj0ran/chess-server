@@ -3,14 +3,14 @@ use super::*;
 use smol::channel::{unbounded, Sender};
 use smol::net::*;
 
-pub struct Client {
+pub struct ClientHandler {
     pub id: ClientId,
-    pub tx: Sender<ServerMessage>,
+    pub tx: Sender<ServerToClientMessage>,
 }
 
-impl Client {
-    pub fn new(tx: Sender<ServerMessage>) -> Self {
-        Client { id: 1, tx }
+impl ClientHandler {
+    pub fn new(tx: Sender<ServerToClientMessage>) -> Self {
+        ClientHandler { id: 1, tx }
     }
 }
 
@@ -31,7 +31,7 @@ impl Server {
     pub async fn create_client(
         &mut self,
         socket: TcpStream,
-        tx_channel: Sender<ServerMessage>,
+        tx_channel: Sender<ClientToServerMessage>,
     ) -> NetClient {
         self.client_id_counter += 1;
         NetClient::new(self.client_id_counter, socket, tx_channel).await
@@ -60,6 +60,7 @@ impl Server {
 
         loop {
             let (socket, addr) = listener.accept().await?;
+            // each client gets its own tx, all of them are bound to srv_rx
             let mut net_client = self.create_client(socket, client_tx.clone()).await;
 
             log::info!("accepted connection from {}!", addr);

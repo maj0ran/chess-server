@@ -4,17 +4,17 @@ use crate::net::*;
 use smol::channel::Receiver;
 use std::collections::HashMap;
 
-use super::server::Client;
+use super::server::ClientHandler;
 
 pub struct GameManager {
     games: HashMap<GameId, OnlineGame>,
-    pub clients: HashMap<ClientId, Client>, // Maps ClientId to their outbound message channel
-    rx: Receiver<ServerMessage>,            // receives messages from clients
+    pub clients: HashMap<ClientId, ClientHandler>, // Maps ClientId to their outbound message channel
+    rx: Receiver<ClientToServerMessage>,           // receives messages from clients
     next_game_id: GameId,
 }
 
 impl GameManager {
-    pub fn new(recv: Receiver<ServerMessage>) -> Self {
+    pub fn new(recv: Receiver<ClientToServerMessage>) -> Self {
         GameManager {
             games: HashMap::new(),
             clients: HashMap::new(),
@@ -63,8 +63,18 @@ impl GameManager {
                     match msg.cmd {
                         Command::NewGame(game_params) => {
                             let game = self.create_game(game_params);
-                            log::info!("created game with ID: {}", game.id);
-                            self.games.insert(game.id, game);
+                            let id = game.id;
+                            log::info!("created game with ID: {}", id);
+                            self.games.insert(id, game);
+                            // inform clients of new game
+                            for c in &self.clients {
+                                let _ =
+                                    c.1.tx
+                                        .send(ServerToClientMessage {
+                                            msg: Response::GameCreated(id, client_id),
+                                        })
+                                        .await;
+                            }
                         }
                         Command::JoinGame(join_params) => {
                             let game_id = join_params.game_id;
@@ -79,7 +89,24 @@ impl GameManager {
                             };
                             let side = join_params.side;
                             // TODO: return value should be response to client
-                            let _ = game.add_player(client_id, side);
+                            let res = game.add_player(client_id, side);
+                            match res {
+                                Ok(side) => {
+                                    let response = ServerToClientMessage {
+                                        msg: Response::GameJoined(game_id, client_id, side),
+                                    };
+                                    let c = self.clients.get(&client_id);
+                                    match c {
+                                        Some(c) => _ = c.tx.send(response).await,
+                                        None => {
+                                            log::warn!(
+                                                "sending to a client that is not registered!"
+                                            )
+                                        }
+                                    }
+                                }
+                                Err(e) => log::warn!("error at adding player: {e}"),
+                            }
                         }
 
                         Command::Move(game_id, mov) => {
@@ -89,9 +116,8 @@ impl GameManager {
                                     let changes = game.chess.make_move(mov);
                                     let clients = game.get_participants();
                                     for c in clients {
-                                        let msg = ServerMessage {
-                                            client_id: c,
-                                            cmd: Command::Update(changes.clone()),
+                                        let msg = ServerToClientMessage {
+                                            msg: Response::Update(changes.clone()),
                                         };
                                         match self.clients.get(&c).unwrap().tx.send(msg).await {
                                             Ok(_) => {
@@ -110,11 +136,8 @@ impl GameManager {
                                 }
                             }
                         }
-                        Command::Update(_) => log::warn!(
-                            "got update message from client but only server should send this."
-                        ),
                         Command::Register(tx) => {
-                            let client = Client::new(tx);
+                            let client = ClientHandler::new(tx);
                             log::info!("client registered with ID: {}", client.id);
                             self.clients.insert(client_id, client);
                         }

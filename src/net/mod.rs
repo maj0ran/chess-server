@@ -31,10 +31,13 @@ const BUF_LEN: usize = 64;
  * doesn't want to hate itself.
  */
 mod opcode {
+    pub const LOGIN: u8 = 0xF0;
     pub const NEW_GAME: u8 = 0xA;
-    pub const JOIN_GAME: u8 = 0xB;
     pub const MAKE_MOVE: u8 = 0xC;
-    pub const UPDATE_BOARD: u8 = 0xD;
+
+    pub const GAME_CREATED: u8 = 0x81;
+    pub const JOIN_GAME: u8 = 0x82;
+    pub const BOARD_UPDATED: u8 = 0x82;
 }
 
 /*
@@ -51,7 +54,7 @@ pub struct NewGameParams {
 #[derive(Debug)]
 pub struct JoinGameParams {
     pub game_id: u32,
-    pub side: PlayerSideRequest,
+    pub side: PlayerRole,
 }
 
 struct _Response {
@@ -62,17 +65,28 @@ struct _Response {
 #[derive(Debug)]
 #[repr(u8)]
 pub enum Command {
-    Register(Sender<ServerMessage>),
+    Register(Sender<ServerToClientMessage>),
 
     NewGame(NewGameParams),
     JoinGame(JoinGameParams),
     Move(GameId, ChessMove),
-    Update(Vec<(Tile, Option<Piece>)>),
     _Invalid = 0xFF,
 }
 
 #[derive(Debug)]
-pub struct ServerMessage {
+pub struct ServerToClientMessage {
+    msg: Response,
+}
+
+#[derive(Debug)]
+#[repr(u8)]
+pub enum Response {
+    Update(Vec<(Tile, Option<Piece>)>) = 0x81,
+    GameCreated(GameId, ClientId) = 0x82,
+    GameJoined(GameId, ClientId, PlayerRole) = 0x83,
+}
+#[derive(Debug)]
+pub struct ClientToServerMessage {
     client_id: ClientId,
     cmd: Command,
 }
@@ -83,7 +97,6 @@ impl fmt::Display for Command {
             Command::NewGame(_) => "New Game",
             Command::JoinGame(_) => "Join Game",
             Command::Move(_, _) => "Make Chess Move",
-            Command::Update(_) => "Update Command",
             Command::_Invalid => "Invalid Comand sent!",
             Command::Register(_) => todo!(),
         };
@@ -93,7 +106,7 @@ impl fmt::Display for Command {
 
 #[repr(u8)]
 #[derive(Debug)]
-pub enum PlayerSideRequest {
+pub enum PlayerRole {
     Black = 0,
     White = 1,
     Random = 2,
@@ -124,15 +137,15 @@ impl Parameter<u32> for &[u8] {
     }
 }
 
-impl Parameter<PlayerSideRequest> for &[u8] {
-    fn to_param(&self) -> PlayerSideRequest {
+impl Parameter<PlayerRole> for &[u8] {
+    fn to_param(&self) -> PlayerRole {
         match self[0] {
-            0 => PlayerSideRequest::Black,
-            1 => PlayerSideRequest::White,
-            2 => PlayerSideRequest::Random,
-            3 => PlayerSideRequest::Spectator,
-            4 => PlayerSideRequest::Both,
-            _ => PlayerSideRequest::Spectator,
+            0 => PlayerRole::Black,
+            1 => PlayerRole::White,
+            2 => PlayerRole::Random,
+            3 => PlayerRole::Spectator,
+            4 => PlayerRole::Both,
+            _ => PlayerRole::Spectator,
         }
     }
 }

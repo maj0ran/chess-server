@@ -26,25 +26,31 @@ impl OnlineGame {
         }
     }
 
-    pub fn add_player(&mut self, client_id: ClientId, side: PlayerSideRequest) -> Result<()> {
+    pub fn add_player(&mut self, client_id: ClientId, side: PlayerRole) -> Result<PlayerRole> {
         match side {
-            PlayerSideRequest::Black => {
+            PlayerRole::Black => {
                 if let Some(_) = self.black_player {
-                    Err(std::io::Error::new(ErrorKind::Other, "invalid side"))
+                    Err(std::io::Error::new(
+                        ErrorKind::Other,
+                        "black side already taken",
+                    ))
                 } else {
                     self.black_player = Some(client_id);
-                    Ok(())
+                    Ok(PlayerRole::Black)
                 }
             }
-            PlayerSideRequest::White => {
+            PlayerRole::White => {
                 if let Some(_) = self.white_player {
-                    Err(std::io::Error::new(ErrorKind::Other, "invalid side"))
+                    Err(std::io::Error::new(
+                        ErrorKind::Other,
+                        "white side already taken",
+                    ))
                 } else {
                     self.white_player = Some(client_id);
-                    Ok(())
+                    Ok(PlayerRole::White)
                 }
             }
-            PlayerSideRequest::Random => {
+            PlayerRole::Random => {
                 if self.white_player != None && self.black_player != None {
                     return Err(std::io::Error::new(ErrorKind::Other, "game already full"));
                 };
@@ -67,19 +73,19 @@ impl OnlineGame {
                 match side {
                     false => {
                         self.black_player = Some(client_id);
-                        Ok(())
+                        Ok(PlayerRole::Black)
                     }
                     true => {
                         self.white_player = Some(client_id);
-                        Ok(())
+                        Ok(PlayerRole::White)
                     }
                 }
             }
-            PlayerSideRequest::Spectator => {
+            PlayerRole::Spectator => {
                 self.spectators.push(client_id);
-                Ok(())
+                Ok(PlayerRole::Spectator)
             }
-            PlayerSideRequest::Both => todo!(),
+            PlayerRole::Both => todo!(),
         }
     }
 
