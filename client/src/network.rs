@@ -99,7 +99,7 @@ pub async fn receive_thread(mut conn: Connection, resp_tx: Sender<ServerMessage>
     log::info!("Receive thread shutting down");
 }
 
-use crate::state::{ClientState, GameDetailsProxy, Overlay, Screen};
+use crate::state::{ClientState, GameDetails, Overlay, Screen};
 use bevy::prelude::*;
 use std::collections::HashMap;
 
@@ -113,7 +113,7 @@ pub fn poll_network(
         state.menu_state.is_loading = false;
         match event {
             ServerMessage::GamesList(games) => {
-                let mut games_map: HashMap<GameId, Option<GameDetailsProxy>> = HashMap::new();
+                let mut games_map: HashMap<GameId, Option<GameDetails>> = HashMap::new();
                 for &game_id in &games {
                     log::debug!("Querying for game {}", game_id);
                     state.network.send(ClientMessage::QueryGameDetails(game_id));
@@ -160,7 +160,7 @@ pub fn poll_network(
                 log::info!("Stalemate!");
             }
             ServerMessage::GameDetails(game_id, white_id, black_id, time, inc) => {
-                let game_details = GameDetailsProxy {
+                let game_details = GameDetails {
                     white_player: white_id,
                     black_player: black_id,
                     _time: time,

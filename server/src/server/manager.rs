@@ -1,5 +1,5 @@
 use crate::chess::chess::Chess;
-use crate::server::chessgame::{ChessGame, ChessGameState, GameDetails};
+use crate::server::chessgame::{ChessGame, ChessGameState};
 use chess_core::*;
 use smol::channel::{Receiver, Sender};
 use std::collections::HashMap;
@@ -59,14 +59,12 @@ impl GameManager {
         ChessGame {
             id,
             chess: Chess::new(),
-            details: GameDetails {
-                _started: false,
-                white_player: None,
-                black_player: None,
-                spectators: vec![],
-                _time: game_params.time,
-                _time_inc: game_params.time_inc,
-            },
+            _started: false,
+            white_player: None,
+            black_player: None,
+            spectators: vec![],
+            _time: game_params.time,
+            _time_inc: game_params.time_inc,
         }
     }
 
@@ -250,15 +248,14 @@ impl GameManager {
         let game = self.games.get(&game_id);
         match game {
             Some(game) => {
-                let info = &game.details;
                 if let Some(c) = self.clients.get(&client_id) {
-                    let white_id = info.white_player;
-                    let black_id = info.black_player;
-                    let time = info._time;
-                    let inc = info._time_inc;
                     let _ =
                         c.tx.send(ServerMessage::GameDetails(
-                            game_id, white_id, black_id, time, inc,
+                            game_id,
+                            game.white_player,
+                            game.black_player,
+                            game._time,
+                            game._time_inc,
                         ))
                         .await;
                 }

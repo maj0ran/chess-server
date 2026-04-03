@@ -23,7 +23,7 @@ pub enum Overlay {
 }
 
 #[derive(Debug, Clone)]
-pub struct GameDetailsProxy {
+pub struct GameDetails {
     pub white_player: Option<usize>,
     pub black_player: Option<usize>,
     pub _time: u32,
@@ -31,7 +31,7 @@ pub struct GameDetailsProxy {
 }
 
 pub struct MenuState {
-    pub games: HashMap<GameId, Option<GameDetailsProxy>>,
+    pub games: HashMap<GameId, Option<GameDetails>>,
     pub selected_game: Option<GameId>,
     pub is_loading: bool,
     pub error_msg: Option<String>,
