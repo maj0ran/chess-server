@@ -226,7 +226,7 @@ pub enum ServerMessage {
     IllegalMove(ChessError),
     GamesList(Vec<GameId>),
     GameDetails(GameId, Option<ClientId>, Option<ClientId>, u32, u32),
-    Checkmate(GameId, ClientId, ChessColor),
+    Checkmate(GameId, ChessColor),
     Stalemate(GameId),
     LoginAccepted(ClientId),
 }
@@ -250,7 +250,7 @@ impl ServerMessage {
             ServerMessage::Update(_) => Self::BOARD_UPDATED,
             ServerMessage::IllegalMove(_) => Self::ILLEGAL_MOVE,
             ServerMessage::GamesList(_) => Self::GAMES_LIST,
-            ServerMessage::Checkmate(_, _, _) => Self::CHECKMATE,
+            ServerMessage::Checkmate(_, _) => Self::CHECKMATE,
             ServerMessage::Stalemate(_) => Self::STALEMATE,
             ServerMessage::GameDetails(_, _, _, _, _) => Self::GAME_DETAILS,
             ServerMessage::LoginAccepted(_) => Self::LOGIN_ACCEPTED,
@@ -305,13 +305,12 @@ impl NetMessage for ServerMessage {
             }
             Self::CHECKMATE => {
                 let game_id = reader.read_u32_le()?;
-                let client_id = reader.read_u32_le()? as usize;
-                let winner_color = if reader.read_u8()? == 0 {
+                let is_checkmated = if reader.read_u8()? == 0 {
                     ChessColor::Black
                 } else {
                     ChessColor::White
                 };
-                Ok(ServerMessage::Checkmate(game_id, client_id, winner_color))
+                Ok(ServerMessage::Checkmate(game_id, is_checkmated))
             }
             Self::STALEMATE => {
                 let game_id = reader.read_u32_le()?;
@@ -398,11 +397,10 @@ impl NetMessage for ServerMessage {
                 }
                 data
             }
-            ServerMessage::Checkmate(game_id, client_id, winner_color) => {
+            ServerMessage::Checkmate(game_id, is_checkmated) => {
                 let mut data = vec![Self::CHECKMATE];
                 data.extend_from_slice(&game_id.to_le_bytes());
-                data.extend_from_slice(&(*client_id as u32).to_le_bytes());
-                data.push(match winner_color {
+                data.push(match is_checkmated {
                     ChessColor::Black => 0,
                     ChessColor::White => 1,
                 });

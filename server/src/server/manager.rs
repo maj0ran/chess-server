@@ -1,5 +1,5 @@
 use crate::chess::chess::Chess;
-use crate::server::chessgame::{ChessGame, GameDetails};
+use crate::server::chessgame::{ChessGame, ChessGameState, GameDetails};
 use chess_core::*;
 use smol::channel::{Receiver, Sender};
 use std::collections::HashMap;
@@ -189,25 +189,9 @@ impl GameManager {
                 return;
             }
         };
-
-        let info = &game.details;
-        // check if it's even the turn of this client
-        let is_current_player = match game.chess.get_active_player() {
-            ChessColor::White => info.white_player == Some(client_id),
-            ChessColor::Black => info.black_player == Some(client_id),
-        };
-
-        if !is_current_player {
-            if let Some(c) = self.clients.get(&client_id) {
-                let _ =
-                    c.tx.send(ServerMessage::IllegalMove(ChessError::NotYourTurn))
-                        .await;
-            }
-            return;
-        }
-
-        match game.chess.make_move(mov) {
-            // a legal move was made and accepted
+        match game.make_move(mov, client_id) {
+            // a legal move was made and accepted.
+            // Send the updates squares to all clients in the game.
             Ok(changes) => {
                 let clients = game.get_participants();
                 for c in &clients {
@@ -220,33 +204,31 @@ impl GameManager {
                         let _ = handler.tx.send(msg).await;
                     }
                 }
-
-                // Check for game over
-                if game.chess.is_checkmate() {
-                    let loser_color = game.chess.get_active_player();
-                    let winner_color = !loser_color;
-                    let loser_id = match loser_color {
-                        ChessColor::White => game.details.white_player.unwrap(),
-                        ChessColor::Black => game.details.black_player.unwrap(),
-                    };
-                    for c in &clients {
-                        if let Some(handler) = self.clients.get(&c) {
-                            let _ = handler
-                                .tx
-                                .send(ServerMessage::Checkmate(game_id, loser_id, winner_color))
-                                .await;
+                // The move has been executed. Now we check if the game is over,
+                // e.g., checkmate or stalemate.
+                match game.get_game_state() {
+                    ChessGameState::Running => {}
+                    ChessGameState::Checkmate(is_checkmated) => {
+                        for c in &clients {
+                            if let Some(handler) = self.clients.get(&c) {
+                                let _ = handler
+                                    .tx
+                                    .send(ServerMessage::Checkmate(game_id, is_checkmated))
+                                    .await;
+                            }
                         }
                     }
-                } else if game.chess.is_stalemate() {
-                    for c in &clients {
-                        if let Some(handler) = self.clients.get(&c) {
-                            let _ = handler.tx.send(ServerMessage::Stalemate(game_id)).await;
+                    ChessGameState::Stalemate => {
+                        for c in &clients {
+                            if let Some(handler) = self.clients.get(&c) {
+                                let _ = handler.tx.send(ServerMessage::Stalemate(game_id)).await;
+                            }
                         }
                     }
                 }
             }
+            // The move was illegal and thus rejected
             Err(e) => {
-                // an illegal move was made and rejected
                 if let Some(c) = self.clients.get(&client_id) {
                     let _ = c.tx.send(ServerMessage::IllegalMove(e)).await;
                 }

@@ -1,4 +1,5 @@
 use crate::chess::chess::Chess;
+use crate::chess::pieces::Piece;
 use chess_core::*;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -166,4 +167,39 @@ impl ChessGame {
         }
         participants
     }
+
+    pub fn make_move(
+        &mut self,
+        mov: ChessMove,
+        client_id: ClientId,
+    ) -> ChessResult<(Vec<(Tile, Option<Piece>)>)> {
+        let is_current_player = match self.chess.get_active_player() {
+            ChessColor::White => self.details.white_player == Some(client_id),
+            ChessColor::Black => self.details.black_player == Some(client_id),
+        };
+
+        if !is_current_player {
+            return Err(ChessError::NotYourTurn);
+        }
+        match self.chess.make_move(mov) {
+            Ok(ret) => Ok(ret),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub fn get_game_state(&mut self) -> ChessGameState {
+        if self.chess.is_checkmate() {
+            return ChessGameState::Checkmate(self.chess.get_active_player());
+        }
+        if self.chess.is_stalemate() {
+            return ChessGameState::Stalemate;
+        }
+        ChessGameState::Running
+    }
+}
+
+pub enum ChessGameState {
+    Running,
+    Checkmate(ChessColor),
+    Stalemate,
 }
