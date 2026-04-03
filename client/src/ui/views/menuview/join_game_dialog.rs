@@ -20,6 +20,11 @@ pub fn setup_join_dialog(mut commands: Commands) {
             spawn_button!(p, "Black", JoinAction::Select(UserRoleSelection::Black));
             spawn_button!(p, "Random", JoinAction::Select(UserRoleSelection::Random));
             spawn_button!(p, "Both", JoinAction::Select(UserRoleSelection::Both));
+            spawn_button!(
+                p,
+                "Spectator",
+                JoinAction::Select(UserRoleSelection::Spectator)
+            );
 
             spawn_button!(p, "Cancel", JoinAction::Cancel, btn_red!());
         }

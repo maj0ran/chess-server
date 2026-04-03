@@ -10,13 +10,11 @@ pub mod testgames {
     use std::io::{self, BufRead};
     use std::time::Duration;
 
+    use super::testclient::TestClient;
+    use crate::test;
+    use chess_core::{ServerMessage, UserRoleSelection};
     use smol::Timer;
     use smol_macros::test;
-
-    use super::testclient::TestClient;
-    use crate::chess::ServerMessage;
-    use crate::chess::UserRoleSelection;
-    use crate::test;
 
     async fn start_server(port: u16) {
         smol::spawn(async move {
@@ -33,11 +31,12 @@ pub mod testgames {
             env_logger::try_init().ok();
 
             let port = 7878;
-            start_server(port).await;
+        //    start_server(port).await;
 
             let mut client = TestClient::new(port).await;
 
-            let game_id = client.create_game(1, 120, 0).await;
+         //   let game_id = client.create_game(1, 120, 0).await;
+            let game_id = 1;
             client.join_game(game_id, UserRoleSelection::Both).await;
 
             let file = File::open(test::TEST_GAME_FILE).unwrap();

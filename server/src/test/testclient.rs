@@ -1,9 +1,7 @@
-#[cfg(test)]
-use crate::chess::{
+use chess_core::net::Connection;
+use chess_core::{
     ClientMessage, JoinGameParams, NetMessage, NewGameParams, ServerMessage, UserRoleSelection,
 };
-#[cfg(test)]
-use crate::chess::net::connection::Connection;
 #[cfg(test)]
 use smol::net::TcpStream;
 
@@ -22,7 +20,7 @@ impl TestClient {
 
         // Consume login message
         match conn.read_msg::<ServerMessage>().await {
-            Ok(ServerMessage::Login(_)) => {}
+            Ok(ServerMessage::LoginAccepted(_)) => {}
             Ok(e) => panic!("Expected Login event, got {:?}", e),
             Err(e) => panic!("Error reading login message: {:?}", e),
         }

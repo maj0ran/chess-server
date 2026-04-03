@@ -1,5 +1,7 @@
 mod chess;
 mod server;
+mod test;
+
 use server::server::Server;
 
 use smol_macros::main;
