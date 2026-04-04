@@ -1,7 +1,8 @@
 use crate::state::{ClientState, Overlay};
 use crate::ui::ButtonColors;
-use crate::{btn_green, btn_red, spawn_dialog};
-use crate::{spawn_button, spawn_label};
+use crate::ui::COLOR_DARK;
+use crate::ui::COLOR_DARK2;
+use crate::{spawn_button, spawn_dialog, spawn_label};
 use bevy::prelude::*;
 use chess_core::{ClientMessage, NewGameParams};
 
@@ -15,9 +16,9 @@ pub fn setup_create_dialog(mut commands: Commands) {
         Val::Percent(30.0),
         Val::Percent(80.0),
         |p| {
-            spawn_label!(p, "Create Game", 30.0, Color::WHITE);
-            spawn_button!(p, "Confirm", CreateAction::Confirm, btn_green!());
-            spawn_button!(p, "Cancel", CreateAction::Cancel, btn_red!());
+            spawn_label!(p, "Create Game", 30.0);
+            spawn_button!(p, "Confirm", CreateAction::Confirm, ButtonColors::green());
+            spawn_button!(p, "Cancel", CreateAction::Cancel, ButtonColors::red());
         }
     );
 }

@@ -1,7 +1,8 @@
 use crate::state::{ClientState, Overlay};
 use crate::ui::ButtonColors;
-use crate::{btn_red, spawn_dialog};
-use crate::{spawn_button, spawn_label};
+use crate::ui::COLOR_DARK;
+use crate::ui::COLOR_DARK2;
+use crate::{spawn_button, spawn_dialog, spawn_label};
 use bevy::prelude::*;
 use chess_core::{ClientMessage, JoinGameParams, UserRoleSelection};
 
@@ -15,7 +16,7 @@ pub fn setup_join_dialog(mut commands: Commands) {
         Val::Px(300.0),
         Val::Px(350.0),
         |p| {
-            spawn_label!(p, "Select Side", 30.0, Color::WHITE);
+            spawn_label!(p, "Select Side", 30.0);
             spawn_button!(p, "White", JoinAction::Select(UserRoleSelection::White));
             spawn_button!(p, "Black", JoinAction::Select(UserRoleSelection::Black));
             spawn_button!(p, "Random", JoinAction::Select(UserRoleSelection::Random));
@@ -26,7 +27,7 @@ pub fn setup_join_dialog(mut commands: Commands) {
                 JoinAction::Select(UserRoleSelection::Spectator)
             );
 
-            spawn_button!(p, "Cancel", JoinAction::Cancel, btn_red!());
+            spawn_button!(p, "Cancel", JoinAction::Cancel, ButtonColors::red());
         }
     );
 }

@@ -1,9 +1,8 @@
-use crate::spawn_dialog;
 use crate::state::{ClientState, Overlay, Screen};
 use crate::ui::ButtonColors;
-use crate::{spawn_button, spawn_label};
+use crate::ui::*;
+use crate::{spawn_button, spawn_dialog, spawn_label};
 use bevy::prelude::*;
-
 #[derive(Component)]
 pub struct GameOverDialogComponent;
 
@@ -15,8 +14,8 @@ pub fn setup_game_over_dialog(mut commands: Commands, state: ResMut<ClientState>
         Val::Px(300.0),
         Val::Px(200.0),
         |p| {
-            spawn_label!(p, "Game Over", 30.0, Color::WHITE);
-            spawn_label!(p, format!("{} won", winner), 20.0, Color::WHITE);
+            spawn_label!(p, "Game Over", 30.0);
+            spawn_label!(p, format!("{} won", winner), 20.0);
             spawn_button!(p, "OK", GameOverAction::Ok);
         }
     );

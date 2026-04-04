@@ -1,7 +1,7 @@
 use crate::state::{ClientState, Overlay, Screen};
 use crate::ui::ButtonColors;
-use crate::{btn_green, btn_red, spawn_dialog};
-use crate::{spawn_button, spawn_label};
+use crate::ui::*;
+use crate::{spawn_button, spawn_dialog, spawn_label};
 use bevy::prelude::*;
 use chess_core::ClientMessage;
 
@@ -23,9 +23,9 @@ pub fn setup_quit_game_dialog(mut commands: Commands) {
         Val::Px(300.0),
         Val::Px(250.0),
         |p| {
-            spawn_label!(p, "Are you sure?", 30.0, Color::WHITE);
-            spawn_button!(p, "Confirm", QuitGameAction::Confirm, btn_green!());
-            spawn_button!(p, "Cancel", QuitGameAction::Cancel, btn_red!());
+            spawn_label!(p, "Are you sure?", 30.0);
+            spawn_button!(p, "Confirm", QuitGameAction::Confirm, ButtonColors::green());
+            spawn_button!(p, "Cancel", QuitGameAction::Cancel, ButtonColors::red());
         }
     );
 }

@@ -1,4 +1,3 @@
-use crate::btn_default;
 use crate::state::{ClientState, Overlay, Screen};
 use crate::ui::create_game_dialog::{
     cleanup_create_dialog, create_dialog_action_system, setup_create_dialog,
@@ -6,7 +5,7 @@ use crate::ui::create_game_dialog::{
 use crate::ui::join_game_dialog::{
     cleanup_join_dialog, join_dialog_action_system, setup_join_dialog,
 };
-use crate::ui::ButtonColors;
+use crate::ui::*;
 use crate::{spawn_button, spawn_label};
 use bevy::color::palettes::basic::*;
 use bevy::picking::hover::Hovered;
@@ -55,7 +54,6 @@ pub fn setup_menu(mut commands: Commands) {
                 justify_content: JustifyContent::Center,
                 ..default()
             },
-            BackgroundColor(Color::srgb(0.1, 0.1, 0.1)),
             MenuScreenComponent,
         ))
         .with_children(|p| {
@@ -73,7 +71,7 @@ pub fn setup_menu(mut commands: Commands) {
                     parent,
                     "Create Game",
                     MenuAction::CreateGame,
-                    btn_default!(),
+                    ButtonColors::default(),
                     Val::Px(200.0),
                     Val::Px(50.0)
                 );
@@ -81,7 +79,7 @@ pub fn setup_menu(mut commands: Commands) {
                     parent,
                     "List Games",
                     MenuAction::ListGames,
-                    btn_default!(),
+                    ButtonColors::default(),
                     Val::Px(200.0),
                     Val::Px(50.0)
                 );
@@ -106,7 +104,7 @@ pub fn setup_menu(mut commands: Commands) {
                             overflow: Overflow::scroll_y(),
                             ..default()
                         },
-                        BackgroundColor(Color::srgb(0.2, 0.2, 0.2)),
+                        BackgroundColor(COLOR_DARK2),
                         GamesListContainer,
                     ))
                     .id();
@@ -239,7 +237,7 @@ pub fn update_games_list(
                                 font_size: 18.0,
                                 ..default()
                             },
-                            TextColor(Color::WHITE),
+                            TextColor(COLOR_LIGHT),
                         ));
 
                         let players_text = if let Some(d) = details {

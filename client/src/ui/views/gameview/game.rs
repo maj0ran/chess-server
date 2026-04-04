@@ -1,4 +1,3 @@
-use crate::spawn_dialog;
 use crate::state::{ClientState, Overlay, Screen};
 use crate::ui::views::gameview::game_over_dialog::{
     cleanup_game_over_dialog, game_over_dialog_action_system, setup_game_over_dialog,
@@ -6,8 +5,8 @@ use crate::ui::views::gameview::game_over_dialog::{
 use crate::ui::views::gameview::quit_game_dialog::{
     cleanup_quit_game_dialog, quit_game_dialog_action_system, setup_quit_game_dialog,
 };
-use crate::ui::ButtonColors;
-use crate::{btn_red, spawn_button};
+use crate::ui::*;
+use crate::{spawn_button, spawn_dialog, spawn_label};
 use bevy::prelude::*;
 use chess_core::{ChessMove, ClientMessage, SpecialMove, Tile};
 use std::collections::HashMap;
@@ -105,9 +104,9 @@ pub fn setup_game(mut commands: Commands, asset_server: Res<AssetServer>) {
             for r in 0..8 {
                 for f in 0..8 {
                     let color = if (r + f) % 2 == 0 {
-                        Color::srgb(0.8, 0.8, 0.8)
+                        COLOR_LIGHT
                     } else {
-                        Color::srgb(0.4, 0.5, 0.4)
+                        COLOR_MID
                     };
                     parent.spawn((
                         Sprite {
@@ -364,7 +363,7 @@ pub fn promotion_dialog(mut commands: Commands, assets: Res<GameAssets>) {
                             }
                         });
                     }
-                    spawn_button!(row, "X", PromotionAction::Cancel, btn_red!());
+                    spawn_button!(row, "X", PromotionAction::Cancel, ButtonColors::red());
                 });
         }
     );

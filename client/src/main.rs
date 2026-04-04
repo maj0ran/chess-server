@@ -5,6 +5,7 @@ pub mod ui;
 use crate::network::poll_network;
 use crate::state::{ClientState, Overlay, Screen};
 use crate::ui::menu::MenuPlugin;
+use crate::ui::COLOR_DARK;
 use bevy::prelude::*;
 use bevy::ui_widgets::ScrollbarPlugin;
 use bevy::window::WindowResolution;
@@ -39,6 +40,7 @@ fn main() {
         .add_systems(Update, (poll_network, ui::button_system))
         .add_plugins(GamePlugin)
         .add_plugins(MenuPlugin)
+        .insert_resource(ClearColor(COLOR_DARK))
         .run();
 }
 

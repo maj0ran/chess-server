@@ -1,31 +1,5 @@
-#[macro_export]
-macro_rules! btn_red {
-    () => {
-        ButtonColors {
-            normal: Color::srgb(0.5, 0.3, 0.3),
-            hovered: Color::srgb(0.6, 0.4, 0.4),
-            ..default()
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! btn_green {
-    () => {
-        ButtonColors {
-            normal: Color::srgb(0.3, 0.5, 0.3),
-            hovered: Color::srgb(0.4, 0.6, 0.4),
-            ..default()
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! btn_default {
-    () => {
-        ButtonColors { ..default() }
-    };
-}
+use crate::ui::ButtonColors;
+use crate::ui::COLOR_DARK2;
 
 #[macro_export]
 macro_rules! spawn_label {
@@ -38,6 +12,9 @@ macro_rules! spawn_label {
             },
             TextColor($color),
         ));
+    };
+    ($parent:ident, $text:expr, $font_size:expr) => {
+        spawn_label!($parent, $text, $font_size, COLOR_DARK2);
     };
 }
 
@@ -65,7 +42,7 @@ macro_rules! spawn_button {
                         font_size: 20.0,
                         ..default()
                     },
-                    TextColor(Color::WHITE),
+                    TextColor(COLOR_DARK),
                 ));
             });
     };
@@ -112,7 +89,7 @@ macro_rules! spawn_dialog {
                             padding: UiRect::all(Val::Px(20.0)),
                             ..default()
                         },
-                        BackgroundColor(Color::srgb(0.2, 0.2, 0.2)),
+                        BackgroundColor(COLOR_DARK2),
                         ZIndex(1),
                     ))
                     .with_children($children);
