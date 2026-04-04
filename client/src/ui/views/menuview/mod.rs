@@ -1,3 +1,8 @@
-pub mod create_game_dialog;
-pub mod join_game_dialog;
-pub mod menu;
+pub mod analysismenu;
+pub mod gamemenu;
+pub mod menuroot;
+
+use bevy::prelude::*;
+
+#[derive(Component)]
+pub struct MenuTabComponent;

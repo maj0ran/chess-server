@@ -1,10 +1,12 @@
-use crate::state::{ClientState, Overlay, Screen};
-use crate::ui::create_game_dialog::{
+use crate::state::{ClientState, MenuTab, Overlay, Screen};
+use crate::ui::views::menuview::gamemenu::create_game_dialog::{
     cleanup_create_dialog, create_dialog_action_system, setup_create_dialog,
 };
-use crate::ui::join_game_dialog::{
+use crate::ui::views::menuview::gamemenu::join_game_dialog::{
     cleanup_join_dialog, join_dialog_action_system, setup_join_dialog,
 };
+use crate::ui::views::menuview::menuroot::MenuTabContainer;
+use crate::ui::views::menuview::MenuTabComponent;
 use crate::ui::*;
 use crate::{spawn_button, spawn_label};
 use bevy::color::palettes::basic::*;
@@ -16,35 +18,22 @@ use chess_core::ClientMessage;
 
 pub struct MenuPlugin;
 
-impl Plugin for MenuPlugin {
-    fn build(&self, app: &mut App) {
-        // Main Menu
-        app.add_systems(OnEnter(Screen::Menu), setup_menu)
-            .add_systems(OnExit(Screen::Menu), cleanup_menu)
-            .add_systems(Update, menu_action_system.run_if(in_state(Screen::Menu)))
-            .add_systems(Update, update_games_list.run_if(in_state(Screen::Menu)))
-            // Create Game Dialog
-            .add_systems(OnEnter(Overlay::CreateDialog), setup_create_dialog)
-            .add_systems(OnExit(Overlay::CreateDialog), cleanup_create_dialog)
-            .add_systems(
-                Update,
-                create_dialog_action_system.run_if(in_state(Overlay::CreateDialog)),
-            )
-            // Join Game Dialog
-            .add_systems(OnEnter(Overlay::JoinDialog), setup_join_dialog)
-            .add_systems(OnExit(Overlay::JoinDialog), cleanup_join_dialog)
-            .add_systems(
-                Update,
-                join_dialog_action_system.run_if(in_state(Overlay::JoinDialog)),
-            );
-    }
-}
-
 #[derive(Component)]
 pub struct MenuScreenComponent;
 
-pub fn setup_menu(mut commands: Commands) {
-    commands
+pub fn setup_gamelist_menu(
+    mut commands: Commands,
+    container_query: Query<Entity, With<MenuTabContainer>>,
+    existing_query: Query<Entity, With<MenuScreenComponent>>,
+) {
+    // Prevent duplicate menus
+    if !existing_query.is_empty() {
+        return;
+    }
+
+    let container = container_query.single().ok();
+
+    let menu_node = commands
         .spawn((
             Node {
                 width: Val::Percent(100.0),
@@ -55,6 +44,7 @@ pub fn setup_menu(mut commands: Commands) {
                 ..default()
             },
             MenuScreenComponent,
+            MenuTabComponent,
         ))
         .with_children(|p| {
             // Title Label
@@ -136,7 +126,12 @@ pub fn setup_menu(mut commands: Commands) {
                     ))),
                 ));
             });
-        });
+        })
+        .id();
+
+    if let Some(container) = container {
+        commands.entity(container).add_child(menu_node);
+    }
 }
 
 #[derive(Component)]
@@ -155,7 +150,7 @@ pub fn cleanup_menu(mut commands: Commands, query: Query<Entity, With<MenuScreen
     }
 }
 
-pub fn menu_action_system(
+pub fn gamelist_menu_action_system(
     mut interaction_query: Query<(&Interaction, &MenuAction), (Changed<Interaction>, With<Button>)>,
     mut state: ResMut<ClientState>,
     mut next_overlay: ResMut<NextState<Overlay>>,
@@ -184,15 +179,29 @@ pub fn update_games_list(
     mut commands: Commands,
     container_query: Query<Entity, With<GamesListContainer>>,
     children_query: Query<&Children, With<GamesListContainer>>,
+    mut last_state_hash: Local<u64>,
 ) {
-    if !state.is_changed() {
-        return;
-    }
-
     let container = match container_query.single() {
         Ok(c) => c,
         Err(_) => return,
     };
+
+    // Simple hash to detect changes in game list or details
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    use std::hash::{Hash, Hasher};
+    state.menu_state.games.len().hash(&mut hasher);
+    let mut sorted_ids: Vec<_> = state.menu_state.games.keys().collect();
+    sorted_ids.sort();
+    for id in sorted_ids {
+        id.hash(&mut hasher);
+        state.menu_state.games.get(id).hash(&mut hasher);
+    }
+    let current_hash = hasher.finish();
+
+    if current_hash == *last_state_hash {
+        return;
+    }
+    *last_state_hash = current_hash;
 
     if let Ok(children) = children_query.get(container) {
         for child in children {
@@ -264,7 +273,14 @@ pub fn update_games_list(
                         ));
                     });
 
-                    spawn_button!(p, "Join", MenuAction::JoinGame(game_id));
+                    spawn_button!(
+                        p,
+                        "Join",
+                        MenuAction::JoinGame(game_id),
+                        ButtonColors::default(),
+                        Val::Px(100.0),
+                        Val::Px(40.0)
+                    );
                 });
         }
     });

@@ -44,7 +44,7 @@ macro_rules! spawn_button {
                     },
                     TextColor(COLOR_DARK),
                 ));
-            });
+            })
     };
     ($parent:ident, $text:expr, $action:expr, $colors:expr) => {
         spawn_button!(
@@ -54,10 +54,10 @@ macro_rules! spawn_button {
             $colors,
             Val::Px(150.0),
             Val::Px(40.0)
-        );
+        )
     };
     ($parent:ident, $text:expr, $action:expr) => {
-        spawn_button!($parent, $text, $action, ButtonColors::default());
+        spawn_button!($parent, $text, $action, ButtonColors::default())
     };
 }
 

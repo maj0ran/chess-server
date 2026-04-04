@@ -168,6 +168,7 @@ pub fn poll_network(
                 };
                 if state.menu_state.games.contains_key(&game_id) {
                     state.menu_state.games.insert(game_id, Some(game_details));
+                    log::info!("Received game details for game ID: {}", game_id);
                 }
             }
             ServerMessage::LoginAccepted(_) => {}

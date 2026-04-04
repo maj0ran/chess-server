@@ -12,6 +12,14 @@ pub enum Screen {
 }
 
 #[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
+pub enum MenuTab {
+    #[default]
+    None,
+    Games,
+    Analysis,
+}
+
+#[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
 pub enum Overlay {
     #[default]
     None,
@@ -22,7 +30,7 @@ pub enum Overlay {
     Promotion,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct GameDetails {
     pub white_player: Option<usize>,
     pub black_player: Option<usize>,

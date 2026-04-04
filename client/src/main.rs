@@ -3,13 +3,14 @@ pub mod state;
 pub mod ui;
 
 use crate::network::poll_network;
-use crate::state::{ClientState, Overlay, Screen};
-use crate::ui::menu::MenuPlugin;
+use crate::state::{ClientState, MenuTab, Overlay, Screen};
 use crate::ui::COLOR_DARK;
 use bevy::prelude::*;
 use bevy::ui_widgets::ScrollbarPlugin;
 use bevy::window::WindowResolution;
 use ui::views::gameview::game::GamePlugin;
+use ui::views::menuview::gamemenu::gamelist_menu::MenuPlugin;
+use ui::views::menuview::menuroot::MenuRootPlugin;
 
 fn main() {
     env_logger::init();
@@ -33,14 +34,15 @@ fn main() {
             // for scrollbars in UI elements (used for games list)
             ScrollbarPlugin,
         ))
-        .init_state::<Screen>()
-        .init_state::<Overlay>()
         .insert_resource(ClientState::new())
         .add_systems(Startup, setup_camera)
         .add_systems(Update, (poll_network, ui::button_system))
         .add_plugins(GamePlugin)
-        .add_plugins(MenuPlugin)
+        .add_plugins(MenuRootPlugin)
         .insert_resource(ClearColor(COLOR_DARK))
+        .init_state::<Screen>()
+        .init_state::<MenuTab>()
+        .init_state::<Overlay>()
         .run();
 }
 

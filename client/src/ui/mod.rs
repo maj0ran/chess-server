@@ -4,9 +4,9 @@ use bevy::prelude::*;
 pub mod macros;
 pub mod views;
 
-pub use views::menuview::create_game_dialog;
-pub use views::menuview::join_game_dialog;
-pub use views::menuview::menu;
+pub use views::menuview::gamemenu::create_game_dialog;
+pub use views::menuview::gamemenu::gamelist_menu;
+pub use views::menuview::gamemenu::join_game_dialog;
 
 pub const fn from_rgb_u32(value: u32) -> Color {
     let r = ((value >> 16) & 0xFF) as f32 / 255.0;
