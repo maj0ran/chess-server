@@ -104,7 +104,7 @@ pub fn setup_game(mut commands: Commands, asset_server: Res<AssetServer>) {
             for r in 0..8 {
                 for f in 0..8 {
                     let color = if (r + f) % 2 == 0 {
-                        COLOR_LIGHT
+                        COLOR_LIGHT2
                     } else {
                         COLOR_MID
                     };

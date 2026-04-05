@@ -14,8 +14,8 @@ pub fn setup_game_over_dialog(mut commands: Commands, state: ResMut<ClientState>
         Val::Px(300.0),
         Val::Px(200.0),
         |p| {
-            spawn_label!(p, "Game Over", 30.0);
-            spawn_label!(p, format!("{} won", winner), 20.0);
+            spawn_label!(p, "Game Over", 30.0, COLOR_LIGHT);
+            spawn_label!(p, format!("{} won", winner), 20.0, COLOR_LIGHT);
             spawn_button!(p, "OK", GameOverAction::Ok);
         }
     );
