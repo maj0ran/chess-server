@@ -211,31 +211,38 @@ impl GameManager {
                 // e.g., checkmate or stalemate.
                 match game.get_game_state() {
                     ChessGameState::Running => {}
-                    ChessGameState::Finished(outcome) => match outcome {
-                        ChessGameOutcome::Checkmate(is_checkmated) => {
-                            for c in &clients {
-                                if let Some(handler) = self.clients.get(&c) {
-                                    let _ = handler
-                                        .tx
-                                        .send(ServerMessage::Checkmate(game_id, is_checkmated))
-                                        .await;
+                    ChessGameState::Finished(outcome) => {
+                        // Game is finished; save the history in a file, remove it from the game list
+                        // and send the outcome to all clients in the game.
+                        let _ = GameManager::save_game(game).await;
+                        self.games.remove(&game_id);
+                        match outcome {
+                            ChessGameOutcome::Checkmate(is_checkmated) => {
+                                for c in &clients {
+                                    if let Some(handler) = self.clients.get(&c) {
+                                        let _ = handler
+                                            .tx
+                                            .send(ServerMessage::Checkmate(game_id, is_checkmated))
+                                            .await;
+                                    }
                                 }
                             }
-                            GameManager::save_game(game).await;
-                        }
-                        ChessGameOutcome::Stalemate => {
-                            for c in &clients {
-                                if let Some(handler) = self.clients.get(&c) {
-                                    let _ =
-                                        handler.tx.send(ServerMessage::Stalemate(game_id)).await;
+                            ChessGameOutcome::Stalemate => {
+                                for c in &clients {
+                                    if let Some(handler) = self.clients.get(&c) {
+                                        let _ = handler
+                                            .tx
+                                            .send(ServerMessage::Stalemate(game_id))
+                                            .await;
+                                    }
                                 }
                             }
+                            ChessGameOutcome::Resignation(_) => {}
+                            ChessGameOutcome::TimeOut(_) => {}
+                            ChessGameOutcome::MaterialDraw => {}
+                            ChessGameOutcome::TimeOutMaterialDraw => {}
                         }
-                        ChessGameOutcome::Resignation(_) => {}
-                        ChessGameOutcome::TimeOut(_) => {}
-                        ChessGameOutcome::MaterialDraw => {}
-                        ChessGameOutcome::TimeOutMaterialDraw => {}
-                    },
+                    }
                 }
             }
 
