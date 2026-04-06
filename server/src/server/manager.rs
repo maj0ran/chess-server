@@ -1,5 +1,5 @@
 use crate::chess::chess::Chess;
-use crate::server::chessgame::{ChessGame, ChessGameState};
+use crate::server::chessgame::{ChessGame, ChessGameOutcome, ChessGameState};
 use chess_core::*;
 use chrono::prelude::*;
 use smol::channel::{Receiver, Sender};
@@ -211,26 +211,34 @@ impl GameManager {
                 // e.g., checkmate or stalemate.
                 match game.get_game_state() {
                     ChessGameState::Running => {}
-                    ChessGameState::Checkmate(is_checkmated) => {
-                        for c in &clients {
-                            if let Some(handler) = self.clients.get(&c) {
-                                let _ = handler
-                                    .tx
-                                    .send(ServerMessage::Checkmate(game_id, is_checkmated))
-                                    .await;
+                    ChessGameState::Finished(outcome) => match outcome {
+                        ChessGameOutcome::Checkmate(is_checkmated) => {
+                            for c in &clients {
+                                if let Some(handler) = self.clients.get(&c) {
+                                    let _ = handler
+                                        .tx
+                                        .send(ServerMessage::Checkmate(game_id, is_checkmated))
+                                        .await;
+                                }
+                            }
+                            GameManager::save_game(game).await;
+                        }
+                        ChessGameOutcome::Stalemate => {
+                            for c in &clients {
+                                if let Some(handler) = self.clients.get(&c) {
+                                    let _ =
+                                        handler.tx.send(ServerMessage::Stalemate(game_id)).await;
+                                }
                             }
                         }
-                        GameManager::save_game(game).await;
-                    }
-                    ChessGameState::Stalemate => {
-                        for c in &clients {
-                            if let Some(handler) = self.clients.get(&c) {
-                                let _ = handler.tx.send(ServerMessage::Stalemate(game_id)).await;
-                            }
-                        }
-                    }
+                        ChessGameOutcome::Resignation(_) => {}
+                        ChessGameOutcome::TimeOut(_) => {}
+                        ChessGameOutcome::MaterialDraw => {}
+                        ChessGameOutcome::TimeOutMaterialDraw => {}
+                    },
                 }
             }
+
             // The move was illegal and thus rejected
             Err(e) => {
                 if let Some(c) = self.clients.get(&client_id) {

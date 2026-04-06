@@ -183,10 +183,12 @@ impl ChessGame {
 
     pub fn get_game_state(&mut self) -> ChessGameState {
         if self.chess.is_checkmate() {
-            return ChessGameState::Checkmate(self.chess.get_active_player());
+            return ChessGameState::Finished(ChessGameOutcome::Checkmate(
+                self.chess.get_active_player(),
+            ));
         }
         if self.chess.is_stalemate() {
-            return ChessGameState::Stalemate;
+            return ChessGameState::Finished(ChessGameOutcome::Stalemate);
         }
         ChessGameState::Running
     }
@@ -194,6 +196,14 @@ impl ChessGame {
 
 pub enum ChessGameState {
     Running,
+    Finished(ChessGameOutcome),
+}
+
+pub enum ChessGameOutcome {
     Checkmate(ChessColor),
+    Resignation(ChessColor),
+    TimeOut(ChessColor),
     Stalemate,
+    MaterialDraw,
+    TimeOutMaterialDraw,
 }
