@@ -1,7 +1,10 @@
 use crate::chess::chess::Chess;
 use crate::server::chessgame::{ChessGame, ChessGameState};
 use chess_core::*;
+use chrono::prelude::*;
 use smol::channel::{Receiver, Sender};
+use smol::fs::File;
+use smol::io::AsyncWriteExt;
 use std::collections::HashMap;
 
 /// The endpoint of a client for the `GameManager`.
@@ -65,6 +68,7 @@ impl GameManager {
             spectators: vec![],
             _time: game_params.time,
             _time_inc: game_params.time_inc,
+            move_history: vec![],
         }
     }
 
@@ -189,8 +193,9 @@ impl GameManager {
         };
         match game.make_move(mov, client_id) {
             // a legal move was made and accepted.
-            // Send the updates squares to all clients in the game.
+            // Update move history and send the updated squares to all clients in the game.
             Ok(changes) => {
+                game.move_history.push(mov);
                 let clients = game.get_participants();
                 for c in &clients {
                     let client_changes: Vec<(Tile, Option<WoodPiece>)> = changes
@@ -215,6 +220,7 @@ impl GameManager {
                                     .await;
                             }
                         }
+                        GameManager::save_game(game).await;
                     }
                     ChessGameState::Stalemate => {
                         for c in &clients {
@@ -264,5 +270,20 @@ impl GameManager {
                 log::warn!("Client asked for invalid game: {}", game_id)
             }
         }
+    }
+
+    pub async fn save_game(game: &ChessGame) -> std::io::Result<()> {
+        let date = Utc::now().format("%Y-%m-%d_%H-%M-%S").to_string();
+        let white = game.white_player.unwrap();
+        let black = game.white_player.unwrap();
+        let filename = format!("{}-vs-{}_{}.txt", white, black, date);
+        let mut file = File::create(filename).await?;
+        for mov in game.move_history.iter() {
+            file.write_all(mov.to_string().as_bytes()).await?;
+            file.write_all(b"\n").await?;
+        }
+        file.sync_all().await?;
+
+        Ok(())
     }
 }
