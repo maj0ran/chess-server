@@ -8,47 +8,45 @@ Could evolve in either a small-sized online chess or a chess analysis software i
 
 Short-Term TODO:
 
-[x] Server: Basic chess logic (looks good, but not battle tested yet)
+- [x] Server: Basic chess logic (looks good, but not battle tested yet)
 
-[x] Server: Accepting connections, handling requests for creating, joining games and making moves
+- [x] Server: Accepting connections, handling requests for creating, joining games and making moves
 
-[x] Server: Managing multiple games at once
+- [x] Server: Managing multiple games at once
 
-[ ] Server: 50-Moves-Rules
+- [ ] Server: 50-Moves-Rules
 
-[ ] Server: 3-Moves-Repetition
+- [ ] Server: 3-Moves-Repetition
 
-[ ] Server: Insufficient Material Draw
+- [ ] Server: Insufficient Material Draw
 
-[ ] Server: Offer Draw
+- [ ] Server: Offer Draw
 
-[ ] Server: Removing finished games from game list
+- [ ] Server: Resigning
 
-[ ] Server: Resigning
+- [x] Server: Log move history
 
-[ ] Server: Log move history
+- [ ] Server: Time control management
 
-[ ] Server: Time control management
+- [x] Client: Basic chess playing (moving pieces with mouse, promoting)
 
-[x] Client: Basic chess playing (moving pieces with mouse, promoting)
+- [x] Client: Receiving messages for game states (moves made / game over)
 
-[x] Client: Receiving Game Over at Checkmate
+- [x] Client: Create, list and join games
 
-[ ] Client: Receiving Game Over at Stalemate
+- [ ] Client: Resigning
 
-[ ] Client: Resigning
+- [ ] Client: Better connection settings (only localhost/autoconnect at the moment)
 
-[ ] Client: Connection settings (only localhost/autoconnect at the moment)
+- [ ] Client: Material overview
 
-[ ] Client: Material overview
+- [ ] Client: Show move history
 
-[ ] Client: Show move history
-
-[ ] Client: setup game time controls
+- [ ] Client: setup game time controls
 
 
-Long-Term I'd like to add persistent accounts, the ability to save games for later review and an UCI interface to integrate stockfish.
+Long-Term I'd like to add persistent accounts, more analysis modes and an UCI bridge to integrate stockfish.
 
 Quirks:
 
-[ ] Client: Pieces can be dragged outside the board
+- [ ] Client: Pieces can be dragged outside the board
