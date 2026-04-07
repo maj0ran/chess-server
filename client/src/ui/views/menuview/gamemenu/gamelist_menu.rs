@@ -1,12 +1,9 @@
 use crate::state::{ClientState, Overlay};
 use crate::ui::views::menuview::menuroot::MenuTabContainer;
 use crate::ui::views::menuview::MenuTabComponent;
-use crate::ui::*;
-use bevy::color::palettes::basic::*;
-use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
-use bevy::ui::BorderColor;
 use bevy::ui_widgets::{ControlOrientation, CoreScrollbarThumb, Scrollbar};
+use bevy_flair::prelude::*;
 use chess_core::ClientMessage;
 
 pub struct MenuPlugin;
@@ -21,65 +18,55 @@ pub fn setup_gamelist_menu(
     mut commands: Commands,
     container_query: Query<Entity, With<MenuTabContainer>>,
 ) {
-    let container = container_query.single().ok();
+    let container = container_query.single();
 
     let menu_node = commands
         .spawn((
-            Node {
-                width: Val::Percent(80.0),
-                height: Val::Percent(100.0),
-                display: Display::Grid,
-                grid_template_columns: vec![GridTrack::flex(1.0)],
-                grid_template_rows: vec![GridTrack::auto(), GridTrack::flex(1.0)],
-                row_gap: Val::Px(20.0),
-                align_items: AlignItems::Center,
-                justify_items: JustifyItems::Center,
-                ..default()
-            },
+            Node::default(),
             MenuScreenComponent,
             MenuTabComponent,
+            ClassList::new("game-list"),
         ))
         .with_children(|p| {
             p.spawn(Node {
-                display: Display::Grid,
-                grid_template_columns: vec![GridTrack::flex(1.0)],
-                grid_auto_rows: vec![GridTrack::auto()],
-                row_gap: Val::Px(10.0),
+                display: Display::Flex,
+                flex_direction: FlexDirection::Column,
                 align_items: AlignItems::Center,
-                justify_items: JustifyItems::Center,
-                border: UiRect::bottom(Val::Px(2.0)),
                 ..default()
             })
             .with_children(|p| {
                 // Title Label
-                spawn_label!(p, "Schach!", 40.0, Color::WHITE);
+                p.spawn((Text::new("Schach!"), ClassList::new("label-large")));
                 // Buttons container
                 p.spawn(Node {
-                    display: Display::Grid,
-                    grid_template_columns: vec![GridTrack::px(210.0), GridTrack::px(210.0)],
-                    grid_template_rows: vec![GridTrack::auto()],
+                    display: Display::Flex,
+                    flex_direction: FlexDirection::Row,
                     column_gap: Val::Px(10.0),
                     align_items: AlignItems::Center,
-                    justify_items: JustifyItems::Center,
+                    justify_content: JustifyContent::Center,
                     ..default()
                 })
                 .with_children(|parent| {
-                    spawn_button!(
-                        parent,
-                        "Create Game",
-                        MenuAction::CreateGame,
-                        ButtonColors::default(),
-                        Val::Px(200.0),
-                        Val::Px(50.0)
-                    );
-                    spawn_button!(
-                        parent,
-                        "List Games",
-                        MenuAction::ListGames,
-                        ButtonColors::default(),
-                        Val::Px(200.0),
-                        Val::Px(50.0)
-                    );
+                    parent
+                        .spawn((
+                            Button,
+                            Interaction::default(),
+                            ClassList::new(""),
+                            MenuAction::CreateGame,
+                        ))
+                        .with_children(|btn| {
+                            btn.spawn(Text::new("Create Game"));
+                        });
+                    parent
+                        .spawn((
+                            Button,
+                            Interaction::default(),
+                            ClassList::new(""),
+                            MenuAction::ListGames,
+                        ))
+                        .with_children(|btn| {
+                            btn.spawn(Text::new("List Games"));
+                        });
                 });
             });
 
@@ -106,7 +93,6 @@ pub fn setup_gamelist_menu(
                             overflow: Overflow::scroll_y(),
                             ..default()
                         },
-                        BackgroundColor(COLOR_DARK2),
                         GamesListContainer,
                     ))
                     .id();
@@ -132,7 +118,6 @@ pub fn setup_gamelist_menu(
                             border_radius: BorderRadius::all(Val::Px(4.0)),
                             ..default()
                         },
-                        Hovered::default(),
                         BackgroundColor(Color::srgb(0.8, 0.8, 0.8)),
                         CoreScrollbarThumb,
                     ))),
@@ -141,7 +126,7 @@ pub fn setup_gamelist_menu(
         })
         .id();
 
-    if let Some(container) = container {
+    if let Ok(container) = container {
         commands.entity(container).add_child(menu_node);
     }
 }
@@ -210,36 +195,17 @@ pub fn update_games_list(
     commands.entity(container).with_children(|parent| {
         for (game_id, details) in &state.menu_state.games {
             parent
-                .spawn((
-                    Node {
-                        width: Val::Percent(100.0),
-                        height: Val::Px(60.0),
-                        display: Display::Grid,
-                        grid_template_columns: vec![GridTrack::flex(1.0), GridTrack::px(120.0)],
-                        grid_template_rows: vec![GridTrack::flex(1.0)],
-                        padding: UiRect::horizontal(Val::Px(10.0)),
-                        border: UiRect::bottom(Val::Px(1.0)),
-                        align_items: AlignItems::Center,
-                        justify_items: JustifyItems::Start,
-                        ..default()
-                    },
-                    BorderColor::all(Color::srgb(0.3, 0.3, 0.3)),
-                ))
+                .spawn((Node::default(), ClassList::new("game-item")))
                 .with_children(|p| {
                     p.spawn(Node {
-                        display: Display::Grid,
-                        grid_template_columns: vec![GridTrack::flex(1.0)],
-                        grid_auto_rows: vec![GridTrack::auto()],
+                        display: Display::Flex,
+                        flex_direction: FlexDirection::Column,
                         ..default()
                     })
                     .with_children(|info| {
                         info.spawn((
                             Text::new(format!("Game #{}", game_id)),
-                            TextFont {
-                                font_size: 18.0,
-                                ..default()
-                            },
-                            TextColor(COLOR_LIGHT),
+                            ClassList::new("label-small"),
                         ));
 
                         let players_text = if let Some(d) = details {
@@ -256,24 +222,18 @@ pub fn update_games_list(
                             "Loading details...".to_string()
                         };
 
-                        info.spawn((
-                            Text::new(players_text),
-                            TextFont {
-                                font_size: 14.0,
-                                ..default()
-                            },
-                            TextColor(Color::from(GRAY)),
-                        ));
+                        info.spawn((Text::new(players_text), ClassList::new("label-small")));
                     });
 
-                    spawn_button!(
-                        p,
-                        "Join",
+                    p.spawn((
+                        Button,
+                        Interaction::default(),
+                        ClassList::new(""),
                         MenuAction::JoinGame(*game_id),
-                        ButtonColors::default(),
-                        Val::Px(100.0),
-                        Val::Px(40.0)
-                    );
+                    ))
+                    .with_children(|btn| {
+                        btn.spawn(Text::new("Join"));
+                    });
                 });
         }
     });

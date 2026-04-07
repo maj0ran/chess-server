@@ -5,8 +5,9 @@ use crate::ui::views::gameview::game_over_dialog::{
 use crate::ui::views::gameview::quit_game_dialog::{
     cleanup_quit_game_dialog, quit_game_dialog_action_system, setup_quit_game_dialog,
 };
-use crate::ui::*;
+use crate::ui::{COLOR_LIGHT2, COLOR_MID};
 use bevy::prelude::*;
+use bevy_flair::prelude::*;
 use chess_core::{ChessMove, ClientMessage, SpecialMove, Tile};
 use std::collections::HashMap;
 
@@ -310,62 +311,79 @@ pub enum PromotionAction {
 #[derive(Component)]
 pub struct PromotionDialogComponent;
 
-pub fn promotion_dialog(mut commands: Commands, assets: Res<GameAssets>) {
-    spawn_dialog!(
-        commands,
-        PromotionDialogComponent,
-        Val::Px(350.0),
-        Val::Px(120.0),
-        |p| {
-            p.spawn((Node {
+pub fn promotion_dialog(
+    mut commands: Commands,
+    assets: Res<GameAssets>,
+    assets_server: Res<AssetServer>,
+) {
+    let dialog = commands
+        .spawn((
+            Node {
                 width: Val::Percent(100.0),
                 height: Val::Percent(100.0),
-                flex_direction: FlexDirection::Row,
+                position_type: PositionType::Absolute,
+                display: Display::Flex,
+                justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
-                justify_content: JustifyContent::SpaceEvenly,
                 ..default()
-            },))
-                .with_children(|row| {
-                    let pieces = [
-                        ('Q', PromotionAction::Queen),
-                        ('R', PromotionAction::Rook),
-                        ('B', PromotionAction::Bishop),
-                        ('N', PromotionAction::Knight),
-                    ];
+            },
+            NodeStyleSheet::new(assets_server.load("style.css")),
+            PromotionDialogComponent,
+            ClassList::new("dialog-overlay"),
+        ))
+        .with_children(|parent| {
+            parent
+                .spawn((
+                    Node {
+                        display: Display::Flex,
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    ClassList::new("dialog-content"),
+                ))
+                .with_children(|p| {
+                    p.spawn((Node::default(), ClassList::new("promotion-row")))
+                        .with_children(|row| {
+                            let pieces = [
+                                ('Q', PromotionAction::Queen),
+                                ('R', PromotionAction::Rook),
+                                ('B', PromotionAction::Bishop),
+                                ('N', PromotionAction::Knight),
+                            ];
 
-                    for (c, action) in pieces {
-                        row.spawn((
-                            Button,
-                            Node {
-                                width: Val::Px(60.0),
-                                height: Val::Px(60.0),
-                                justify_content: JustifyContent::Center,
-                                align_items: AlignItems::Center,
-                                ..default()
-                            },
-                            ButtonColors::default(),
-                            action,
-                        ))
-                        .with_children(|btn| {
-                            if let Some(texture) = assets.piece_textures.get(&c) {
-                                btn.spawn((
-                                    ImageNode {
-                                        image: texture.clone(),
-                                        ..default()
-                                    },
-                                    Node {
-                                        width: Val::Px(50.0),
-                                        height: Val::Px(50.0),
-                                        ..default()
-                                    },
-                                ));
+                            for (c, action) in pieces {
+                                row.spawn((
+                                    Button,
+                                    Interaction::default(),
+                                    ClassList::new("promotion-button"),
+                                    action,
+                                ))
+                                .with_children(|btn| {
+                                    if let Some(texture) = assets.piece_textures.get(&c) {
+                                        btn.spawn((
+                                            ImageNode {
+                                                image: texture.clone(),
+                                                ..default()
+                                            },
+                                            ClassList::new("piece-icon"),
+                                        ));
+                                    }
+                                });
                             }
+                            row.spawn((
+                                Button,
+                                Interaction::default(),
+                                ClassList::new("button-red"),
+                                PromotionAction::Cancel,
+                            ))
+                            .with_children(|btn| {
+                                btn.spawn(Text::new("X"));
+                            });
                         });
-                    }
-                    spawn_button!(row, "X", PromotionAction::Cancel, ButtonColors::red());
                 });
-        }
-    );
+        })
+        .id();
 }
 
 pub fn cleanup_promotion_dialog(

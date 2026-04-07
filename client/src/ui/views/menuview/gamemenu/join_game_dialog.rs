@@ -1,36 +1,98 @@
 use crate::state::{ClientState, Overlay};
-use crate::ui::ButtonColors;
-use crate::ui::COLOR_DARK;
-use crate::ui::COLOR_DARK2;
-use crate::ui::COLOR_LIGHT;
-use crate::ui::COLOR_MID;
 use bevy::prelude::*;
+use bevy_flair::prelude::*;
 use chess_core::{ClientMessage, JoinGameParams, UserRoleSelection};
 
 #[derive(Component)]
 pub struct JoinDialogComponent;
 
-pub fn setup_join_dialog(mut commands: Commands) {
-    spawn_dialog!(
-        commands,
-        JoinDialogComponent,
-        Val::Px(300.0),
-        Val::Px(500.0),
-        |p| {
-            spawn_label!(p, "Select Side", 30.0);
-            spawn_button!(p, "White", JoinAction::Select(UserRoleSelection::White));
-            spawn_button!(p, "Black", JoinAction::Select(UserRoleSelection::Black));
-            spawn_button!(p, "Random", JoinAction::Select(UserRoleSelection::Random));
-            spawn_button!(p, "Both", JoinAction::Select(UserRoleSelection::Both));
-            spawn_button!(
-                p,
-                "Spectator",
-                JoinAction::Select(UserRoleSelection::Spectator)
-            );
+pub fn setup_join_dialog(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let dialog = commands
+        .spawn((
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                position_type: PositionType::Absolute,
+                display: Display::Flex,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            JoinDialogComponent,
+            NodeStyleSheet::new(asset_server.load("style.css")),
+            ClassList::new("dialog-overlay"),
+        ))
+        .with_children(|parent| {
+            parent
+                .spawn((
+                    Node {
+                        display: Display::Flex,
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    ClassList::new("dialog-content"),
+                ))
+                .with_children(|p| {
+                    p.spawn((Text::new("Select Side"), ClassList::new("label-large")));
+                    p.spawn((
+                        Button,
+                        Interaction::default(),
+                        ClassList::new(""),
+                        JoinAction::Select(UserRoleSelection::White),
+                    ))
+                    .with_children(|btn| {
+                        btn.spawn(Text::new("White"));
+                    });
+                    p.spawn((
+                        Button,
+                        Interaction::default(),
+                        ClassList::new(""),
+                        JoinAction::Select(UserRoleSelection::Black),
+                    ))
+                    .with_children(|btn| {
+                        btn.spawn(Text::new("Black"));
+                    });
+                    p.spawn((
+                        Button,
+                        Interaction::default(),
+                        ClassList::new(""),
+                        JoinAction::Select(UserRoleSelection::Random),
+                    ))
+                    .with_children(|btn| {
+                        btn.spawn(Text::new("Random"));
+                    });
+                    p.spawn((
+                        Button,
+                        Interaction::default(),
+                        ClassList::new(""),
+                        JoinAction::Select(UserRoleSelection::Both),
+                    ))
+                    .with_children(|btn| {
+                        btn.spawn(Text::new("Both"));
+                    });
+                    p.spawn((
+                        Button,
+                        Interaction::default(),
+                        ClassList::new(""),
+                        JoinAction::Select(UserRoleSelection::Spectator),
+                    ))
+                    .with_children(|btn| {
+                        btn.spawn(Text::new("Spectator"));
+                    });
 
-            spawn_button!(p, "Cancel", JoinAction::Cancel, ButtonColors::red());
-        }
-    );
+                    p.spawn((
+                        Button,
+                        Interaction::default(),
+                        ClassList::new("button-red"),
+                        JoinAction::Cancel,
+                    ))
+                    .with_children(|btn| {
+                        btn.spawn(Text::new("Cancel"));
+                    });
+                });
+        })
+        .id();
 }
 
 #[derive(Component)]
@@ -50,7 +112,7 @@ pub fn cleanup_join_dialog(
 
 pub fn join_dialog_action_system(
     mut interaction_query: Query<(&Interaction, &JoinAction), (Changed<Interaction>, With<Button>)>,
-    mut state: ResMut<ClientState>,
+    state: ResMut<ClientState>,
     mut next_overlay: ResMut<NextState<Overlay>>,
 ) {
     for (interaction, action) in interaction_query.iter_mut() {

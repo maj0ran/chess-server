@@ -1,27 +1,61 @@
 use crate::state::{ClientState, Overlay};
-use crate::ui::ButtonColors;
-use crate::ui::COLOR_DARK;
-use crate::ui::COLOR_DARK2;
-use crate::ui::COLOR_LIGHT;
-use crate::ui::COLOR_MID;
 use bevy::prelude::*;
+use bevy_flair::prelude::*;
 use chess_core::{ClientMessage, NewGameParams};
 
 #[derive(Component)]
 pub struct CreateDialogComponent;
 
-pub fn setup_create_dialog(mut commands: Commands) {
-    spawn_dialog!(
-        commands,
-        CreateDialogComponent,
-        Val::Px(500.0),
-        Val::Px(300.0),
-        |p| {
-            spawn_label!(p, "Create Game", 30.0);
-            spawn_button!(p, "Confirm", CreateAction::Confirm, ButtonColors::green());
-            spawn_button!(p, "Cancel", CreateAction::Cancel, ButtonColors::red());
-        }
-    );
+pub fn setup_create_dialog(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let dialog = commands
+        .spawn((
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                position_type: PositionType::Absolute,
+                display: Display::Flex,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            NodeStyleSheet::new(asset_server.load("style.css")),
+            CreateDialogComponent,
+            ClassList::new("dialog-overlay"),
+        ))
+        .with_children(|parent| {
+            parent
+                .spawn((
+                    Node {
+                        display: Display::Flex,
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    ClassList::new("dialog-content"),
+                ))
+                .with_children(|p| {
+                    p.spawn((Text::new("Create Game"), ClassList::new("label-large")));
+                    p.spawn((
+                        Button,
+                        Interaction::default(),
+                        ClassList::new("button-green"),
+                        CreateAction::Confirm,
+                    ))
+                    .with_children(|btn| {
+                        btn.spawn(Text::new("Confirm"));
+                    });
+                    p.spawn((
+                        Button,
+                        Interaction::default(),
+                        ClassList::new("button-red"),
+                        CreateAction::Cancel,
+                    ))
+                    .with_children(|btn| {
+                        btn.spawn(Text::new("Cancel"));
+                    });
+                });
+        })
+        .id();
 }
 
 #[derive(Component)]
@@ -44,7 +78,7 @@ pub fn create_dialog_action_system(
         (&Interaction, &CreateAction),
         (Changed<Interaction>, With<Button>),
     >,
-    mut state: ResMut<ClientState>,
+    state: ResMut<ClientState>,
     mut next_overlay: ResMut<NextState<Overlay>>,
 ) {
     for (interaction, action) in interaction_query.iter_mut() {

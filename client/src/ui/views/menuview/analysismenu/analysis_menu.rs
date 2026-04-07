@@ -1,9 +1,7 @@
 use crate::ui::views::menuview::menuroot::MenuTabContainer;
 use crate::ui::views::menuview::MenuTabComponent;
-use crate::ui::ButtonColors;
-use crate::COLOR_DARK;
-use bevy::color::Color;
 use bevy::prelude::*;
+use bevy_flair::prelude::*;
 
 #[derive(Component)]
 pub struct AnalysisMenuComponent;
@@ -16,39 +14,33 @@ pub enum AnalysisAction {
 pub fn setup_analysis_menu(
     mut commands: Commands,
     container_query: Query<Entity, With<MenuTabContainer>>,
+    asset_server: Res<AssetServer>,
 ) {
-    let container = container_query.single().ok();
+    let container = container_query.single();
 
     let menu_node = commands
         .spawn((
             Node {
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
-                display: Display::Grid,
-                grid_template_columns: vec![GridTrack::flex(1.0)],
-                grid_auto_rows: vec![GridTrack::auto()],
-                row_gap: Val::Px(20.0),
+                display: Display::Flex,
+                flex_direction: FlexDirection::Column,
                 align_items: AlignItems::Center,
-                justify_items: JustifyItems::Center,
                 ..default()
             },
+            NodeStyleSheet::new(asset_server.load("style.css")),
             AnalysisMenuComponent,
             MenuTabComponent,
+            ClassList::new("game-list"), // Reuse game-list for similar layout
         ))
         .with_children(|p| {
-            spawn_label!(p, "Under Construction", 40.0, Color::WHITE);
-            spawn_button!(
-                p,
-                "Analysis Button",
-                AnalysisAction::Todo,
-                ButtonColors::default(),
-                Val::Px(200.0),
-                Val::Px(50.0)
-            );
+            p.spawn((Text::new("Analysis Menu"), ClassList::new("label-large")));
+            p.spawn((
+                Text::new("Work in progress..."),
+                ClassList::new("label-small"),
+            ));
         })
         .id();
 
-    if let Some(container) = container {
+    if let Ok(container) = container {
         commands.entity(container).add_child(menu_node);
     }
 }

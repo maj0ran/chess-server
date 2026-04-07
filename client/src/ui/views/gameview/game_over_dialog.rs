@@ -1,23 +1,60 @@
 use crate::state::{ClientState, Overlay, Screen};
-use crate::ui::ButtonColors;
-use crate::ui::*;
 use bevy::prelude::*;
+use bevy_flair::prelude::*;
+
 #[derive(Component)]
 pub struct GameOverDialogComponent;
 
-pub fn setup_game_over_dialog(mut commands: Commands, state: ResMut<ClientState>) {
+pub fn setup_game_over_dialog(
+    mut commands: Commands,
+    state: ResMut<ClientState>,
+    asset_server: Res<AssetServer>,
+) {
     let winner = state.game_state.winner.unwrap();
-    spawn_dialog!(
-        commands,
-        GameOverDialogComponent,
-        Val::Px(300.0),
-        Val::Px(200.0),
-        |p| {
-            spawn_label!(p, "Game Over", 30.0, COLOR_LIGHT);
-            spawn_label!(p, format!("{} won", winner), 20.0, COLOR_LIGHT);
-            spawn_button!(p, "OK", GameOverAction::Ok);
-        }
-    );
+    let dialog = commands
+        .spawn((
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                position_type: PositionType::Absolute,
+                display: Display::Flex,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            NodeStyleSheet::new(asset_server.load("style.css")),
+            GameOverDialogComponent,
+            ClassList::new("dialog-overlay"),
+        ))
+        .with_children(|parent| {
+            parent
+                .spawn((
+                    Node {
+                        display: Display::Flex,
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    ClassList::new("dialog-content"),
+                ))
+                .with_children(|p| {
+                    p.spawn((Text::new("Game Over"), ClassList::new("label-large")));
+                    p.spawn((
+                        Text::new(format!("{} won", winner)),
+                        ClassList::new("label-small"),
+                    ));
+                    p.spawn((
+                        Button,
+                        Interaction::default(),
+                        ClassList::new(""),
+                        GameOverAction::Ok,
+                    ))
+                    .with_children(|btn| {
+                        btn.spawn(Text::new("OK"));
+                    });
+                });
+        })
+        .id();
 }
 
 #[derive(Component)]

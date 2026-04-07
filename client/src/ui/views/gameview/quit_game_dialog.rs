@@ -1,7 +1,6 @@
 use crate::state::{ClientState, Overlay, Screen};
-use crate::ui::ButtonColors;
-use crate::ui::*;
 use bevy::prelude::*;
+use bevy_flair::prelude::*;
 use chess_core::ClientMessage;
 
 /// Marker that indicates a dialog for quitting the current game
@@ -15,18 +14,56 @@ pub enum QuitGameAction {
     Cancel,
 }
 
-pub fn setup_quit_game_dialog(mut commands: Commands) {
-    spawn_dialog!(
-        commands,
-        QuitGameDialog,
-        Val::Px(300.0),
-        Val::Px(250.0),
-        |p| {
-            spawn_label!(p, "Are you sure?", 30.0);
-            spawn_button!(p, "Confirm", QuitGameAction::Confirm, ButtonColors::green());
-            spawn_button!(p, "Cancel", QuitGameAction::Cancel, ButtonColors::red());
-        }
-    );
+pub fn setup_quit_game_dialog(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let dialog = commands
+        .spawn((
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                position_type: PositionType::Absolute,
+                display: Display::Flex,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            QuitGameDialog,
+            NodeStyleSheet::new(asset_server.load("style.css")),
+            ClassList::new("dialog-overlay"),
+        ))
+        .with_children(|parent| {
+            parent
+                .spawn((
+                    Node {
+                        display: Display::Flex,
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    ClassList::new("dialog-content"),
+                ))
+                .with_children(|p| {
+                    p.spawn((Text::new("Are you sure?"), ClassList::new("label-large")));
+                    p.spawn((
+                        Button,
+                        Interaction::default(),
+                        ClassList::new("button-green"),
+                        QuitGameAction::Confirm,
+                    ))
+                    .with_children(|btn| {
+                        btn.spawn(Text::new("Confirm"));
+                    });
+                    p.spawn((
+                        Button,
+                        Interaction::default(),
+                        ClassList::new("button-red"),
+                        QuitGameAction::Cancel,
+                    ))
+                    .with_children(|btn| {
+                        btn.spawn(Text::new("Cancel"));
+                    });
+                });
+        })
+        .id();
 }
 
 pub fn cleanup_quit_game_dialog(
