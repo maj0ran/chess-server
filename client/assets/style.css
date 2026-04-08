@@ -28,20 +28,21 @@
 }
 
 .tab-bar {
-    display: grid;
+    display: flex;
+    flex-direction: row;
     width: 100%;
     height: 100%;
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr;
-    align-items: center;
-    justify-items: center;
+    justify-content: center;
     border-bottom: 2px solid white;
-    padding: 10px;
-    margin: 10px;
 }
 
 .tab-button {
     height: 50px;
+    width: 40%;
+    padding: 10px;
+    border-radius: 4px;
 }
 
 .content-container {
@@ -63,7 +64,9 @@ button {
     margin: 10px;
     transition: background-color 0.2s, transform 0.1s;
     cursor: pointer;
+    transform: scale(1);
 }
+
 
 button:hover {
     background-color: #dddc9b; /* COLOR_LIGHT */
