@@ -153,7 +153,10 @@ pub enum MenuAction {
 #[derive(Component)]
 pub struct GamesListContainer;
 
-pub fn cleanup_menu(mut commands: Commands, query: Query<Entity, With<MenuScreenComponent>>) {
+pub fn cleanup_gamelist_menu(
+    mut commands: Commands,
+    query: Query<Entity, With<MenuScreenComponent>>,
+) {
     for entity in query.iter() {
         commands.entity(entity).despawn();
     }

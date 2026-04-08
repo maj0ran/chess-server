@@ -18,6 +18,7 @@ pub enum MenuTab {
     None,
     Games,
     Analysis,
+    Puzzle,
 }
 
 #[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]

@@ -9,8 +9,10 @@ use crate::ui::views::menuview::gamemenu::dialogs::join_game_dialog::{
     cleanup_join_dialog, join_dialog_action_system, setup_join_dialog,
 };
 use crate::ui::views::menuview::gamemenu::gamelist_menu::{
-    cleanup_menu, gamelist_menu_action_system, setup_gamelist_menu, update_games_list,
+    cleanup_gamelist_menu, gamelist_menu_action_system, setup_gamelist_menu, update_games_list,
 };
+use crate::ui::views::menuview::puzzlemenu::puzzle_menu::{cleanup_puzzle_menu, setup_puzzle_menu};
+
 use bevy::prelude::*;
 use bevy_flair::prelude::*;
 
@@ -27,6 +29,7 @@ enum TabAction {
     #[default]
     GamesTab,
     AnalysisTab,
+    PuzzleTab,
 }
 
 #[derive(Component)]
@@ -58,22 +61,12 @@ impl Plugin for MenuRootPlugin {
                 Update,
                 join_dialog_action_system.run_if(in_state(Overlay::JoinDialog)),
             )
-            .add_systems(
-                OnEnter(MenuTab::Games),
-                (
-                    cleanup_analysis_menu,
-                    setup_gamelist_menu.run_if(in_state(Screen::Menu)),
-                )
-                    .chain(),
-            )
-            .add_systems(
-                OnEnter(MenuTab::Analysis),
-                (cleanup_menu, setup_analysis_menu).chain(),
-            )
-            .add_systems(
-                OnEnter(MenuTab::None),
-                (cleanup_menu, cleanup_analysis_menu),
-            );
+            .add_systems(OnEnter(MenuTab::Games), setup_gamelist_menu)
+            .add_systems(OnExit(MenuTab::Games), cleanup_gamelist_menu)
+            .add_systems(OnExit(MenuTab::Analysis), cleanup_analysis_menu)
+            .add_systems(OnExit(MenuTab::Puzzle), cleanup_puzzle_menu)
+            .add_systems(OnEnter(MenuTab::Analysis), setup_analysis_menu)
+            .add_systems(OnEnter(MenuTab::Puzzle), setup_puzzle_menu);
     }
 }
 
@@ -118,6 +111,13 @@ pub fn setup_menu_root(
                         ClassList::new("tab-button"),
                         TabAction::AnalysisTab,
                         children![Text::new("Analysis")],
+                    ),
+                    (
+                        Button,
+                        Interaction::default(),
+                        ClassList::new("tab-button"),
+                        TabAction::PuzzleTab,
+                        children![Text::new("Puzzles")],
                     )
                 ],
             ),
@@ -162,6 +162,11 @@ fn tab_action_system(
                 TabAction::AnalysisTab => {
                     if *current_tab.get() != MenuTab::Analysis {
                         next_tab.set(MenuTab::Analysis);
+                    }
+                }
+                TabAction::PuzzleTab => {
+                    if *current_tab.get() != MenuTab::Puzzle {
+                        next_tab.set(MenuTab::Puzzle);
                     }
                 }
             }
