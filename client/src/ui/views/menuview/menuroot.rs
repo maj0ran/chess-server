@@ -97,6 +97,11 @@ pub fn setup_menu_root(
         children![
             (
                 Node::default(),
+                ClassList::new("label-large title-bar"),
+                children![Text::new("Schach!")],
+            ),
+            (
+                Node::default(),
                 TabBar,
                 ClassList::new("tab-bar"),
                 children![

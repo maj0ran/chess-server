@@ -36,31 +36,28 @@ pub fn setup_gamelist_menu(
                     align_items: AlignItems::Center,
                     ..default()
                 },
-                children![
-                    (Text::new("Schach!"), ClassList::new("label-large")),
-                    (
-                        Node {
-                            column_gap: Val::Px(50.0),
-                            ..default()
-                        },
-                        children![
-                            (
-                                Button,
-                                Interaction::default(),
-                                ClassList::new(""),
-                                MenuAction::CreateGame,
-                                children![Text::new("Create Game")],
-                            ),
-                            (
-                                Button,
-                                Interaction::default(),
-                                ClassList::new(""),
-                                MenuAction::ListGames,
-                                children![Text::new("List Games")],
-                            )
-                        ],
-                    )
-                ],
+                children![(
+                    Node {
+                        column_gap: Val::Px(50.0),
+                        ..default()
+                    },
+                    children![
+                        (
+                            Button,
+                            Interaction::default(),
+                            ClassList::new(""),
+                            MenuAction::CreateGame,
+                            children![Text::new("Create Game")],
+                        ),
+                        (
+                            Button,
+                            Interaction::default(),
+                            ClassList::new(""),
+                            MenuAction::ListGames,
+                            children![Text::new("List Games")],
+                        )
+                    ],
+                )],
             ));
 
             // Games List wrapper
