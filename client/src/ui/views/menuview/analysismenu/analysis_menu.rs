@@ -20,24 +20,19 @@ pub fn setup_analysis_menu(
 
     let menu_node = commands
         .spawn((
-            Node {
-                display: Display::Flex,
-                flex_direction: FlexDirection::Column,
-                align_items: AlignItems::Center,
-                ..default()
-            },
+            Node::default(),
             NodeStyleSheet::new(asset_server.load("style.css")),
             AnalysisMenuComponent,
             MenuTabComponent,
-            ClassList::new("game-list"), // Reuse game-list for similar layout
+            ClassList::new("menu"),
+            children![
+                (Text::new("Analysis Menu"), ClassList::new("label-large")),
+                (
+                    Text::new("Under construction..."),
+                    ClassList::new("label-small")
+                )
+            ],
         ))
-        .with_children(|p| {
-            p.spawn((Text::new("Analysis Menu"), ClassList::new("label-large")));
-            p.spawn((
-                Text::new("Work in progress..."),
-                ClassList::new("label-small"),
-            ));
-        })
         .id();
 
     if let Ok(container) = container {

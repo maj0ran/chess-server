@@ -86,6 +86,13 @@ button text {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
+.column-align {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
 .promotion-row {
     display: flex;
     flex-direction: row;
@@ -111,9 +118,10 @@ button text {
     background-color: rgb(60%, 30%, 30%);
 }
 
-.game-list {
+.menu {
     display: flex;
     flex-direction: column;
+    align-items: center;
     width: 90%;
     height: 90%;
     padding: 20px;

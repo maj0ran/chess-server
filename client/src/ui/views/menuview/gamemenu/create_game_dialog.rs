@@ -7,55 +7,32 @@ use chess_core::{ClientMessage, NewGameParams};
 pub struct CreateDialogComponent;
 
 pub fn setup_create_dialog(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let dialog = commands
-        .spawn((
-            Node {
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
-                position_type: PositionType::Absolute,
-                display: Display::Flex,
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
-                ..default()
-            },
-            NodeStyleSheet::new(asset_server.load("style.css")),
-            CreateDialogComponent,
-            ClassList::new("dialog-overlay"),
-        ))
-        .with_children(|parent| {
-            parent
-                .spawn((
-                    Node {
-                        display: Display::Flex,
-                        flex_direction: FlexDirection::Column,
-                        align_items: AlignItems::Center,
-                        ..default()
-                    },
-                    ClassList::new("dialog-content"),
-                ))
-                .with_children(|p| {
-                    p.spawn((Text::new("Create Game"), ClassList::new("label-large")));
-                    p.spawn((
-                        Button,
-                        Interaction::default(),
-                        ClassList::new("button-green"),
-                        CreateAction::Confirm,
-                    ))
-                    .with_children(|btn| {
-                        btn.spawn(Text::new("Confirm"));
-                    });
-                    p.spawn((
-                        Button,
-                        Interaction::default(),
-                        ClassList::new("button-red"),
-                        CreateAction::Cancel,
-                    ))
-                    .with_children(|btn| {
-                        btn.spawn(Text::new("Cancel"));
-                    });
-                });
-        })
-        .id();
+    commands.spawn((
+        Node::default(),
+        NodeStyleSheet::new(asset_server.load("style.css")),
+        CreateDialogComponent,
+        children![(
+            Node::default(),
+            ClassList::new("dialog-content column-align"),
+            children![
+                (Text::new("Create Game"), ClassList::new("label-large")),
+                (
+                    Button,
+                    Interaction::default(),
+                    ClassList::new("button-green"),
+                    CreateAction::Confirm,
+                    children![Text::new("Create")],
+                ),
+                (
+                    Button,
+                    Interaction::default(),
+                    ClassList::new("button-red"),
+                    CreateAction::Cancel,
+                    children![Text::new("Cancel")],
+                )
+            ],
+        )],
+    ));
 }
 
 #[derive(Component)]

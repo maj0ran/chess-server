@@ -89,50 +89,41 @@ pub fn setup_menu_root(
     // the Games tab.
     next_tab.set(MenuTab::Games);
 
-    let menu_root = commands
-        .spawn((
-            Node {
-                display: Display::None,
-                ..default()
-            },
-            NodeStyleSheet::new(asset_server.load("style.css")),
-            MenuRootComponent,
-            ClassList::new("menu-root"),
-        ))
-        .with_children(|p| {
-            // Tab Bar
-            p.spawn((Node::default(), TabBar, ClassList::new("tab-bar")))
-                .with_children(|parent| {
-                    parent
-                        .spawn((
-                            Button,
-                            Interaction::default(),
-                            ClassList::new("tab-button"),
-                            TabAction::GamesTab,
-                        ))
-                        .with_children(|btn| {
-                            btn.spawn(Text::new("Games"));
-                        });
-                    parent
-                        .spawn((
-                            Button,
-                            Interaction::default(),
-                            ClassList::new("tab-button"),
-                            TabAction::AnalysisTab,
-                        ))
-                        .with_children(|btn| {
-                            btn.spawn(Text::new("Analysis"));
-                        });
-                });
-
-            // Content Container for the current tab.
-            p.spawn((
+    commands.spawn((
+        Node::default(),
+        NodeStyleSheet::new(asset_server.load("style.css")),
+        MenuRootComponent,
+        ClassList::new("menu-root"),
+        children![
+            (
+                Node::default(),
+                TabBar,
+                ClassList::new("tab-bar"),
+                children![
+                    (
+                        Button,
+                        Interaction::default(),
+                        ClassList::new("tab-button"),
+                        TabAction::GamesTab,
+                        children![Text::new("Play")],
+                    ),
+                    (
+                        Button,
+                        Interaction::default(),
+                        ClassList::new("tab-button"),
+                        TabAction::AnalysisTab,
+                        children![Text::new("Analysis")],
+                    )
+                ],
+            ),
+            // container where the tab content is rendered into. (Play-tab, Analysis-tab)
+            (
                 Node::default(),
                 MenuTabContainer,
                 ClassList::new("content-container"),
-            ));
-        })
-        .id();
+            )
+        ],
+    ));
 }
 
 pub fn cleanup_menu_root(

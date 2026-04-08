@@ -1,9 +1,6 @@
 use bevy::prelude::*;
 
-use bevy_flair::prelude::*;
-
 pub mod views;
-
 pub use views::menuview::gamemenu::gamelist_menu;
 
 pub const COLOR_DARK: Color = Color::srgb(0.125, 0.125, 0.125);

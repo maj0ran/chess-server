@@ -25,61 +25,57 @@ pub fn setup_gamelist_menu(
             Node::default(),
             MenuScreenComponent,
             MenuTabComponent,
-            ClassList::new("game-list"),
+            ClassList::new("menu"),
+            children![],
         ))
         .with_children(|p| {
-            p.spawn(Node {
-                display: Display::Flex,
-                flex_direction: FlexDirection::Column,
-                align_items: AlignItems::Center,
-                ..default()
-            })
-            .with_children(|p| {
-                // Title Label
-                p.spawn((Text::new("Schach!"), ClassList::new("label-large")));
-                // Buttons container
-                p.spawn(Node {
+            p.spawn((
+                Node {
                     display: Display::Flex,
-                    flex_direction: FlexDirection::Row,
-                    column_gap: Val::Px(10.0),
+                    flex_direction: FlexDirection::Column,
                     align_items: AlignItems::Center,
-                    justify_content: JustifyContent::Center,
                     ..default()
-                })
-                .with_children(|parent| {
-                    parent
-                        .spawn((
-                            Button,
-                            Interaction::default(),
-                            ClassList::new(""),
-                            MenuAction::CreateGame,
-                        ))
-                        .with_children(|btn| {
-                            btn.spawn(Text::new("Create Game"));
-                        });
-                    parent
-                        .spawn((
-                            Button,
-                            Interaction::default(),
-                            ClassList::new(""),
-                            MenuAction::ListGames,
-                        ))
-                        .with_children(|btn| {
-                            btn.spawn(Text::new("List Games"));
-                        });
-                });
-            });
+                },
+                children![
+                    (Text::new("Schach!"), ClassList::new("label-large")),
+                    (
+                        Node {
+                            column_gap: Val::Px(50.0),
+                            ..default()
+                        },
+                        children![
+                            (
+                                Button,
+                                Interaction::default(),
+                                ClassList::new(""),
+                                MenuAction::CreateGame,
+                                children![Text::new("Create Game")],
+                            ),
+                            (
+                                Button,
+                                Interaction::default(),
+                                ClassList::new(""),
+                                MenuAction::ListGames,
+                                children![Text::new("List Games")],
+                            )
+                        ],
+                    )
+                ],
+            ));
 
             // Games List wrapper
-            p.spawn(Node {
-                width: Val::Percent(100.0),
-                height: Val::Px(400.0),
-                display: Display::Grid,
-                grid_template_columns: vec![GridTrack::flex(1.0)],
-                grid_template_rows: vec![GridTrack::flex(1.0)],
-                margin: UiRect::all(Val::Px(10.0)),
-                ..default()
-            })
+            p.spawn((
+                Node {
+                    width: Val::Percent(100.0),
+                    height: Val::Px(400.0),
+                    display: Display::Grid,
+                    grid_template_columns: vec![GridTrack::flex(1.0)],
+                    grid_template_rows: vec![GridTrack::flex(1.0)],
+                    margin: UiRect::all(Val::Px(10.0)),
+                    ..default()
+                },
+                children![Node::default()],
+            ))
             .with_children(|parent| {
                 // Games List container (scrolling content)
                 let game_list = parent
@@ -230,10 +226,8 @@ pub fn update_games_list(
                         Interaction::default(),
                         ClassList::new(""),
                         MenuAction::JoinGame(*game_id),
-                    ))
-                    .with_children(|btn| {
-                        btn.spawn(Text::new("Join"));
-                    });
+                        children![Text::new("Join")],
+                    ));
                 });
         }
     });

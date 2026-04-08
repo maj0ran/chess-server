@@ -316,7 +316,7 @@ pub fn promotion_dialog(
     assets: Res<GameAssets>,
     assets_server: Res<AssetServer>,
 ) {
-    let dialog = commands
+    commands
         .spawn((
             Node {
                 width: Val::Percent(100.0),
@@ -382,8 +382,7 @@ pub fn promotion_dialog(
                             });
                         });
                 });
-        })
-        .id();
+        });
 }
 
 pub fn cleanup_promotion_dialog(
