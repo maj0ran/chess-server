@@ -15,9 +15,13 @@ pub struct NetworkInterface {
 
 impl NetworkInterface {
     pub fn new() -> Self {
+        let config = Config::read("settings.cfg");
+        Self::with_config(config)
+    }
+
+    pub fn with_config(config: Config) -> Self {
         let (cmd_tx, cmd_rx) = smol::channel::unbounded();
         let (resp_tx, resp_rx) = smol::channel::unbounded();
-        let config = Config::read("settings.cfg");
         let server_addr = config.server;
 
         std::thread::spawn(move || {
@@ -53,15 +57,6 @@ pub async fn network_thread(
 ) -> NetResult<()> {
     let stream = TcpStream::connect(addr).await?;
     let mut conn = Connection::new(stream);
-
-    // Consume login message
-    match conn.read_msg::<ServerMessage>().await {
-        Ok(ServerMessage::LoginAccepted(_)) => {}
-        Ok(_) => {
-            return Err(NetError::Protocol("Expected Login event".into()));
-        }
-        Err(e) => return Err(e),
-    }
 
     log::info!("Network thread started");
 
@@ -102,14 +97,14 @@ pub async fn receive_thread(mut conn: Connection, resp_tx: Sender<ServerMessage>
 }
 
 use crate::config::Config;
-use crate::state::{ClientState, GameDetails, Overlay, Screen};
+use crate::state::{ClientBackend, GameDetails, Overlay, Screen};
 use crate::ui::gamelist_menu::UpdateGamesList;
 use bevy::prelude::*;
 use std::collections::HashMap;
 
 pub fn poll_network(
     mut commands: Commands,
-    mut state: ResMut<ClientState>,
+    mut state: ResMut<ClientBackend>,
     mut next_screen: ResMut<NextState<Screen>>,
     mut next_overlay: ResMut<NextState<Overlay>>,
 ) {
@@ -174,9 +169,29 @@ pub fn poll_network(
                     state.menu_state.games.insert(game_id, Some(game_details));
                     log::info!("Received game details for game ID: {}", game_id);
                 }
+
+                if let Some(wid) = white_id {
+                    if !state.menu_state.client_names.contains_key(&wid) {
+                        state.network.send(ClientMessage::QueryClientDetails(wid));
+                    }
+                }
+                if let Some(bid) = black_id {
+                    if !state.menu_state.client_names.contains_key(&bid) {
+                        state.network.send(ClientMessage::QueryClientDetails(bid));
+                    }
+                }
+
                 commands.trigger(UpdateGamesList);
             }
-            ServerMessage::LoginAccepted(_) => {}
+            ServerMessage::ClientDetails(client_id, name) => {
+                state.menu_state.client_names.insert(client_id, name);
+                commands.trigger(UpdateGamesList);
+            }
+            ServerMessage::LoginAccepted(_) => {
+                log::info!("Login accepted");
+                let name = state.name.clone();
+                state.network.send(ClientMessage::SetNickname(name));
+            }
             ServerMessage::GameLeft(_gid, _cid) => {}
         }
     }

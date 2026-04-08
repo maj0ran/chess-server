@@ -1,4 +1,4 @@
-use crate::state::{ClientState, Overlay};
+use crate::state::{ClientBackend, Overlay};
 use bevy::prelude::*;
 use bevy_flair::prelude::*;
 use chess_core::{ClientMessage, JoinGameParams, UserRoleSelection};
@@ -81,7 +81,7 @@ pub fn cleanup_join_dialog(
 
 pub fn join_dialog_action_system(
     mut interaction_query: Query<(&Interaction, &JoinAction), (Changed<Interaction>, With<Button>)>,
-    state: ResMut<ClientState>,
+    state: ResMut<ClientBackend>,
     mut next_overlay: ResMut<NextState<Overlay>>,
 ) {
     for (interaction, action) in interaction_query.iter_mut() {

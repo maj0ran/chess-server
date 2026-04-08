@@ -15,13 +15,16 @@ use std::collections::HashMap;
 /// to let messages flow from the `GameManager` task to the
 /// individual `ClientSession` tasks.
 pub struct ClientEndpoint {
-    pub id: ClientId,
     pub tx: Sender<ServerMessage>,
+    pub name: String,
 }
 
 impl ClientEndpoint {
     pub fn new(tx: Sender<ServerMessage>) -> Self {
-        ClientEndpoint { id: 1, tx }
+        ClientEndpoint {
+            tx,
+            name: String::from(""),
+        }
     }
 }
 
@@ -99,8 +102,16 @@ impl GameManager {
                         ClientMessage::QueryGameDetails(game_id) => {
                             self.handle_query_game_details(client_id, game_id).await;
                         }
+                        ClientMessage::QueryClientDetails(client_id_query) => {
+                            self.handle_query_client_details(client_id, client_id_query)
+                                .await;
+                        }
                         ClientMessage::LeaveGame(game_id) => {
                             self.handle_leave_game(client_id, game_id).await;
+                        }
+                        ClientMessage::SetNickname(name) => {
+                            log::info!("Set nickname for client {} to {}", client_id, name);
+                            self.handle_set_nickname(client_id, name).await;
                         }
                     }
                 }
@@ -214,8 +225,10 @@ impl GameManager {
                     ChessGameState::Finished(outcome) => {
                         // Game is finished; save the history in a file, remove it from the game list
                         // and send the outcome to all clients in the game.
-                        let _ = GameManager::save_game(game).await;
-                        self.games.remove(&game_id);
+                        // Note: we have to remove the game from the list first to get ownership for save_game
+                        if let Some(game) = self.games.remove(&game_id) {
+                            let _ = self.save_game(&game).await;
+                        }
                         match outcome {
                             ChessGameOutcome::Checkmate(is_checkmated) => {
                                 for c in &clients {
@@ -287,10 +300,35 @@ impl GameManager {
         }
     }
 
-    pub async fn save_game(game: &ChessGame) -> std::io::Result<()> {
+    async fn handle_query_client_details(&self, client_id: ClientId, query_id: ClientId) {
+        if let Some(c) = self.clients.get(&client_id) {
+            let name = self
+                .clients
+                .get(&query_id)
+                .map(|client| client.name.clone())
+                .unwrap_or_else(|| "Unknown".to_string());
+
+            let _ =
+                c.tx.send(ServerMessage::ClientDetails(query_id, name))
+                    .await;
+        }
+    }
+
+    async fn handle_set_nickname(&mut self, client_id: ClientId, nickname: String) {
+        if let Some(c) = self.clients.get_mut(&client_id) {
+            c.name = nickname;
+        }
+    }
+
+    pub async fn save_game(&self, game: &ChessGame) -> std::io::Result<()> {
         let date = Utc::now().format("%Y-%m-%d_%H-%M-%S").to_string();
+
         let white = game.white_player.unwrap();
-        let black = game.white_player.unwrap();
+        let white = &self.clients.get(&white).unwrap().name;
+
+        let black = game.black_player.unwrap();
+        let black = &self.clients.get(&black).unwrap().name;
+
         let filename = format!("{}-vs-{}_{}.txt", white, black, date);
         let mut file = File::create(filename).await?;
         for mov in game.move_history.iter() {

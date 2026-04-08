@@ -9,15 +9,28 @@ pub struct Config {
 impl Config {
     pub fn read(file_path: &str) -> Config {
         let mut settings: HashMap<String, String> = HashMap::new();
-        for line in read_to_string(file_path).unwrap().lines() {
-            let mut parts = line.split('=');
-            let key = parts.next().unwrap().to_string();
-            let value = parts.next().unwrap().to_string();
-            settings.insert(key, value);
+        match read_to_string(file_path) {
+            Ok(content) => {
+                for line in content.lines() {
+                    let mut parts = line.split('=');
+                    if let (Some(key), Some(value)) = (parts.next(), parts.next()) {
+                        settings.insert(key.trim().to_string(), value.trim().to_string());
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("Failed to read config file {}: {}", file_path, e);
+            }
         }
         Config {
-            server: settings.get("server").unwrap().to_string(),
-            name: settings.get("name").unwrap().to_string(),
+            server: settings
+                .get("server")
+                .cloned()
+                .unwrap_or_else(|| "127.0.0.1:8080".to_string()),
+            name: settings
+                .get("name")
+                .cloned()
+                .unwrap_or_else(|| "UnnamedPlayer".to_string()),
         }
     }
 }

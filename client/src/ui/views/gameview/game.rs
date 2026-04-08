@@ -1,4 +1,4 @@
-use crate::state::{ClientState, Overlay, Screen};
+use crate::state::{ClientBackend, Overlay, Screen};
 use crate::ui::views::gameview::dialogs::game_over_dialog::{
     cleanup_game_over_dialog, game_over_dialog_action_system, setup_game_over_dialog,
 };
@@ -153,7 +153,7 @@ pub struct Draggable;
 pub struct Dragging;
 
 pub fn update_game(
-    mut state: ResMut<ClientState>,
+    mut state: ResMut<ClientBackend>,
     mut commands: Commands,
     assets: Res<GameAssets>,
     win_res: Res<crate::WindowSize>,
@@ -226,7 +226,7 @@ pub fn update_game(
 
 pub fn handle_drag(
     mut commands: Commands,
-    mut state: ResMut<ClientState>,
+    mut state: ResMut<ClientBackend>,
     buttons: Res<ButtonInput<MouseButton>>,
     win_res: Res<crate::WindowSize>,
     q_window: Query<&Window, With<bevy::window::PrimaryWindow>>,
@@ -479,7 +479,7 @@ pub fn promotion_action_system(
         (&Interaction, &PromotionAction),
         (Changed<Interaction>, With<Button>),
     >,
-    mut state: ResMut<ClientState>,
+    mut state: ResMut<ClientBackend>,
     mut next_overlay: ResMut<NextState<Overlay>>,
 ) {
     for (interaction, action) in interaction_query.iter_mut() {

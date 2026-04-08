@@ -1,4 +1,4 @@
-use crate::state::{ClientState, Overlay, Screen};
+use crate::state::{ClientBackend, Overlay, Screen};
 use bevy::prelude::*;
 use bevy_flair::prelude::*;
 use chess_core::ClientMessage;
@@ -68,7 +68,7 @@ pub fn quit_game_dialog_action_system(
     >,
     mut next_overlay: ResMut<NextState<Overlay>>,
     mut next_screen: ResMut<NextState<Screen>>,
-    client: ResMut<ClientState>,
+    client: ResMut<ClientBackend>,
 ) {
     for (interaction, action) in interaction_query.iter_mut() {
         if *interaction == Interaction::Pressed {

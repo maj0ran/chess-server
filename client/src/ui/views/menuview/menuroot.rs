@@ -1,4 +1,4 @@
-use crate::state::{ClientState, MenuTab, Overlay, Screen};
+use crate::state::{ClientBackend, MenuTab, Overlay, Screen};
 use crate::ui::views::menuview::analysismenu::analysis_menu::{
     cleanup_analysis_menu, setup_analysis_menu,
 };
@@ -79,7 +79,7 @@ impl Plugin for MenuRootPlugin {
 
 pub fn setup_menu_root(
     mut commands: Commands,
-    state: Res<ClientState>,
+    state: Res<ClientBackend>,
     mut next_tab: ResMut<NextState<MenuTab>>,
     asset_server: Res<AssetServer>,
 ) {

@@ -93,12 +93,14 @@ pub trait NetMessage: Sized {
 /// Messages from a client to the server.
 #[derive(Debug, Clone)]
 pub enum ClientMessage {
-    Register(Sender<ServerMessage>),
+    Register(Sender<ServerMessage>), // TODO: this is not an actual client-message
+    SetNickname(String),
     NewGame(NewGameParams),
     JoinGame(JoinGameParams),
     Move(GameId, ChessMove),
     QueryGames,
     QueryGameDetails(GameId),
+    QueryClientDetails(ClientId),
     LeaveGame(GameId),
 }
 
@@ -109,6 +111,8 @@ impl ClientMessage {
     pub const QUERY_GAME_DETAILS: u8 = 0x0D;
     pub const JOIN_GAME: u8 = 0x0E;
     pub const LEAVE_GAME: u8 = 0x0F;
+    pub const SET_NICKNAME: u8 = 0x10;
+    pub const QUERY_CLIENT_DETAILS: u8 = 0x11;
 }
 
 /// Serialization and deserialization for `ClientMessage`.
@@ -154,9 +158,18 @@ impl NetMessage for ClientMessage {
                 let game_id = reader.read_u32_le()?;
                 Ok(ClientMessage::QueryGameDetails(game_id))
             }
+            Self::QUERY_CLIENT_DETAILS => {
+                let client_id = reader.read_u32_le()? as usize;
+                Ok(ClientMessage::QueryClientDetails(client_id))
+            }
             Self::LEAVE_GAME => {
                 let gid = reader.read_u32_le()?;
                 Ok(ClientMessage::LeaveGame(gid))
+            }
+            Self::SET_NICKNAME => {
+                let nickname = String::from_utf8(reader.remaining().to_vec())
+                    .map_err(|_| NetError::Protocol("Failed to parse nickname".to_string()))?;
+                Ok(ClientMessage::SetNickname(nickname))
             }
             _ => Err(NetError::Protocol(format!(
                 "parse: invalid command 0x{:02X}",
@@ -183,6 +196,11 @@ impl NetMessage for ClientMessage {
                 data.extend_from_slice(&game_id.to_le_bytes());
                 data
             }
+            ClientMessage::QueryClientDetails(client_id) => {
+                let mut data = vec![Self::QUERY_CLIENT_DETAILS];
+                data.extend_from_slice(&(*client_id as u32).to_le_bytes());
+                data
+            }
             ClientMessage::Move(game_id, mov) => {
                 let mut data = vec![Self::MAKE_MOVE];
                 data.extend_from_slice(&game_id.to_le_bytes());
@@ -195,6 +213,11 @@ impl NetMessage for ClientMessage {
             ClientMessage::LeaveGame(gid) => {
                 let mut data = vec![Self::LEAVE_GAME];
                 data.extend_from_slice(&gid.to_le_bytes());
+                data
+            }
+            ClientMessage::SetNickname(name) => {
+                let mut data = vec![Self::SET_NICKNAME];
+                data.extend_from_slice(name.to_string().as_bytes());
                 data
             }
         }
@@ -210,7 +233,9 @@ impl fmt::Display for ClientMessage {
             ClientMessage::QueryGames => "Query Games",
             ClientMessage::Register(_) => "Register Client",
             ClientMessage::QueryGameDetails(_) => "Query Game Details",
+            ClientMessage::QueryClientDetails(_) => "Query Client Details",
             ClientMessage::LeaveGame(_) => "Leave Game",
+            ClientMessage::SetNickname(_) => "Set Nickname",
         };
         write!(f, "{}", s)
     }
@@ -226,6 +251,7 @@ pub enum ServerMessage {
     IllegalMove(ChessError),
     GamesList(Vec<GameId>),
     GameDetails(GameId, Option<ClientId>, Option<ClientId>, u32, u32),
+    ClientDetails(ClientId, String),
     Checkmate(GameId, ChessColor),
     Stalemate(GameId),
     LoginAccepted(ClientId),
@@ -241,6 +267,7 @@ impl ServerMessage {
     pub const CHECKMATE: u8 = 0x87;
     pub const STALEMATE: u8 = 0x88;
     pub const GAME_DETAILS: u8 = 0x8D;
+    pub const CLIENT_DETAILS: u8 = 0x8E;
     pub const LOGIN_ACCEPTED: u8 = 0xF0;
 
     pub fn opcode(&self) -> u8 {
@@ -253,6 +280,7 @@ impl ServerMessage {
             ServerMessage::Checkmate(_, _) => Self::CHECKMATE,
             ServerMessage::Stalemate(_) => Self::STALEMATE,
             ServerMessage::GameDetails(_, _, _, _, _) => Self::GAME_DETAILS,
+            ServerMessage::ClientDetails(_, _) => Self::CLIENT_DETAILS,
             ServerMessage::LoginAccepted(_) => Self::LOGIN_ACCEPTED,
             ServerMessage::GameLeft(_, _) => Self::GAME_LEFT,
         }
@@ -332,6 +360,7 @@ impl NetMessage for ServerMessage {
                 };
                 let time = reader.read_u32_le()?;
                 let inc = reader.read_u32_le()?;
+
                 Ok(ServerMessage::GameDetails(
                     game_id,
                     white_id_opt,
@@ -339,6 +368,12 @@ impl NetMessage for ServerMessage {
                     time,
                     inc,
                 ))
+            }
+            Self::CLIENT_DETAILS => {
+                let client_id = reader.read_u32_le()? as usize;
+                let name = String::from_utf8(reader.remaining().to_vec())
+                    .map_err(|_| NetError::Protocol("Failed to parse nickname".to_string()))?;
+                Ok(ServerMessage::ClientDetails(client_id, name))
             }
             Self::GAME_LEFT => {
                 let game_id = reader.read_u32_le()?;
@@ -425,6 +460,12 @@ impl NetMessage for ServerMessage {
                 data.extend_from_slice(&black_id.to_le_bytes());
                 data.extend_from_slice(&time.to_le_bytes());
                 data.extend_from_slice(&inc.to_le_bytes());
+                data
+            }
+            ServerMessage::ClientDetails(client_id, name) => {
+                let mut data = vec![Self::CLIENT_DETAILS];
+                data.extend_from_slice(&(*client_id as u32).to_le_bytes());
+                data.extend_from_slice(name.as_bytes());
                 data
             }
             ServerMessage::GameLeft(game_id, client_id) => {

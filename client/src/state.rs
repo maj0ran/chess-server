@@ -1,3 +1,4 @@
+use crate::config::Config;
 use crate::network::NetworkInterface;
 use bevy::prelude::*;
 use chess_core::UserRoleSelection;
@@ -40,6 +41,7 @@ pub struct GameDetails {
 
 pub struct MenuState {
     pub games: HashMap<GameId, Option<GameDetails>>,
+    pub client_names: HashMap<usize, String>,
     pub selected_game: Option<GameId>,
     pub error_msg: Option<String>,
 }
@@ -52,13 +54,14 @@ pub struct GameState {
     pub dirty: bool,
 }
 
-/// ClientState is the shared resource for all our bevy UI.
+/// ClientBackend is the shared resource for all our bevy UI.
 #[derive(Resource)]
-pub struct ClientState {
+pub struct ClientBackend {
     pub network: NetworkInterface,
     pub menu_state: MenuState,
     pub game_state: GameState,
     pub create_settings: CreateGameSettings,
+    pub name: String,
 }
 
 pub struct CreateGameSettings {
@@ -69,14 +72,21 @@ pub struct CreateGameSettings {
 
 /// Creating a new client state sets up its own thread for the network messaging with the server.
 /// To communicate from the UI with this thread, we use channels.
-impl ClientState {
+impl ClientBackend {
     pub fn new() -> Self {
+        let config = Config::read("settings.cfg");
+        Self::with_config(config)
+    }
+
+    pub fn with_config(config: Config) -> Self {
+        let name = config.name.clone();
         Self {
             // interface for the network logic to communicate with the server.
-            network: NetworkInterface::new(),
+            network: NetworkInterface::with_config(config),
             // state of the main menu, i.e., list of games, selected game.
             menu_state: MenuState {
                 games: HashMap::new(),
+                client_names: HashMap::new(),
                 selected_game: None,
                 error_msg: None,
             },
@@ -95,6 +105,7 @@ impl ClientState {
                 increment: 5,
                 selected_color: UserRoleSelection::White,
             },
+            name,
         }
     }
 

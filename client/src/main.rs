@@ -4,7 +4,7 @@ pub mod state;
 pub mod ui;
 
 use crate::network::poll_network;
-use crate::state::{ClientState, MenuTab, Overlay, Screen};
+use crate::state::{ClientBackend, MenuTab, Overlay, Screen};
 use crate::ui::COLOR_DARK;
 use ui::views::gameview::game::GamePlugin;
 use ui::views::menuview::menuroot::MenuRootPlugin;
@@ -36,6 +36,8 @@ fn on_resize_system(
 fn main() {
     env_logger::init();
 
+    let config = crate::config::Config::read("settings.cfg");
+
     App::new()
         .add_plugins((
             // always needed
@@ -52,7 +54,7 @@ fn main() {
             ScrollbarPlugin,
             FlairPlugin,
         ))
-        .insert_resource(ClientState::new())
+        .insert_resource(ClientBackend::with_config(config))
         .init_state::<Screen>()
         .init_state::<MenuTab>()
         .init_state::<Overlay>()

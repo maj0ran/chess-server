@@ -1,4 +1,4 @@
-use crate::state::{ClientState, Overlay};
+use crate::state::{ClientBackend, Overlay};
 use bevy::prelude::*;
 use bevy_flair::prelude::*;
 use chess_core::{ClientMessage, NewGameParams};
@@ -55,7 +55,7 @@ pub fn create_dialog_action_system(
         (&Interaction, &CreateAction),
         (Changed<Interaction>, With<Button>),
     >,
-    state: ResMut<ClientState>,
+    state: ResMut<ClientBackend>,
     mut next_overlay: ResMut<NextState<Overlay>>,
 ) {
     for (interaction, action) in interaction_query.iter_mut() {

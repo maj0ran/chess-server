@@ -1,4 +1,4 @@
-use crate::state::{ClientState, Overlay, Screen};
+use crate::state::{ClientBackend, Overlay, Screen};
 use bevy::prelude::*;
 use bevy_flair::prelude::*;
 
@@ -7,7 +7,7 @@ pub struct GameOverDialogComponent;
 
 pub fn setup_game_over_dialog(
     mut commands: Commands,
-    state: ResMut<ClientState>,
+    state: ResMut<ClientBackend>,
     asset_server: Res<AssetServer>,
 ) {
     let winner = state.game_state.winner.unwrap();

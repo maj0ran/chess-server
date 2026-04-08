@@ -1,4 +1,4 @@
-use crate::state::{ClientState, Overlay};
+use crate::state::{ClientBackend, Overlay};
 use crate::ui::views::menuview::menuroot::MenuTabContainer;
 use crate::ui::views::menuview::MenuTabComponent;
 use bevy::prelude::*;
@@ -161,7 +161,7 @@ pub fn cleanup_menu(mut commands: Commands, query: Query<Entity, With<MenuScreen
 
 pub fn gamelist_menu_action_system(
     mut interaction_query: Query<(&Interaction, &MenuAction), (Changed<Interaction>, With<Button>)>,
-    mut state: ResMut<ClientState>,
+    mut state: ResMut<ClientBackend>,
     mut next_overlay: ResMut<NextState<Overlay>>,
 ) {
     for (interaction, action) in interaction_query.iter_mut() {
@@ -184,7 +184,7 @@ pub fn gamelist_menu_action_system(
 
 pub fn update_games_list(
     _clicked: On<UpdateGamesList>,
-    state: Res<ClientState>,
+    state: Res<ClientBackend>,
     mut commands: Commands,
     container_query: Query<Entity, With<GamesListContainer>>,
     children_query: Query<&Children, With<GamesListContainer>>,
@@ -207,14 +207,29 @@ pub fn update_games_list(
     commands.entity(container).with_children(|parent| {
         for (game_id, details) in &state.menu_state.games {
             let game_info = if let Some(d) = details {
+                // from the Client ID, get the name from the internal client list,
+                // otherwise use the ID as a fallback (should not happen tbh).
+                // finally, use "-" if both are missing. (this just means that no player
+                // is connected to a game)
                 let white = d
                     .white_player
-                    .map(|id| id.to_string())
-                    .unwrap_or("-".to_string());
+                    .and_then(|id| state.menu_state.client_names.get(&id))
+                    .cloned()
+                    .unwrap_or_else(|| {
+                        d.white_player
+                            .map(|id| id.to_string())
+                            .unwrap_or("-".to_string())
+                    });
+                // ditto
                 let black = d
                     .black_player
-                    .map(|id| id.to_string())
-                    .unwrap_or("-".to_string());
+                    .and_then(|id| state.menu_state.client_names.get(&id))
+                    .cloned()
+                    .unwrap_or_else(|| {
+                        d.black_player
+                            .map(|id| id.to_string())
+                            .unwrap_or("-".to_string())
+                    });
                 format!("White: {} | Black: {}", white, black)
             } else {
                 "Loading details...".to_string()
