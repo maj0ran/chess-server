@@ -17,9 +17,11 @@ impl NetworkInterface {
     pub fn new() -> Self {
         let (cmd_tx, cmd_rx) = smol::channel::unbounded();
         let (resp_tx, resp_rx) = smol::channel::unbounded();
+        let config = Config::read("settings.cfg");
+        let server_addr = config.server;
 
         std::thread::spawn(move || {
-            match smol::block_on(network_thread("127.0.0.1:7878", cmd_rx, resp_tx)) {
+            match smol::block_on(network_thread(&server_addr, cmd_rx, resp_tx)) {
                 Ok(_) => {}
                 Err(e) => {
                     log::error!("Failed to start network thread. Server running? {}", e)
@@ -99,6 +101,7 @@ pub async fn receive_thread(mut conn: Connection, resp_tx: Sender<ServerMessage>
     log::info!("Receive thread shutting down");
 }
 
+use crate::config::Config;
 use crate::state::{ClientState, GameDetails, Overlay, Screen};
 use crate::ui::gamelist_menu::UpdateGamesList;
 use bevy::prelude::*;

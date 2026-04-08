@@ -52,7 +52,7 @@ impl Server {
         .detach();
 
         log::info!("start listening on port {}.", port);
-        let listener = TcpListener::bind(format!("127.0.0.1:{}", port)).await?;
+        let listener = TcpListener::bind(format!("0.0.0.0:{}", port)).await?;
         // listen for incoming connections. An accepted connection will be converted to a client task.
         loop {
             let (socket, addr) = listener.accept().await?;
