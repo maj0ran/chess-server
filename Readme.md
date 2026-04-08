@@ -6,13 +6,15 @@ A chess program as a client-server architecture. The server is responsible for a
 
 Could evolve in either a small-sized online chess or a chess analysis software if I will ever care enough.
 
-Short-Term TODO:
+### Short/Mid-Term TODO:
 
 - [x] Server: Basic chess logic (looks good, but not battle tested yet)
 
 - [x] Server: Accepting connections, handling requests for creating, joining games and making moves
 
 - [x] Server: Managing multiple games at once
+
+- [x] Server: Setting nicknames
 
 - [ ] Server: 50-Moves-Rules
 
@@ -36,7 +38,7 @@ Short-Term TODO:
 
 - [ ] Client: Resigning
 
-- [ ] Client: Better connection settings (only localhost/autoconnect at the moment)
+- [ ] Client: Better connection settings (rudimentary config file exists)
 
 - [ ] Client: Material overview
 
@@ -44,9 +46,25 @@ Short-Term TODO:
 
 - [ ] Client: setup game time controls
 
+- [ ] Protocol: Algebraic Notation
 
-Long-Term I'd like to add persistent accounts, more analysis modes and an UCI bridge to integrate stockfish.
 
-Quirks:
+### Long-Term TODO:
+
+- [ ] Persistent Accounts
+
+- [ ] Puzzles
+
+- [ ] Analysis
+
+- [ ] UCI Bridge (Stockfish integration)
+
+
+
+### Quirks:
 
 - [ ] Client: Pieces can be dragged outside the board
+
+- [ ] Client: Scrollbar in games list doesn't fit very nicely
+
+
