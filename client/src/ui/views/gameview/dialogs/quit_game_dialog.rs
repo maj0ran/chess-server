@@ -74,9 +74,7 @@ pub fn quit_game_dialog_action_system(
         if *interaction == Interaction::Pressed {
             match action {
                 QuitGameAction::Confirm => {
-                    client.network.send(ClientMessage::LeaveGame(
-                        client.menu_state.selected_game.unwrap(),
-                    ));
+                    client.network.send(ClientMessage::LeaveGame);
                     next_screen.set(Screen::Menu);
                     next_overlay.set(Overlay::None);
                 }

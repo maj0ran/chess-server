@@ -17,6 +17,7 @@ use std::collections::HashMap;
 pub struct ClientEndpoint {
     pub tx: Sender<ServerMessage>,
     pub name: String,
+    pub in_game: Option<GameId>,
 }
 
 impl ClientEndpoint {
@@ -24,6 +25,7 @@ impl ClientEndpoint {
         ClientEndpoint {
             tx,
             name: String::from(""),
+            in_game: None,
         }
     }
 }
@@ -106,8 +108,8 @@ impl GameManager {
                             self.handle_query_client_details(client_id, client_id_query)
                                 .await;
                         }
-                        ClientMessage::LeaveGame(game_id) => {
-                            self.handle_leave_game(client_id, game_id).await;
+                        ClientMessage::LeaveGame => {
+                            self.handle_leave_game(client_id).await;
                         }
                         ClientMessage::SetNickname(name) => {
                             log::info!("Set nickname for client {} to {}", client_id, name);
@@ -152,8 +154,9 @@ impl GameManager {
         match res {
             Ok((side, fen)) => {
                 let response = ServerMessage::GameJoined(game_id, client_id, side, fen);
-                if let Some(c) = self.clients.get(&client_id) {
+                if let Some(c) = self.clients.get_mut(&client_id) {
                     let _ = c.tx.send(response).await;
+                    c.in_game = Some(game_id);
                 }
             }
             Err(_e) => {
@@ -167,12 +170,17 @@ impl GameManager {
         }
     }
 
-    async fn handle_leave_game(&mut self, client_id: ClientId, game_id: GameId) {
-        if let Some(game) = self.games.get_mut(&game_id) {
-            if let Some(side) = game.remove_player(client_id) {
-                let response = ServerMessage::GameLeft(game_id, client_id);
-                if let Some(c) = self.clients.get(&client_id) {
-                    let _ = c.tx.send(response).await;
+    async fn handle_leave_game(&mut self, client_id: ClientId) {
+        if let Some(c) = self.clients.get_mut(&client_id) {
+            if let Some(gid) = c.in_game {
+                c.in_game = None;
+                if let Some(game) = self.games.get_mut(&gid) {
+                    if let Some(side) = game.remove_player(client_id) {
+                        let response = ServerMessage::GameLeft(gid, client_id);
+                        if let Some(c) = self.clients.get(&client_id) {
+                            let _ = c.tx.send(response).await;
+                        }
+                    }
                 }
             }
         }

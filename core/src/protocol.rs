@@ -101,7 +101,7 @@ pub enum ClientMessage {
     QueryGames,
     QueryGameDetails(GameId),
     QueryClientDetails(ClientId),
-    LeaveGame(GameId),
+    LeaveGame,
 }
 
 impl ClientMessage {
@@ -162,10 +162,7 @@ impl NetMessage for ClientMessage {
                 let client_id = reader.read_u32_le()? as usize;
                 Ok(ClientMessage::QueryClientDetails(client_id))
             }
-            Self::LEAVE_GAME => {
-                let gid = reader.read_u32_le()?;
-                Ok(ClientMessage::LeaveGame(gid))
-            }
+            Self::LEAVE_GAME => Ok(ClientMessage::LeaveGame),
             Self::SET_NICKNAME => {
                 let nickname = String::from_utf8(reader.remaining().to_vec())
                     .map_err(|_| NetError::Protocol("Failed to parse nickname".to_string()))?;
@@ -210,11 +207,7 @@ impl NetMessage for ClientMessage {
             ClientMessage::Register(_) => {
                 vec![]
             }
-            ClientMessage::LeaveGame(gid) => {
-                let mut data = vec![Self::LEAVE_GAME];
-                data.extend_from_slice(&gid.to_le_bytes());
-                data
-            }
+            ClientMessage::LeaveGame => vec![Self::LEAVE_GAME],
             ClientMessage::SetNickname(name) => {
                 let mut data = vec![Self::SET_NICKNAME];
                 data.extend_from_slice(name.to_string().as_bytes());
@@ -234,7 +227,7 @@ impl fmt::Display for ClientMessage {
             ClientMessage::Register(_) => "Register Client",
             ClientMessage::QueryGameDetails(_) => "Query Game Details",
             ClientMessage::QueryClientDetails(_) => "Query Client Details",
-            ClientMessage::LeaveGame(_) => "Leave Game",
+            ClientMessage::LeaveGame => "Leave Game",
             ClientMessage::SetNickname(_) => "Set Nickname",
         };
         write!(f, "{}", s)
