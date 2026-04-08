@@ -130,11 +130,51 @@ button text {
 
 .game-item {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    width: 100%;
+    grid-template-columns: 1fr 2fr 100px;
     align-items: center;
-    padding: 10px;
+    padding: 10px 20px;
     background-color: #534841; /* COLOR_DARK2 */
-    border-radius: 5px;
+    border-bottom: 1px solid #3a322d;
+    transition: background-color 0.2s;
+}
+
+.game-item:hover {
+    background-color: #635851;
+}
+
+.game-header {
+    display: grid;
+    width: 100%;
+    grid-template-columns: 1fr 2fr 100px;
+    align-items: center;
+    padding: 10px 20px;
+    background-color: #3a322d;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    font-weight: bold;
+    font-size: 22px;
+    color: #b8a571; /* COLOR_LIGHT2 */
+}
+
+.game-list-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    background-color: #2a2a2a;
+    border: 2px solid #534841;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.join-button {
+    width: 80px;
+    height: 40px;
+    margin: 0;
+}
+
+.join-button text {
+    font-size: 18px;
 }
 
 .label-small {

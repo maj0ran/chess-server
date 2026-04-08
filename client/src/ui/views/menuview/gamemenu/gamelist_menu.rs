@@ -67,57 +67,76 @@ pub fn setup_gamelist_menu(
             p.spawn((
                 Node {
                     width: Val::Percent(100.0),
-                    height: Val::Px(400.0),
-                    display: Display::Grid,
-                    grid_template_columns: vec![GridTrack::flex(1.0)],
-                    grid_template_rows: vec![GridTrack::flex(1.0)],
-                    margin: UiRect::all(Val::Px(10.0)),
+                    height: Val::Px(500.0),
+                    display: Display::Flex,
+                    flex_direction: FlexDirection::Column,
+                    margin: UiRect::top(Val::Px(20.0)),
                     ..default()
                 },
-                children![Node::default()],
+                ClassList::new("game-list-container"),
+                children![(
+                    Node::default(),
+                    ClassList::new("game-header"),
+                    children![
+                        (Text::new("Game ID"), ClassList::new("label-small")),
+                        (Text::new("Players"), ClassList::new("label-small")),
+                        (Text::new("Action"), ClassList::new("label-small")),
+                    ],
+                ),],
             ))
             .with_children(|parent| {
-                // Games List container (scrolling content)
-                let game_list = parent
-                    .spawn((
-                        Node {
-                            width: Val::Percent(100.0),
-                            height: Val::Percent(100.0),
-                            display: Display::Grid,
-                            grid_template_columns: vec![GridTrack::flex(1.0)],
-                            grid_auto_rows: vec![GridTrack::auto()],
-                            overflow: Overflow::scroll_y(),
-                            ..default()
-                        },
-                        GamesListContainer,
-                    ))
-                    .id();
-
-                // Scrollbar (sibling of game_list)
-                parent.spawn((
-                    Node {
-                        width: Val::Px(8.0),
-                        height: Val::Percent(100.0),
-                        position_type: PositionType::Absolute,
-                        right: Val::Px(0.0),
-                        top: Val::Px(0.0),
+                parent
+                    .spawn(Node {
+                        width: Val::Percent(100.0),
+                        height: Val::Px(500.0),
+                        display: Display::Flex,
+                        flex_direction: FlexDirection::Column,
                         ..default()
-                    },
-                    Scrollbar {
-                        orientation: ControlOrientation::Vertical,
-                        target: game_list,
-                        min_thumb_length: 20.0,
-                    },
-                    Children::spawn(Spawn((
-                        Node {
-                            width: Val::Percent(100.0),
-                            border_radius: BorderRadius::all(Val::Px(4.0)),
-                            ..default()
-                        },
-                        BackgroundColor(Color::srgb(0.8, 0.8, 0.8)),
-                        CoreScrollbarThumb,
-                    ))),
-                ));
+                    })
+                    .with_children(|parent| {
+                        // Games List container (scrolling content)
+                        let game_list = parent
+                            .spawn((
+                                Node {
+                                    width: Val::Percent(100.0),
+                                    height: Val::Percent(100.0),
+                                    display: Display::Grid,
+                                    grid_template_columns: vec![GridTrack::flex(1.0)],
+                                    grid_auto_rows: vec![GridTrack::auto()],
+                                    overflow: Overflow::scroll_y(),
+                                    ..default()
+                                },
+                                GamesListContainer,
+                                children![],
+                            ))
+                            .id();
+
+                        // Scrollbar
+                        parent.spawn((
+                            Node {
+                                width: Val::Px(10.0),
+                                height: Val::Percent(100.0),
+                                position_type: PositionType::Absolute,
+                                right: Val::Px(2.0),
+                                top: Val::Px(0.0),
+                                ..default()
+                            },
+                            Scrollbar {
+                                orientation: ControlOrientation::Vertical,
+                                target: game_list,
+                                min_thumb_length: 20.0,
+                            },
+                            Children::spawn(Spawn((
+                                Node {
+                                    width: Val::Percent(100.0),
+                                    border_radius: BorderRadius::all(Val::Px(5.0)),
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgb(0.5, 0.4, 0.3)),
+                                CoreScrollbarThumb,
+                            ))),
+                        ));
+                    });
             });
         })
         .id();
@@ -190,45 +209,38 @@ pub fn update_games_list(
     // render new game list
     commands.entity(container).with_children(|parent| {
         for (game_id, details) in &state.menu_state.games {
-            parent
-                .spawn((Node::default(), ClassList::new("game-item")))
-                .with_children(|p| {
-                    p.spawn(Node {
-                        display: Display::Flex,
-                        flex_direction: FlexDirection::Column,
-                        ..default()
-                    })
-                    .with_children(|info| {
-                        info.spawn((
-                            Text::new(format!("Game #{}", game_id)),
-                            ClassList::new("label-small"),
-                        ));
+            let game_info = if let Some(d) = details {
+                let white = d
+                    .white_player
+                    .map(|id| id.to_string())
+                    .unwrap_or("-".to_string());
+                let black = d
+                    .black_player
+                    .map(|id| id.to_string())
+                    .unwrap_or("-".to_string());
+                format!("White: {} | Black: {}", white, black)
+            } else {
+                "Loading details...".to_string()
+            };
 
-                        let players_text = if let Some(d) = details {
-                            let white = d
-                                .white_player
-                                .map(|id| id.to_string())
-                                .unwrap_or("?".to_string());
-                            let black = d
-                                .black_player
-                                .map(|id| id.to_string())
-                                .unwrap_or("?".to_string());
-                            format!("White: {} vs Black: {}", white, black)
-                        } else {
-                            "Loading details...".to_string()
-                        };
-
-                        info.spawn((Text::new(players_text), ClassList::new("label-small")));
-                    });
-
-                    p.spawn((
+            parent.spawn((
+                Node::default(),
+                ClassList::new("game-item"),
+                children![
+                    (
+                        Text::new(format!("#{}", game_id)),
+                        ClassList::new("label-small"),
+                    ),
+                    (Text::new(game_info), ClassList::new("label-small")),
+                    (
                         Button,
                         Interaction::default(),
-                        ClassList::new(""),
+                        ClassList::new("join-button"),
                         MenuAction::JoinGame(*game_id),
                         children![Text::new("Join")],
-                    ));
-                });
+                    )
+                ],
+            ));
         }
     });
 }
