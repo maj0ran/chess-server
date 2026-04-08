@@ -6,6 +6,7 @@ use crate::ui::views::gameview::dialogs::quit_game_dialog::{
     cleanup_quit_game_dialog, quit_game_dialog_action_system, setup_quit_game_dialog,
 };
 use crate::ui::{COLOR_LIGHT2, COLOR_MID};
+use bevy::ecs::relationship::RelatedSpawnerCommands;
 use bevy::prelude::*;
 use bevy_flair::prelude::*;
 use chess_core::{ChessMove, ClientMessage, SpecialMove, Tile};
@@ -15,7 +16,7 @@ use std::collections::HashMap;
 pub struct GameScreenComponent;
 
 #[derive(Component)]
-pub struct Board;
+pub struct Board; // marker for board square entities
 
 #[derive(Component)]
 pub struct PieceEntity {
@@ -37,6 +38,7 @@ impl Plugin for GamePlugin {
             .add_systems(OnExit(Screen::Game), cleanup_game)
             .add_systems(Update, update_game.run_if(in_state(Screen::Game)))
             .add_systems(Update, handle_drag.run_if(in_state(Screen::Game)))
+            .add_systems(Update, on_resize_board.run_if(in_state(Screen::Game)))
             // listening for keyboard input (only ESC for now)
             .add_systems(Update, listen_keyboard_input.run_if(in_state(Screen::Game)))
             // The promotion dialog that appears when a pawn is dragged on 8th rank
@@ -72,7 +74,12 @@ pub fn listen_keyboard_input(
     }
 }
 
-pub fn setup_game(mut commands: Commands, asset_server: Res<AssetServer>) {
+pub fn setup_game(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    win_res: Res<crate::WindowSize>,
+    q_window: Query<&Window, With<bevy::window::PrimaryWindow>>,
+) {
     let mut piece_textures = HashMap::new();
     let pieces = [
         ('r', "r_b.png"),
@@ -94,35 +101,43 @@ pub fn setup_game(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(GameAssets { piece_textures });
 
     commands
-        .spawn((
-            Transform::default(),
-            Visibility::default(),
-            GameScreenComponent,
-        ))
+        .spawn((Transform::default(), GameScreenComponent))
         .with_children(|parent| {
-            // Spawn Board squares
-            for r in 0..8 {
-                for f in 0..8 {
-                    let color = if (r + f) % 2 == 0 {
-                        COLOR_LIGHT2
-                    } else {
-                        COLOR_MID
-                    };
-                    parent.spawn((
-                        Sprite {
-                            color,
-                            custom_size: Some(Vec2::new(60.0, 60.0)),
-                            ..default()
-                        },
-                        Transform::from_xyz(
-                            f as f32 * 60.0 - 3.5 * 60.0,
-                            (7 - r) as f32 * 60.0 - 3.5 * 60.0,
-                            0.0,
-                        ),
-                    ));
-                }
-            }
+            // Spawn Board squares with dynamic sizing
+            let square_size = if win_res.width > 0.0 && win_res.height > 0.0 {
+                0.8 * win_res.width.min(win_res.height) / 8.0
+            } else if let Ok(window) = q_window.single() {
+                0.8 * window.width().min(window.height()) / 8.0
+            } else {
+                60.0
+            };
+            draw_board(parent, square_size);
         });
+}
+
+pub fn draw_board(parent: &mut RelatedSpawnerCommands<ChildOf>, square_size: f32) {
+    for r in 0..8 {
+        for f in 0..8 {
+            let color = if (r + f) % 2 == 0 {
+                COLOR_LIGHT2
+            } else {
+                COLOR_MID
+            };
+            parent.spawn((
+                Sprite {
+                    color,
+                    custom_size: Some(Vec2::new(square_size, square_size)),
+                    ..default()
+                },
+                Transform::from_xyz(
+                    f as f32 * square_size - 3.5 * square_size,
+                    (7 - r) as f32 * square_size - 3.5 * square_size,
+                    0.0,
+                ),
+                Board,
+            ));
+        }
+    }
 }
 
 pub fn cleanup_game(mut commands: Commands, query: Query<Entity, With<GameScreenComponent>>) {
@@ -141,6 +156,8 @@ pub fn update_game(
     mut state: ResMut<ClientState>,
     mut commands: Commands,
     assets: Res<GameAssets>,
+    win_res: Res<crate::WindowSize>,
+    q_window: Query<&Window, With<bevy::window::PrimaryWindow>>,
     pieces_query: Query<(Entity, &PieceEntity), Without<Dragging>>,
     root_query: Query<Entity, With<GameScreenComponent>>,
 ) {
@@ -166,6 +183,15 @@ pub fn update_game(
         return;
     }
 
+    // Determine current square size
+    let square_size = if win_res.width > 0.0 && win_res.height > 0.0 {
+        0.8 * win_res.width.min(win_res.height) / 8.0
+    } else if let Ok(window) = q_window.single() {
+        0.8 * window.width().min(window.height()) / 8.0
+    } else {
+        60.0
+    };
+
     // Spawn new piece entities for each piece in the current board state
     commands.entity(root).with_children(|parent| {
         for (tile_name, &piece) in &state.game_state.board {
@@ -178,14 +204,13 @@ pub fn update_game(
                 parent.spawn((
                     Sprite {
                         image: texture.clone(),
-                        custom_size: Some(Vec2::new(60.0, 60.0)),
+                        custom_size: Some(Vec2::new(square_size, square_size)),
                         ..default()
                     },
                     // Position the piece in the center of its square.
-                    // The board is centered at (0,0), squares are 60x60 units.
                     Transform::from_xyz(
-                        f as f32 * 60.0 - 3.5 * 60.0,
-                        r as f32 * 60.0 - 3.5 * 60.0,
+                        f as f32 * square_size - 3.5 * square_size,
+                        r as f32 * square_size - 3.5 * square_size,
                         1.0,
                     ),
                     PieceEntity {
@@ -203,6 +228,7 @@ pub fn handle_drag(
     mut commands: Commands,
     mut state: ResMut<ClientState>,
     buttons: Res<ButtonInput<MouseButton>>,
+    win_res: Res<crate::WindowSize>,
     q_window: Query<&Window, With<bevy::window::PrimaryWindow>>,
     q_camera: Query<(&Camera, &GlobalTransform)>,
     q_draggable: Query<
@@ -223,13 +249,22 @@ pub fn handle_drag(
         .cursor_position()
         .and_then(|cursor| camera.viewport_to_world_2d(camera_transform, cursor).ok());
 
+    // Current square size for interaction calculations
+    let square_size = if win_res.width > 0.0 && win_res.height > 0.0 {
+        0.8 * win_res.width.min(win_res.height) / 8.0
+    } else if let Ok(window) = q_window.single() {
+        0.8 * window.width().min(window.height()) / 8.0
+    } else {
+        60.0
+    };
+
     if let Some(world_pos) = mouse_pos {
         if buttons.just_pressed(MouseButton::Left) {
             // Check if any piece is being clicked on
             for (entity, transform, _piece) in q_draggable.iter() {
                 let dist = (transform.translation.truncate() - world_pos).length();
-                // Pieces are 60x60, so 30.0 radius is a good hit area
-                if dist < 30.0 {
+                // Use half square size as hit radius
+                if dist < square_size * 0.5 {
                     if let Ok(mut entity_commands) = commands.get_entity(entity) {
                         // Mark the entity as being dragged
                         entity_commands.insert(Dragging);
@@ -252,11 +287,13 @@ pub fn handle_drag(
 
         if buttons.just_released(MouseButton::Left) {
             for (entity, mut transform, piece) in q_dragging.iter_mut() {
-                // Calculate target square from world coordinates
-                // The board is 8x8 squares of 60.0 units each, centered around (0,0)
-                // -3.5 * 60.0 is the center of the first column/row
-                let f_dst = ((transform.translation.x + 3.5 * 60.0 + 30.0) / 60.0).floor() as i32;
-                let r_dst = ((transform.translation.y + 3.5 * 60.0 + 30.0) / 60.0).floor() as i32;
+                // Calculate target square from world coordinates using dynamic square size
+                let f_dst = ((transform.translation.x + 3.5 * square_size + square_size * 0.5)
+                    / square_size)
+                    .floor() as i32;
+                let r_dst = ((transform.translation.y + 3.5 * square_size + square_size * 0.5)
+                    / square_size)
+                    .floor() as i32;
 
                 // Check if the release point is within the board bounds
                 if f_dst >= 0 && f_dst < 8 && r_dst >= 0 && r_dst < 8 {
@@ -310,6 +347,49 @@ pub enum PromotionAction {
 
 #[derive(Component)]
 pub struct PromotionDialogComponent;
+
+// Redraw board and resize pieces on window resize only
+pub fn on_resize_board(
+    mut resize_reader: MessageReader<bevy::window::WindowResized>,
+    mut commands: Commands,
+    root_query: Query<Entity, With<GameScreenComponent>>,
+    board_query: Query<Entity, With<Board>>,
+    mut pieces_query: Query<(&mut Sprite, &mut Transform, &PieceEntity), Without<Dragging>>,
+) {
+    // Trigger only when there was at least one resize event
+    let mut new_size = None;
+    for e in resize_reader.read() {
+        new_size = Some(Vec2::new(e.width, e.height));
+    }
+    let Some(size) = new_size else {
+        return;
+    };
+
+    let Ok(root) = root_query.single() else {
+        return;
+    };
+
+    let square_size = 0.8 * size.x.min(size.y) / 8.0;
+
+    // Remove old board squares
+    for e in board_query.iter() {
+        commands.entity(e).despawn();
+    }
+
+    // Recreate board squares
+    commands.entity(root).with_children(|parent| {
+        draw_board(parent, square_size);
+    });
+
+    // Resize and reposition pieces (skip currently dragged ones)
+    for (mut sprite, mut transform, piece) in pieces_query.iter_mut() {
+        sprite.custom_size = Some(Vec2::new(square_size, square_size));
+        let f = (piece.tile.as_bytes()[0].to_ascii_lowercase() - b'a') as f32;
+        let r = (piece.tile.as_bytes()[1] - b'1') as f32;
+        transform.translation.x = f * square_size - 3.5 * square_size;
+        transform.translation.y = r * square_size - 3.5 * square_size;
+    }
+}
 
 pub fn promotion_dialog(
     mut commands: Commands,

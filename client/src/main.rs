@@ -10,8 +10,27 @@ use ui::views::menuview::menuroot::MenuRootPlugin;
 
 use bevy::prelude::*;
 use bevy::ui_widgets::ScrollbarPlugin;
-use bevy::window::WindowResolution;
+use bevy::window::{WindowResized, WindowResolution};
 use bevy_flair::prelude::*;
+
+#[derive(Resource)]
+pub struct WindowSize {
+    pub width: f32,
+    pub height: f32,
+}
+
+/// Window resize event handler
+fn on_resize_system(
+    mut resize_reader: MessageReader<WindowResized>,
+    mut win_res: ResMut<WindowSize>,
+) {
+    for e in resize_reader.read() {
+        let text = format!("{:.1} x {:.1}", e.width, e.height);
+        log::warn!("Window resized: {}", text);
+        win_res.width = e.width;
+        win_res.height = e.height;
+    }
+}
 
 fn main() {
     env_logger::init();
@@ -38,9 +57,14 @@ fn main() {
         .init_state::<Overlay>()
         .add_systems(Startup, setup_camera)
         .add_systems(Update, poll_network)
+        .add_systems(Update, on_resize_system)
         .add_plugins(GamePlugin)
         .add_plugins(MenuRootPlugin)
         .insert_resource(ClearColor(COLOR_DARK))
+        .insert_resource(WindowSize {
+            width: 0.0,
+            height: 0.0,
+        })
         .run();
 }
 
