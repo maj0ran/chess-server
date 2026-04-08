@@ -1,8 +1,8 @@
 use crate::state::{ClientState, Overlay, Screen};
-use crate::ui::views::gameview::game_over_dialog::{
+use crate::ui::views::gameview::dialogs::game_over_dialog::{
     cleanup_game_over_dialog, game_over_dialog_action_system, setup_game_over_dialog,
 };
-use crate::ui::views::gameview::quit_game_dialog::{
+use crate::ui::views::gameview::dialogs::quit_game_dialog::{
     cleanup_quit_game_dialog, quit_game_dialog_action_system, setup_quit_game_dialog,
 };
 use crate::ui::{COLOR_LIGHT2, COLOR_MID};

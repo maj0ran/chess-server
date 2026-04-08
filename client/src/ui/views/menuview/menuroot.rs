@@ -2,14 +2,14 @@ use crate::state::{ClientState, MenuTab, Overlay, Screen};
 use crate::ui::views::menuview::analysismenu::analysis_menu::{
     cleanup_analysis_menu, setup_analysis_menu,
 };
-use crate::ui::views::menuview::gamemenu::create_game_dialog::{
+use crate::ui::views::menuview::gamemenu::dialogs::create_game_dialog::{
     cleanup_create_dialog, create_dialog_action_system, setup_create_dialog,
+};
+use crate::ui::views::menuview::gamemenu::dialogs::join_game_dialog::{
+    cleanup_join_dialog, join_dialog_action_system, setup_join_dialog,
 };
 use crate::ui::views::menuview::gamemenu::gamelist_menu::{
     cleanup_menu, gamelist_menu_action_system, setup_gamelist_menu, update_games_list,
-};
-use crate::ui::views::menuview::gamemenu::join_game_dialog::{
-    cleanup_join_dialog, join_dialog_action_system, setup_join_dialog,
 };
 use bevy::prelude::*;
 use bevy_flair::prelude::*;
