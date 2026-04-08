@@ -41,6 +41,7 @@ pub struct GameDetails {
 
 pub struct MenuState {
     pub games: HashMap<GameId, Option<GameDetails>>,
+    // local store for ClientDetails. Note: we only have names currently, but this should be a whole struct later.
     pub client_names: HashMap<usize, String>,
     pub selected_game: Option<GameId>,
     pub error_msg: Option<String>,
@@ -110,6 +111,7 @@ impl ClientBackend {
     }
 
     /// Sets up a board from a given FEN. Used for game start.
+    /// TODO: A strange place for this method...
     pub fn update_board_from_fen(&mut self, fen: &str) {
         self.game_state.board.clear();
         let fen_parts: Vec<&str> = fen.split(' ').collect();

@@ -300,6 +300,9 @@ impl GameManager {
         }
     }
 
+    /// The client asked for details of another client.
+    /// E.g., initially a client only knows other client IDs.
+    /// From these IDs, we can look up the name and other client information.
     async fn handle_query_client_details(&self, client_id: ClientId, query_id: ClientId) {
         if let Some(c) = self.clients.get(&client_id) {
             let name = self
@@ -314,12 +317,14 @@ impl GameManager {
         }
     }
 
+    /// Setting the nickname of a client.
     async fn handle_set_nickname(&mut self, client_id: ClientId, nickname: String) {
         if let Some(c) = self.clients.get_mut(&client_id) {
             c.name = nickname;
         }
     }
 
+    /// save a game to disk.
     pub async fn save_game(&self, game: &ChessGame) -> std::io::Result<()> {
         let date = Utc::now().format("%Y-%m-%d_%H-%M-%S").to_string();
 

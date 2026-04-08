@@ -169,7 +169,8 @@ pub fn poll_network(
                     state.menu_state.games.insert(game_id, Some(game_details));
                     log::info!("Received game details for game ID: {}", game_id);
                 }
-
+                // From GameDetails, we received the client IDs for white and black player.
+                // Query those clients to receive their names.
                 if let Some(wid) = white_id {
                     if !state.menu_state.client_names.contains_key(&wid) {
                         state.network.send(ClientMessage::QueryClientDetails(wid));
@@ -184,6 +185,7 @@ pub fn poll_network(
                 commands.trigger(UpdateGamesList);
             }
             ServerMessage::ClientDetails(client_id, name) => {
+                // when we receive ClientDetails, we store those details locally.
                 state.menu_state.client_names.insert(client_id, name);
                 commands.trigger(UpdateGamesList);
             }
