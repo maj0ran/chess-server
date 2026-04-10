@@ -167,7 +167,7 @@ impl ChessGame {
         mov: ChessMove,
         client_id: ClientId,
     ) -> ChessResult<(Vec<(Tile, Option<Piece>)>)> {
-        let is_current_player = match self.chess.get_active_player() {
+        let is_current_player = match self.chess.active_player {
             ChessColor::White => self.white_player == Some(client_id),
             ChessColor::Black => self.black_player == Some(client_id),
         };
@@ -183,9 +183,7 @@ impl ChessGame {
 
     pub fn get_game_state(&mut self) -> ChessGameState {
         if self.chess.is_checkmate() {
-            return ChessGameState::Finished(ChessGameOutcome::Checkmate(
-                self.chess.get_active_player(),
-            ));
+            return ChessGameState::Finished(ChessGameOutcome::Checkmate(self.chess.active_player));
         }
         if self.chess.is_stalemate() {
             return ChessGameState::Finished(ChessGameOutcome::Stalemate);

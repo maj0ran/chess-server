@@ -14,7 +14,7 @@ use chess_core::*;
 #[derive(Clone)]
 pub struct Chess {
     pub tiles: [Option<Piece>; 64],
-    active_player: ChessColor,
+    pub active_player: ChessColor,
     pub castle_rights: [bool; 4], // [K, Q, k, q]
     pub en_passant: Option<Tile>,
     half_moves: usize,
@@ -57,11 +57,6 @@ impl Chess {
     /// create a new chess board with default starting position.
     pub fn new() -> Chess {
         Chess::load_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-    }
-
-    /// which players turn it is.
-    pub fn get_active_player(&self) -> ChessColor {
-        self.active_player
     }
 
     /// peek onto a tile which piece is on it. Doesn't change the tile.
