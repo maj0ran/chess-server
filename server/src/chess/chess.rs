@@ -539,7 +539,7 @@ impl Chess {
 
     /// Helper method for pseudo-legal moves. These are all moves that can be made by the
     /// movement rules of the pieces but where checks are not considered.
-    fn make_move_unchecked(&mut self, chessmove: ChessMove) -> Vec<(Tile, Option<Piece>)> {
+    pub fn make_move_unchecked(&mut self, chessmove: ChessMove) -> Vec<(Tile, Option<Piece>)> {
         let src = chessmove.src;
         let dst = chessmove.dst;
 
