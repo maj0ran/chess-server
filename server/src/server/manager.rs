@@ -220,13 +220,18 @@ impl GameManager {
             // Update move history and send the updated squares to all clients in the game.
             Ok(changes) => {
                 game.move_history.push(mov);
+
+                // convert `Piece` to `WoodPiece`. A `Piece` includes all the server side logic for
+                // movement, which the client should not need to know about. A `WoodPiece` is merely
+                // the "outer hull", i.e., piece type and color.
+                let changes: Vec<(Tile, Option<WoodPiece>)> = changes
+                    .iter()
+                    .map(|(t, p)| (*t, p.map(|piece| piece.piece)))
+                    .collect();
+
                 let clients = game.get_participants();
                 for c in &clients {
-                    let client_changes: Vec<(Tile, Option<WoodPiece>)> = changes
-                        .iter()
-                        .map(|(t, p)| (*t, p.map(|piece| piece.piece)))
-                        .collect();
-                    let msg = ServerMessage::MoveAccepted(san_len, san.clone(), client_changes);
+                    let msg = ServerMessage::MoveAccepted(san_len, san.clone(), changes.clone());
                     if let Some(handler) = self.clients.get(&c) {
                         let _ = handler.tx.send(msg).await;
                     }
