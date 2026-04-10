@@ -9,7 +9,7 @@ use crate::ui::{COLOR_LIGHT2, COLOR_MID};
 use bevy::ecs::relationship::RelatedSpawnerCommands;
 use bevy::prelude::*;
 use bevy_flair::prelude::*;
-use chess_core::{ChessMove, ClientMessage, SpecialMove, Tile};
+use chess_core::{ChessMove, ClientMessage, Promotion, Tile};
 use std::collections::HashMap;
 
 #[derive(Component)]
@@ -486,10 +486,10 @@ pub fn promotion_action_system(
         if *interaction == Interaction::Pressed {
             if let Some((src, dst)) = state.game_state.pending_promotion.take() {
                 let special = match action {
-                    PromotionAction::Queen => Some(SpecialMove::Queen),
-                    PromotionAction::Rook => Some(SpecialMove::Rook),
-                    PromotionAction::Bishop => Some(SpecialMove::Bishop),
-                    PromotionAction::Knight => Some(SpecialMove::Knight),
+                    PromotionAction::Queen => Some(Promotion::Queen),
+                    PromotionAction::Rook => Some(Promotion::Rook),
+                    PromotionAction::Bishop => Some(Promotion::Bishop),
+                    PromotionAction::Knight => Some(Promotion::Knight),
                     PromotionAction::Cancel => None,
                 };
 

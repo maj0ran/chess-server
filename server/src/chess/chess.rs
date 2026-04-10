@@ -445,7 +445,6 @@ impl Chess {
                     Promotion::Knight => 'N',
                     Promotion::Rook => 'R',
                     Promotion::Bishop => 'B',
-                    _ => ' ',
                 };
 
                 let c = if piece.color == ChessColor::White {

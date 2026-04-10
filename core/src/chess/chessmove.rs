@@ -4,23 +4,20 @@ use std::fmt;
 use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum SpecialMove {
+pub enum Promotion {
     Queen,
     Knight,
     Rook,
     Bishop,
-    KingsideCastle,
-    QueensideCastle,
 }
 
-impl fmt::Display for SpecialMove {
+impl fmt::Display for Promotion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let c = match self {
-            SpecialMove::Queen => 'Q',
-            SpecialMove::Knight => 'N',
-            SpecialMove::Rook => 'R',
-            SpecialMove::Bishop => 'B',
-            _ => ' ',
+            Promotion::Queen => 'Q',
+            Promotion::Knight => 'N',
+            Promotion::Rook => 'R',
+            Promotion::Bishop => 'B',
         };
         write!(f, "{}", c)
     }
@@ -30,7 +27,7 @@ impl fmt::Display for SpecialMove {
 pub struct ChessMove {
     pub src: Tile,
     pub dst: Tile,
-    pub special: Option<SpecialMove>,
+    pub special: Option<Promotion>,
 }
 
 impl FromStr for ChessMove {
@@ -44,10 +41,10 @@ impl FromStr for ChessMove {
         let dst = Tile::from(&s[2..4]);
         let special = if s.len() > 4 {
             match &s[4..5] {
-                "Q" | "q" => Some(SpecialMove::Queen),
-                "R" | "r" => Some(SpecialMove::Rook),
-                "B" | "b" => Some(SpecialMove::Bishop),
-                "N" | "n" => Some(SpecialMove::Knight),
+                "Q" | "q" => Some(Promotion::Queen),
+                "R" | "r" => Some(Promotion::Rook),
+                "B" | "b" => Some(Promotion::Bishop),
+                "N" | "n" => Some(Promotion::Knight),
                 _ => None,
             }
         } else {
@@ -62,15 +59,12 @@ impl fmt::Display for ChessMove {
         write!(f, "{}{}", self.src, self.dst)?;
         if let Some(special) = self.special {
             let c = match special {
-                SpecialMove::Queen => 'Q',
-                SpecialMove::Knight => 'N',
-                SpecialMove::Rook => 'R',
-                SpecialMove::Bishop => 'B',
-                _ => ' ',
+                Promotion::Queen => 'Q',
+                Promotion::Knight => 'N',
+                Promotion::Rook => 'R',
+                Promotion::Bishop => 'B',
             };
-            if c != ' ' {
-                write!(f, "{}", c)?;
-            }
+            write!(f, "{}", c)?;
         }
         Ok(())
     }
@@ -107,10 +101,10 @@ impl ToChessMove for String {
         })?;
 
         let special = match iter.next() {
-            Some('Q') => Some(SpecialMove::Queen),
-            Some('N') => Some(SpecialMove::Knight),
-            Some('R') => Some(SpecialMove::Rook),
-            Some('B') => Some(SpecialMove::Bishop),
+            Some('Q') => Some(Promotion::Queen),
+            Some('N') => Some(Promotion::Knight),
+            Some('R') => Some(Promotion::Rook),
+            Some('B') => Some(Promotion::Bishop),
             _ => None,
         };
 
