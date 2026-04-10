@@ -130,7 +130,8 @@ pub fn poll_network(
                 next_screen.set(Screen::Game);
                 next_overlay.set(Overlay::None);
             }
-            ServerMessage::Update(updates) => {
+            ServerMessage::MoveAccepted(san_len, san, updates) => {
+                log::info!("Move accepted: {} {}", san_len, san);
                 for (tile, piece) in updates {
                     if let Some(p) = piece {
                         state.game_state.board.insert(tile.to_string(), p.as_byte());

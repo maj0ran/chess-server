@@ -237,7 +237,7 @@ impl fmt::Display for ClientMessage {
 /// Messages from the server to the client.
 #[derive(Debug, Clone)]
 pub enum ServerMessage {
-    Update(Vec<(Tile, Option<Piece>)>),
+    MoveAccepted(u8, String, Vec<(Tile, Option<Piece>)>),
     GameCreated(GameId, ClientId),
     GameJoined(GameId, ClientId, UserRoleSelection, String),
     GameLeft(GameId, ClientId),
@@ -254,7 +254,7 @@ impl ServerMessage {
     pub const GAME_CREATED: u8 = 0x81;
     pub const JOIN_GAME: u8 = 0x82;
     pub const GAME_LEFT: u8 = 0x84;
-    pub const BOARD_UPDATED: u8 = 0x83;
+    pub const MOVE_ACCEPTED: u8 = 0x83;
     pub const ILLEGAL_MOVE: u8 = 0x85;
     pub const GAMES_LIST: u8 = 0x86;
     pub const CHECKMATE: u8 = 0x87;
@@ -267,7 +267,7 @@ impl ServerMessage {
         match self {
             ServerMessage::GameCreated(_, _) => Self::GAME_CREATED,
             ServerMessage::GameJoined(_, _, _, _) => Self::JOIN_GAME,
-            ServerMessage::Update(_) => Self::BOARD_UPDATED,
+            ServerMessage::MoveAccepted(_, _, _) => Self::MOVE_ACCEPTED,
             ServerMessage::IllegalMove(_) => Self::ILLEGAL_MOVE,
             ServerMessage::GamesList(_) => Self::GAMES_LIST,
             ServerMessage::Checkmate(_, _) => Self::CHECKMATE,
@@ -287,7 +287,9 @@ impl NetMessage for ServerMessage {
         let opcode_byte = reader.read_u8()?;
 
         match opcode_byte {
-            Self::BOARD_UPDATED => {
+            Self::MOVE_ACCEPTED => {
+                let san_len = reader.read_u8()?;
+                let san = reader.read_str(san_len as usize)?.to_string();
                 let mut updates = Vec::new();
                 while reader.remaining().len() >= 3 {
                     let tile_str = reader.read_str(2)?;
@@ -296,7 +298,7 @@ impl NetMessage for ServerMessage {
                     let piece = Piece::from_char(piece_char);
                     updates.push((tile, piece));
                 }
-                Ok(ServerMessage::Update(updates))
+                Ok(ServerMessage::MoveAccepted(san_len, san, updates))
             }
             Self::GAME_CREATED => {
                 let game_id = reader.read_u32_le()?;
@@ -386,8 +388,10 @@ impl NetMessage for ServerMessage {
 
     fn to_bytes(&self) -> Vec<u8> {
         match self {
-            ServerMessage::Update(tiles) => {
-                let mut msg = vec![Self::BOARD_UPDATED];
+            ServerMessage::MoveAccepted(san_len, san, tiles) => {
+                let mut msg = vec![Self::MOVE_ACCEPTED];
+                msg.push(*san_len);
+                msg.extend_from_slice(san.as_bytes());
                 for u in tiles {
                     let mut tile = u.0.to_string().as_bytes().to_owned();
                     let piece = match u.1 {

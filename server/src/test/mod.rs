@@ -60,7 +60,7 @@ pub mod testgames {
                         let response_opcode = response.opcode();
 
                         match expected {
-                            "OK" => assert!(response_opcode == ServerMessage::GAME_CREATED || response_opcode == ServerMessage::BOARD_UPDATED || response_opcode == 0x84, "Move {} (#{}) should be OK (Update, MoveOk or GameCreated). Got 0x{:02X}", mov_str, move_count, response_opcode),
+                            "OK" => assert!(response_opcode == ServerMessage::GAME_CREATED || response_opcode == ServerMessage::MOVE_ACCEPTED || response_opcode == 0x84, "Move {} (#{}) should be OK (Update, MoveOk or GameCreated). Got 0x{:02X}", mov_str, move_count, response_opcode),
                             "NOK" => assert_eq!(response_opcode, ServerMessage::ILLEGAL_MOVE, "Move {} (#{}) should be NOK. Got 0x{:02X}", mov_str, move_count, response_opcode),
                             _ => panic!("Unknown indicator {}", expected),
                         }
@@ -238,9 +238,9 @@ pub mod testgames {
             // 1. f3 e5
             // 2. g4 Qh4#
             let moves = vec![
-                ("f2f3", ServerMessage::BOARD_UPDATED),
-                ("e7e5", ServerMessage::BOARD_UPDATED),
-                ("g2g4", ServerMessage::BOARD_UPDATED),
+                ("f2f3", ServerMessage::MOVE_ACCEPTED),
+                ("e7e5", ServerMessage::MOVE_ACCEPTED),
+                ("g2g4", ServerMessage::MOVE_ACCEPTED),
                 ("d8h4", ServerMessage::CHECKMATE),
             ];
 

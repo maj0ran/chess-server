@@ -1,4 +1,5 @@
 use crate::chess::chess::Chess;
+use crate::chess::san::San;
 use crate::server::chessgame::{ChessGame, ChessGameOutcome, ChessGameState};
 use chess_core::*;
 use chrono::prelude::*;
@@ -210,6 +211,10 @@ impl GameManager {
                 return;
             }
         };
+        // convert `ChessMove` to SAN notation to send it back to the client.
+        let san = mov.to_san(&game.chess);
+        let san_len = san.len() as u8;
+
         match game.make_move(mov, client_id) {
             // a legal move was made and accepted.
             // Update move history and send the updated squares to all clients in the game.
@@ -221,7 +226,7 @@ impl GameManager {
                         .iter()
                         .map(|(t, p)| (*t, p.map(|piece| piece.piece)))
                         .collect();
-                    let msg = ServerMessage::Update(client_changes);
+                    let msg = ServerMessage::MoveAccepted(san_len, san.clone(), client_changes);
                     if let Some(handler) = self.clients.get(&c) {
                         let _ = handler.tx.send(msg).await;
                     }
