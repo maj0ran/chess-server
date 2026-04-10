@@ -24,6 +24,13 @@ impl From<&str> for Tile {
     }
 }
 
+impl PartialEq<&str> for Tile {
+    fn eq(&self, other: &&str) -> bool {
+        let rhs = Tile::from(*other);
+        self == &rhs
+    }
+}
+
 impl From<u8> for Tile {
     fn from(value: u8) -> Self {
         let file = (value % 8 + 97) as char;
