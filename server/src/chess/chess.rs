@@ -521,16 +521,28 @@ impl Chess {
             }
         }
 
-        // 6. If all succeeded, do the real move on the real board.
+        // 6. If all succeeded, we do the real move on the real board.
+        // but first, we need to get the information we need to update the half-moves field
+        // for the 50-moves-rules.
+        let is_capture = self[dst].is_some();
+        let is_pawn_move = self[src].unwrap().typ == ChessPiece::Pawn;
+
         let updated_tiles = self.make_move_unchecked(mov)?;
 
-        debug!("executed move: {style_bold}{fg_green}{src}{dst}{style_reset}{fg_reset}!");
-
-        // it's the opponents turn now
-        self.active_player = !self.active_player;
+        // update full moves and half moves
         if self.active_player == ChessColor::White {
             self.full_moves += 1;
         }
+        if is_capture || is_pawn_move {
+            self.half_moves = 0;
+        } else {
+            self.half_moves += 1;
+        }
+
+        // it's the opponents turn now
+        self.active_player = !self.active_player;
+
+        debug!("executed move: {style_bold}{fg_green}{src}{dst}{style_reset}{fg_reset}!");
         Ok(updated_tiles)
     }
 
@@ -565,6 +577,10 @@ impl Chess {
         self.update_en_passant_square(&piece, src, dst);
 
         Ok(updated_tiles)
+    }
+
+    pub fn is_fifty_moves_rule(&self) -> bool {
+        self.full_moves >= 100
     }
 }
 
