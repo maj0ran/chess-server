@@ -1,5 +1,6 @@
 use crate::chess::chess::Chess;
 use crate::chess::pieces::Piece;
+use chess_core::states::{ChessGameOutcome, ChessGameState, DrawType};
 use chess_core::*;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -193,23 +194,4 @@ impl ChessGame {
         }
         ChessGameState::Running
     }
-}
-
-pub enum ChessGameState {
-    Running,
-    Finished(ChessGameOutcome),
-}
-
-pub enum ChessGameOutcome {
-    Checkmate(ChessColor),
-    Resignation(ChessColor),
-    TimeOut(ChessColor),
-    Draw(DrawType),
-}
-
-pub enum DrawType {
-    Stalemate,
-    ThreefoldRepetition,
-    InsufficientMaterial,
-    FiftyMoveRule,
 }

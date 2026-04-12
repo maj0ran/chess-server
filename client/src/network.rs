@@ -155,8 +155,8 @@ pub fn poll_network(
                 next_overlay.set(Overlay::GameOver);
                 log::info!("Checkmate!");
             }
-            ServerMessage::Stalemate(_) => {
-                state.menu_state.error_msg = Some("Stalemate!".to_string());
+            ServerMessage::GameDrawn(gid, draw_type) => {
+                state.menu_state.error_msg = Some("Draw!".to_string());
                 log::info!("Stalemate!");
             }
             ServerMessage::GameDetails(game_id, white_id, black_id, time, inc) => {

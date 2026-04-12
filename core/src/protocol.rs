@@ -1,4 +1,5 @@
 use crate::chess::ChessColor;
+use crate::states::DrawType;
 use crate::{ChessError, NetError, NetResult};
 use crate::{ChessMove, Tile, WoodPiece as Piece};
 use crate::{ClientId, GameId};
@@ -246,7 +247,7 @@ pub enum ServerMessage {
     GameDetails(GameId, Option<ClientId>, Option<ClientId>, u32, u32),
     ClientDetails(ClientId, String),
     Checkmate(GameId, ChessColor),
-    Stalemate(GameId),
+    GameDrawn(GameId, DrawType),
     LoginAccepted(ClientId),
 }
 
@@ -258,7 +259,7 @@ impl ServerMessage {
     pub const ILLEGAL_MOVE: u8 = 0x85;
     pub const GAMES_LIST: u8 = 0x86;
     pub const CHECKMATE: u8 = 0x87;
-    pub const STALEMATE: u8 = 0x88;
+    pub const GAME_DRAWN: u8 = 0x88;
     pub const GAME_DETAILS: u8 = 0x8D;
     pub const CLIENT_DETAILS: u8 = 0x8E;
     pub const LOGIN_ACCEPTED: u8 = 0xF0;
@@ -271,11 +272,11 @@ impl ServerMessage {
             ServerMessage::IllegalMove(_) => Self::ILLEGAL_MOVE,
             ServerMessage::GamesList(_) => Self::GAMES_LIST,
             ServerMessage::Checkmate(_, _) => Self::CHECKMATE,
-            ServerMessage::Stalemate(_) => Self::STALEMATE,
             ServerMessage::GameDetails(_, _, _, _, _) => Self::GAME_DETAILS,
             ServerMessage::ClientDetails(_, _) => Self::CLIENT_DETAILS,
             ServerMessage::LoginAccepted(_) => Self::LOGIN_ACCEPTED,
             ServerMessage::GameLeft(_, _) => Self::GAME_LEFT,
+            ServerMessage::GameDrawn(_, _) => Self::GAME_DRAWN,
         }
     }
 }
@@ -334,10 +335,6 @@ impl NetMessage for ServerMessage {
                     ChessColor::White
                 };
                 Ok(ServerMessage::Checkmate(game_id, is_checkmated))
-            }
-            Self::STALEMATE => {
-                let game_id = reader.read_u32_le()?;
-                Ok(ServerMessage::Stalemate(game_id))
             }
             Self::GAME_DETAILS => {
                 let game_id = reader.read_u32_le()?;
@@ -438,11 +435,6 @@ impl NetMessage for ServerMessage {
                 });
                 data
             }
-            ServerMessage::Stalemate(game_id) => {
-                let mut data = vec![Self::STALEMATE];
-                data.extend_from_slice(&game_id.to_le_bytes());
-                data
-            }
             ServerMessage::LoginAccepted(client_id) => {
                 let mut data = vec![Self::LOGIN_ACCEPTED];
                 data.extend_from_slice(&(*client_id as u32).to_le_bytes());
@@ -469,6 +461,12 @@ impl NetMessage for ServerMessage {
                 let mut data = vec![Self::GAME_LEFT];
                 data.extend_from_slice(&game_id.to_le_bytes());
                 data.extend_from_slice(&client_id.to_le_bytes());
+                data
+            }
+            ServerMessage::GameDrawn(game_id, draw_type) => {
+                let mut data = vec![Self::GAME_DRAWN];
+                data.extend_from_slice(&game_id.to_le_bytes());
+                data.extend_from_slice(&(*draw_type as u8).to_le_bytes());
                 data
             }
         }
