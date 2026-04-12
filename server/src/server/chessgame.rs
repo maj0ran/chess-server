@@ -186,7 +186,10 @@ impl ChessGame {
             return ChessGameState::Finished(ChessGameOutcome::Checkmate(self.chess.active_player));
         }
         if self.chess.is_stalemate() {
-            return ChessGameState::Finished(ChessGameOutcome::Stalemate);
+            return ChessGameState::Finished(ChessGameOutcome::Draw(DrawType::Stalemate));
+        }
+        if self.chess.is_fifty_moves_rule() {
+            return ChessGameState::Finished(ChessGameOutcome::Draw(DrawType::FiftyMoveRule));
         }
         ChessGameState::Running
     }
@@ -201,8 +204,12 @@ pub enum ChessGameOutcome {
     Checkmate(ChessColor),
     Resignation(ChessColor),
     TimeOut(ChessColor),
+    Draw(DrawType),
+}
+
+pub enum DrawType {
     Stalemate,
-    MaterialDraw,
-    TimeOutMaterialDraw,
+    ThreefoldRepetition,
+    InsufficientMaterial,
     FiftyMoveRule,
 }

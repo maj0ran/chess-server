@@ -1,6 +1,6 @@
 use crate::chess::chess::Chess;
 use crate::chess::san::San;
-use crate::server::chessgame::{ChessGame, ChessGameOutcome, ChessGameState};
+use crate::server::chessgame::{ChessGame, ChessGameOutcome, ChessGameState, DrawType};
 use chess_core::*;
 use chrono::prelude::*;
 use smol::channel::{Receiver, Sender};
@@ -258,21 +258,23 @@ impl GameManager {
                                     }
                                 }
                             }
-                            ChessGameOutcome::Stalemate => {
-                                for c in &clients {
-                                    if let Some(handler) = self.clients.get(&c) {
-                                        let _ = handler
-                                            .tx
-                                            .send(ServerMessage::Stalemate(game_id))
-                                            .await;
+                            ChessGameOutcome::Draw(draw_type) => match draw_type {
+                                DrawType::Stalemate => {
+                                    for c in &clients {
+                                        if let Some(handler) = self.clients.get(&c) {
+                                            let _ = handler
+                                                .tx
+                                                .send(ServerMessage::Stalemate(game_id))
+                                                .await;
+                                        }
                                     }
                                 }
-                            }
+                                DrawType::ThreefoldRepetition => {}
+                                DrawType::InsufficientMaterial => {}
+                                DrawType::FiftyMoveRule => {}
+                            },
                             ChessGameOutcome::Resignation(_) => {}
                             ChessGameOutcome::TimeOut(_) => {}
-                            ChessGameOutcome::MaterialDraw => {}
-                            ChessGameOutcome::TimeOutMaterialDraw => {}
-                            ChessGameOutcome::FiftyMoveRule => {}
                         }
                     }
                 }
