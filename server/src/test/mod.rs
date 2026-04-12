@@ -31,12 +31,11 @@ pub mod testgames {
             env_logger::try_init().ok();
 
             let port = 7878;
-        //    start_server(port).await;
+            start_server(port).await;
 
             let mut client = TestClient::new(port).await;
 
-         //   let game_id = client.create_game(1, 120, 0).await;
-            let game_id = 1;
+            let game_id = client.create_game(1, 120, 0).await;
             client.join_game(game_id, UserRoleSelection::Both).await;
 
             let file = File::open(test::TEST_GAME_FILE).unwrap();
