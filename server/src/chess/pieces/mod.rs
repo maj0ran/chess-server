@@ -145,3 +145,9 @@ impl fmt::Display for Piece {
         write!(f, "{}", self.piece)
     }
 }
+
+impl fmt::Debug for Piece {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.piece)
+    }
+}
