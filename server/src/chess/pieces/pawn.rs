@@ -25,34 +25,36 @@ pub fn get_moves_pawn(board: &Chess, pos: Tile) -> Vec<Tile> {
 
     let mut tiles = Vec::<Tile>::new();
 
-    let (forward, attack) = if this.color == ChessColor::White {
-        let forward = Tile::UP;
-        let attack = [Tile::UPLEFT, Tile::UPRIGHT];
-        (forward, attack)
+    let forward = if this.color == ChessColor::White {
+        Tile::UP
     } else {
-        let forward = Tile::DOWN;
-        let attack = [Tile::DOWNLEFT, Tile::DOWNRIGHT];
-        (forward, attack)
+        Tile::DOWN
     };
 
-    let dst = pos + forward;
-    if let Some(t) = dst {
+    let attack_dirs = if this.color == ChessColor::White {
+        [Tile::UPLEFT, Tile::UPRIGHT]
+    } else {
+        [Tile::DOWNLEFT, Tile::DOWNRIGHT]
+    };
+
+    if let Some(t) = pos + forward {
         if board[t].is_none() {
             tiles.push(t);
-        }
-        let start_rank = if this.color == ChessColor::White {
-            '2'
-        } else {
-            '7'
-        };
-        if pos.rank == start_rank {
-            let t2 = (t + forward).unwrap();
-            if board[t].is_none() && board[t2].is_none() {
-                tiles.push(t2);
+            let start_rank = if this.color == ChessColor::White {
+                '2'
+            } else {
+                '7'
+            };
+            if pos.rank == start_rank {
+                if let Some(t2) = t + forward {
+                    if board[t2].is_none() {
+                        tiles.push(t2);
+                    }
+                }
             }
         }
     }
-    for d in attack {
+    for d in attack_dirs {
         let dst = pos + d;
         if let Some(t) = dst {
             if let Some(p) = board.peek(t) {

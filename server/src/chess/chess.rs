@@ -303,8 +303,12 @@ impl Chess {
                             dst: m,
                             special: None,
                         };
-                        if self.is_valid(&cm) {
-                            valid_moves.push(m);
+
+                        let mut simulation = self.clone();
+                        if let Ok(_) = simulation.make_move_unchecked(cm) {
+                            if !simulation.is_in_check(simulation.active_player) {
+                                valid_moves.push(m);
+                            }
                         }
                     }
                 }
@@ -323,50 +327,6 @@ impl Chess {
     pub fn is_stalemate(&self) -> bool {
         self.get_all_moves_for_player(self.active_player).is_empty()
             && !self.is_in_check(self.active_player)
-    }
-
-    /// Check if a given move is legal.
-    /// This considers if a move gets the active player into check.
-    /// Also, pawn moves onto the last rank without promotion.
-    pub fn is_valid(&self, chessmove: &ChessMove) -> bool {
-        let src = chessmove.src;
-        let dst = chessmove.dst;
-        let p = match self.peek(src) {
-            None => return false,
-            Some(p) => p,
-        };
-
-        if p.color != self.active_player {
-            return false;
-        }
-
-        let tiles = self.get_moves(src);
-        let is_valid = tiles.contains(&dst);
-
-        if !is_valid {
-            return false;
-        }
-
-        if p.typ == ChessPiece::Pawn && (dst.rank == '8' || dst.rank == '1') {
-            if chessmove.special.is_none() {
-                return false;
-            }
-        }
-
-        // simulate move to check if it leads to/stays in check
-        let mut simulation = self.clone();
-        simulation.make_move_unchecked(*chessmove);
-        if simulation.is_in_check(self.active_player) {
-            return false;
-        }
-
-        // special check for castling through check
-        if p.typ == ChessPiece::King && (dst.file as i8 - src.file as i8).abs() == 2 {
-            if self.is_in_check(self.active_player) {
-                return false;
-            }
-        }
-        true
     }
 
     /// Helper method to handle en passant moves.
@@ -515,19 +475,56 @@ impl Chess {
     /// This approach is helpful for en passant and castling, where more tiles
     /// than the src and dest tiles are affected.
     pub fn make_move(&mut self, mov: ChessMove) -> ChessResult<Vec<(Tile, Option<Piece>)>> {
-        // check if the move is fully valid. Here, it will be simulated on a cloned board
-        // to test if the move results in a check for the player making the move.
-        if !self.is_valid(&mov) {
+        // 1. Check movement rules
+        let src = mov.src;
+        let dst = mov.dst;
+        let p = self.peek(src).ok_or(ChessError::IllegalMove(mov))?;
+
+        if p.color != self.active_player {
             return Err(ChessError::IllegalMove(mov));
         }
 
-        // after the move has been validated, we can now make the move on the real board.
-        let updated_tiles = self.make_move_unchecked(mov);
+        let tiles = self.get_moves(src);
+        if !tiles.contains(&dst) {
+            return Err(ChessError::IllegalMove(mov));
+        }
 
-        debug!(
-            "executed move: {style_bold}{fg_green}{}{}{style_reset}{fg_reset}!",
-            mov.src, mov.dst
-        );
+        if p.typ == ChessPiece::Pawn && (dst.rank == '8' || dst.rank == '1') {
+            if mov.special.is_none() {
+                return Err(ChessError::IllegalMove(mov));
+            }
+        }
+
+        // 2. Simulate the move on a cloned board
+        let mut simulation = self.clone();
+
+        // 3. Call make_move_unchecked on simulation. This handles all the movement rules.
+        let _ = simulation.make_move_unchecked(mov)?;
+
+        // 4. Call is_valid_position on simulation to check if the move is legal regarding checks.
+        if simulation.is_in_check(simulation.active_player) {
+            return Err(ChessError::IllegalMove(mov));
+        }
+
+        // 5. Special check for castling through check
+        // A bit awkward to make the test here, but it's yet again such a special chess rule
+        // castling is the only move we can't do to leave a check + we can't castle through check.
+        if p.typ == ChessPiece::King && (mov.dst.file as i8 - mov.src.file as i8).abs() == 2 {
+            if self.is_in_check(self.active_player) {
+                return Err(ChessError::IllegalMove(mov));
+            }
+            let direction = if mov.dst.file == 'g' { 1 } else { -1 };
+            let through_file = (mov.src.file as i8 + direction) as u8 as char;
+            let through_tile = Tile::new(through_file, mov.src.rank).unwrap();
+            if self.is_attacked(through_tile, !self.active_player) {
+                return Err(ChessError::IllegalMove(mov));
+            }
+        }
+
+        // 6. If all succeeded, do the real move on the real board.
+        let updated_tiles = self.make_move_unchecked(mov)?;
+
+        debug!("executed move: {style_bold}{fg_green}{src}{dst}{style_reset}{fg_reset}!");
 
         // it's the opponents turn now
         self.active_player = !self.active_player;
@@ -539,11 +536,20 @@ impl Chess {
 
     /// Helper method for pseudo-legal moves. These are all moves that can be made by the
     /// movement rules of the pieces but where checks are not considered.
-    pub fn make_move_unchecked(&mut self, chessmove: ChessMove) -> Vec<(Tile, Option<Piece>)> {
+    pub fn make_move_unchecked(
+        &mut self,
+        chessmove: ChessMove,
+    ) -> ChessResult<Vec<(Tile, Option<Piece>)>> {
         let src = chessmove.src;
         let dst = chessmove.dst;
 
-        let mut piece = self.take(src).expect("Source tile should have a piece");
+        let mut piece = self.take(src).ok_or(ChessError::IllegalMove(chessmove))?;
+
+        if piece.color != self.active_player {
+            self[src] = Some(piece); // restore piece
+            return Err(ChessError::IllegalMove(chessmove));
+        }
+
         let mut updated_tiles = vec![(src, None)];
         // handle special cases. note that en_passant and castling need to update different tiles
         // than the destination tile
@@ -558,7 +564,7 @@ impl Chess {
         self.update_castle_rights(&piece, src);
         self.update_en_passant_square(&piece, src, dst);
 
-        updated_tiles
+        Ok(updated_tiles)
     }
 }
 
@@ -674,34 +680,38 @@ mod tests {
         // White Rook e1, Black Bishop e7, Black King e8. Bishop moves to d6.
         let game = Chess::load_fen("4k3/4b3/8/8/8/8/4R3/4K3 b - - 0 1");
         let mv: ChessMove = "e7d6".parse().unwrap();
-        assert!(!game.is_valid(&mv)); // Reveals check
+        let mut simulation = game.clone();
+        simulation.make_move_unchecked(mv).unwrap();
+        assert!(simulation.is_in_check(simulation.active_player)); // Reveals check
     }
 
     #[test]
     fn test_must_move_out_of_check() {
         // Scholar's mate style check
         let mut game = Chess::new(); // Starts with White turn
-        game.make_move("e2e4".parse().unwrap());
-        game.make_move("f7f5".parse().unwrap());
-        game.make_move("d1h5".parse().unwrap());
+        game.make_move("e2e4".parse().unwrap()).unwrap();
+        game.make_move("f7f5".parse().unwrap()).unwrap();
+        game.make_move("d1h5".parse().unwrap()).unwrap();
 
         assert!(game.is_in_check(ChessColor::Black));
 
         // Illegal move: a7a6
         let mv: ChessMove = "a7a6".parse().unwrap();
-        assert!(!game.is_valid(&mv));
+        assert!(game.make_move(mv).is_err());
 
         // Legal move: g7g6 (blocks check)
         let mv: ChessMove = "g7g6".parse().unwrap();
-        assert!(game.is_valid(&mv));
+        assert!(game.make_move(mv).is_ok());
     }
 
     #[test]
     fn test_castling_restrictions_with_check() {
         // Setup: White king e1, Rook h1.
-        let game = Chess::load_fen("4k3/4r3/8/8/8/8/8/4K2R w K - 0 1");
+        let mut game = Chess::load_fen("4k3/4r3/8/8/8/8/8/4K2R w K - 0 1");
         // White to move. King at e1, Rook at h1. Black Rook at e7.
         assert!(game.is_in_check(ChessColor::White));
-        assert!(!game.is_valid(&"e1g1".parse::<ChessMove>().unwrap()));
+        assert!(game
+            .make_move("e1g1".parse::<ChessMove>().unwrap())
+            .is_err());
     }
 }
