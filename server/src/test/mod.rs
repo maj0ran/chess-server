@@ -240,7 +240,7 @@ pub mod testgames {
                 ("f2f3", ServerMessage::MOVE_ACCEPTED),
                 ("e7e5", ServerMessage::MOVE_ACCEPTED),
                 ("g2g4", ServerMessage::MOVE_ACCEPTED),
-                ("d8h4", ServerMessage::CHECKMATE),
+                ("d8h4", ServerMessage::GAME_WON),
             ];
 
             for (mov, expected_opcode) in moves {

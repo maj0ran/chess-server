@@ -149,11 +149,11 @@ pub fn poll_network(
                 // let the UI update the board back to its original state.
                 state.game_state.dirty = true;
             }
-            ServerMessage::Checkmate(_gid, is_checkmated) => {
-                state.menu_state.error_msg = Some("Checkmate!".to_string());
-                state.game_state.winner = Some(!is_checkmated);
+            ServerMessage::GameWon(_gid, _win_type, winner) => {
+                state.menu_state.error_msg = Some("Game Won!".to_string());
+                state.game_state.winner = Some(winner);
                 next_overlay.set(Overlay::GameOver);
-                log::info!("Checkmate!");
+                log::info!("Game Won!");
             }
             ServerMessage::GameDrawn(gid, draw_type) => {
                 state.menu_state.error_msg = Some("Draw!".to_string());

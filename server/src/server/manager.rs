@@ -249,12 +249,13 @@ impl GameManager {
                             let _ = self.save_game(&game).await;
                         }
                         match outcome {
-                            ChessGameOutcome::Checkmate(is_checkmated) => {
+                            ChessGameOutcome::Victory(win_type) => {
+                                let winner = win_type.get_winner();
                                 for c in &clients {
                                     if let Some(handler) = self.clients.get(&c) {
                                         let _ = handler
                                             .tx
-                                            .send(ServerMessage::Checkmate(game_id, is_checkmated))
+                                            .send(ServerMessage::GameWon(game_id, win_type, winner))
                                             .await;
                                     }
                                 }
@@ -269,8 +270,6 @@ impl GameManager {
                                     }
                                 }
                             }
-                            ChessGameOutcome::Resignation(_) => {}
-                            ChessGameOutcome::TimeOut(_) => {}
                         }
                     }
                 }

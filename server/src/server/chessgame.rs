@@ -1,6 +1,6 @@
 use crate::chess::chess::Chess;
 use crate::chess::pieces::Piece;
-use chess_core::states::{ChessGameOutcome, ChessGameState, DrawType};
+use chess_core::states::{ChessGameOutcome, ChessGameState, DrawType, VictoryType};
 use chess_core::*;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -184,7 +184,9 @@ impl ChessGame {
 
     pub fn get_game_state(&mut self) -> ChessGameState {
         if self.chess.is_checkmate() {
-            return ChessGameState::Finished(ChessGameOutcome::Checkmate(self.chess.active_player));
+            return ChessGameState::Finished(ChessGameOutcome::Victory(VictoryType::Checkmate(
+                !self.chess.active_player,
+            )));
         }
         if self.chess.is_stalemate() {
             return ChessGameState::Finished(ChessGameOutcome::Draw(DrawType::Stalemate));
