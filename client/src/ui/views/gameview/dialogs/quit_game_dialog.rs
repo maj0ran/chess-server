@@ -1,4 +1,4 @@
-use crate::state::{ClientBackend, Overlay, Screen};
+use crate::backend::client::{ClientBackend, Overlay, Screen};
 use bevy::prelude::*;
 use bevy_flair::prelude::*;
 use chess_core::protocol::messages::ClientMessage;

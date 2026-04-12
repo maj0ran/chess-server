@@ -1,4 +1,4 @@
-use crate::state::{ClientBackend, MenuTab, Overlay, Screen};
+use crate::backend::client::{ClientBackend, MenuTab, Overlay, Screen};
 use crate::ui::views::menuview::analysismenu::analysis_menu::{
     cleanup_analysis_menu, setup_analysis_menu,
 };

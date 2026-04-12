@@ -1,18 +1,18 @@
-mod config;
-pub mod network;
-pub mod state;
+pub mod backend;
 pub mod ui;
-
-use crate::network::poll_network;
-use crate::state::{ClientBackend, MenuTab, Overlay, Screen};
-use crate::ui::COLOR_DARK;
-use ui::views::gameview::game::GamePlugin;
-use ui::views::menuview::menuroot::MenuRootPlugin;
 
 use bevy::prelude::*;
 use bevy::ui_widgets::ScrollbarPlugin;
 use bevy::window::{WindowResized, WindowResolution};
 use bevy_flair::prelude::*;
+
+use backend::client::{ClientBackend, MenuTab, Overlay, Screen};
+use ui::COLOR_DARK;
+
+use backend::ClientPlugin;
+use ui::views::gameview::chessboard::ChessboardPlugin;
+use ui::views::gameview::game_screen::ChessPlugin;
+use ui::views::menuview::menuroot::MenuRootPlugin;
 
 #[derive(Resource)]
 pub struct WindowSize {
@@ -36,7 +36,7 @@ fn on_resize_system(
 fn main() {
     env_logger::init();
 
-    let config = crate::config::Config::read("settings.cfg");
+    let config = backend::config::Config::read("settings.cfg");
 
     App::new()
         .add_plugins((
@@ -44,7 +44,7 @@ fn main() {
             DefaultPlugins.set(WindowPlugin {
                 primary_window: Some(Window {
                     title: "Chess Client".to_string(),
-                    resolution: WindowResolution::new(1280, 720),
+                    resolution: WindowResolution::new(1280, 800),
                     ..default()
                 }),
                 ..default()
@@ -59,10 +59,8 @@ fn main() {
         .init_state::<MenuTab>()
         .init_state::<Overlay>()
         .add_systems(Startup, setup_camera)
-        .add_systems(Update, poll_network)
         .add_systems(Update, on_resize_system)
-        .add_plugins(GamePlugin)
-        .add_plugins(MenuRootPlugin)
+        .add_plugins((MenuRootPlugin, ChessPlugin, ChessboardPlugin, ClientPlugin))
         .insert_resource(ClearColor(COLOR_DARK))
         .insert_resource(WindowSize {
             width: 0.0,

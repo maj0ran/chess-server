@@ -1,4 +1,4 @@
-use crate::state::{ClientBackend, Overlay};
+use crate::backend::client::{ClientBackend, Overlay};
 use bevy::prelude::*;
 use bevy_flair::prelude::*;
 use chess_core::protocol::messages::ClientMessage;
@@ -65,8 +65,8 @@ pub fn create_dialog_action_system(
                 CreateAction::Confirm => {
                     state.network.send(ClientMessage::NewGame(NewGameParams {
                         mode: 0,
-                        time: state.create_settings.time as u32 * 60,
-                        time_inc: state.create_settings.increment as u32,
+                        time: 600,
+                        time_inc: 10,
                     }));
                     next_overlay.set(Overlay::None);
                 }

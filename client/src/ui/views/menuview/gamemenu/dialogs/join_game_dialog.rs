@@ -1,4 +1,4 @@
-use crate::state::{ClientBackend, Overlay};
+use crate::backend::client::{ClientBackend, Overlay};
 use bevy::prelude::*;
 use bevy_flair::prelude::*;
 use chess_core::protocol::messages::ClientMessage;
@@ -89,7 +89,7 @@ pub fn join_dialog_action_system(
         if *interaction == Interaction::Pressed {
             match action {
                 JoinAction::Select(side) => {
-                    if let Some(game_id) = state.menu_state.selected_game {
+                    if let Some(game_id) = state.in_game_id {
                         state.network.send(ClientMessage::JoinGame(JoinGameParams {
                             game_id,
                             side: side.clone(),

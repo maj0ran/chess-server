@@ -1,7 +1,16 @@
+use crate::backend::client::{BoardUpdate, ClientBackend, GameDetails, Overlay, Screen};
+use crate::backend::config::Config;
+use crate::ui::gamelist_menu::UpdateGamesList;
+use crate::ui::views::gameview::chessboard::RequestMove;
+use crate::ui::views::gameview::chessboard::board::ResetSelection;
+use bevy::prelude::*;
 use chess_core::net::connection::Connection;
-use chess_core::{GameId, NetError, NetResult};
+use chess_core::protocol::messages::{ClientMessage, ServerMessage};
+use chess_core::protocol::parser::NetMessage;
+use chess_core::{ChessMove, GameId, NetResult, Tile};
 use smol::channel::{Receiver, Sender};
 use smol::net::TcpStream;
+use std::collections::HashMap;
 
 #[derive(Clone)]
 /// `ChessClient` manages the network connection for a chess client.
@@ -56,7 +65,7 @@ pub async fn network_thread(
     resp_tx: Sender<ServerMessage>,
 ) -> NetResult<()> {
     let stream = TcpStream::connect(addr).await?;
-    let mut conn = Connection::new(stream);
+    let conn = Connection::new(stream);
 
     log::info!("Network thread started");
 
@@ -96,14 +105,6 @@ pub async fn receive_thread(mut conn: Connection, resp_tx: Sender<ServerMessage>
     log::info!("Receive thread shutting down");
 }
 
-use crate::config::Config;
-use crate::state::{ClientBackend, GameDetails, Overlay, Screen};
-use crate::ui::gamelist_menu::UpdateGamesList;
-use bevy::prelude::*;
-use chess_core::protocol::messages::{ClientMessage, ServerMessage};
-use chess_core::protocol::parser::NetMessage;
-use std::collections::HashMap;
-
 pub fn poll_network(
     mut commands: Commands,
     mut state: ResMut<ClientBackend>,
@@ -127,21 +128,25 @@ pub fn poll_network(
                 state.network.send(ClientMessage::QueryGames);
             }
             ServerMessage::GameJoined(_, _, _, fen) => {
-                state.update_board_from_fen(&fen);
+                state.update_internal_board_from_fen(&fen);
                 state.game_state.dirty = true;
-                next_screen.set(Screen::Game);
+                next_screen.set(Screen::Ingame);
                 next_overlay.set(Overlay::None);
             }
             ServerMessage::MoveAccepted(san_len, san, updates) => {
                 log::info!("Move accepted: {} {}", san_len, san);
                 for (tile, piece) in updates {
                     if let Some(p) = piece {
-                        state.game_state.board.insert(tile.to_string(), p.as_byte());
+                        state
+                            .game_state
+                            .internal_board
+                            .insert(tile.to_string(), p.as_byte());
                     } else {
-                        state.game_state.board.remove(&tile.to_string());
+                        state.game_state.internal_board.remove(&tile.to_string());
                     }
                 }
                 state.game_state.dirty = true;
+                commands.trigger(BoardUpdate);
             }
             ServerMessage::IllegalMove(err) => {
                 log::warn!("{}", err);
@@ -201,4 +206,24 @@ pub fn poll_network(
             ServerMessage::GameLeft(_gid, _cid) => {}
         }
     }
+}
+
+pub fn on_move_request(
+    ev: On<RequestMove>,
+    mut commands: Commands,
+    mut backend: ResMut<ClientBackend>,
+) {
+    let src = Tile::from(ev.source.as_str());
+    let dst = Tile::from(ev.destination.as_str());
+    let promotion = ev.promotion;
+    let game_id = backend.in_game_id.unwrap(); // cannot be None, as we can only trigger this event when in a game
+    backend.network.send(ClientMessage::Move(
+        game_id,
+        ChessMove {
+            src,
+            dst,
+            special: promotion,
+        },
+    ));
+    commands.trigger(ResetSelection);
 }

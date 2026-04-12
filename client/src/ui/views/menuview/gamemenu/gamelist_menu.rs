@@ -1,6 +1,6 @@
-use crate::state::{ClientBackend, Overlay};
-use crate::ui::views::menuview::menuroot::MenuTabContainer;
+use crate::backend::client::{ClientBackend, Overlay};
 use crate::ui::views::menuview::MenuTabComponent;
+use crate::ui::views::menuview::menuroot::MenuTabContainer;
 use bevy::prelude::*;
 use bevy::ui_widgets::{ControlOrientation, CoreScrollbarThumb, Scrollbar};
 use bevy_flair::prelude::*;
@@ -177,7 +177,7 @@ pub fn gamelist_menu_action_system(
                     state.network.send(ClientMessage::QueryGames);
                 }
                 MenuAction::JoinGame(id) => {
-                    state.menu_state.selected_game = Some(*id);
+                    state.in_game_id = Some(*id);
                     next_overlay.set(Overlay::JoinDialog);
                 }
             }
