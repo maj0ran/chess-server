@@ -204,4 +204,5 @@ pub enum ChessGameOutcome {
     Stalemate,
     MaterialDraw,
     TimeOutMaterialDraw,
+    FiftyMoveRule,
 }

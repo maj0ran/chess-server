@@ -272,6 +272,7 @@ impl GameManager {
                             ChessGameOutcome::TimeOut(_) => {}
                             ChessGameOutcome::MaterialDraw => {}
                             ChessGameOutcome::TimeOutMaterialDraw => {}
+                            ChessGameOutcome::FiftyMoveRule => {}
                         }
                     }
                 }
