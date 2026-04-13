@@ -10,7 +10,12 @@ pub fn setup_game_over_dialog(
     state: ResMut<ClientBackend>,
     asset_server: Res<AssetServer>,
 ) {
-    let winner = state.game_state.winner.unwrap();
+    let winner = state.game_state.winner;
+    let dialog_text = if let Some(p) = winner {
+        format!("{} won!", p)
+    } else {
+        String::from("Draw!")
+    };
     commands.spawn((
         Node::default(),
         NodeStyleSheet::new(asset_server.load("style.css")),
@@ -20,10 +25,7 @@ pub fn setup_game_over_dialog(
             ClassList::new("dialog-content column-align"),
             children![
                 (Text::new("Game Over"), ClassList::new("label-large")),
-                (
-                    Text::new(format!("{} won", winner)),
-                    ClassList::new("label-small")
-                ),
+                (Text::new(dialog_text), ClassList::new("label-small")),
                 (
                     Button,
                     Interaction::default(),

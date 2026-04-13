@@ -12,10 +12,22 @@ pub enum ChessGameOutcome {
 
 #[derive(Debug, Clone, Copy)]
 pub enum DrawType {
-    Stalemate,
-    ThreefoldRepetition,
-    InsufficientMaterial,
-    FiftyMoveRule,
+    Stalemate = 1,
+    ThreefoldRepetition = 2,
+    InsufficientMaterial = 3,
+    FiftyMoveRule = 4,
+}
+
+impl DrawType {
+    pub fn from_u8(v: u8) -> Self {
+        match v {
+            1 => DrawType::Stalemate,
+            2 => DrawType::ThreefoldRepetition,
+            3 => DrawType::InsufficientMaterial,
+            4 => DrawType::FiftyMoveRule,
+            _ => panic!("Invalid draw type"),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Copy)]

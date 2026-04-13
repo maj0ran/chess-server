@@ -157,7 +157,8 @@ pub fn poll_network(
             }
             ServerMessage::GameDrawn(gid, draw_type) => {
                 state.menu_state.error_msg = Some("Draw!".to_string());
-                log::info!("Stalemate!");
+                next_overlay.set(Overlay::GameOver);
+                log::info!("Draw!");
             }
             ServerMessage::GameDetails(game_id, white_id, black_id, time, inc) => {
                 let game_details = GameDetails {

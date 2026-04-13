@@ -194,6 +194,11 @@ impl ChessGame {
         if self.chess.is_fifty_moves_rule() {
             return ChessGameState::Finished(ChessGameOutcome::Draw(DrawType::FiftyMoveRule));
         }
+
+        if self.chess.is_repetition() {
+            return ChessGameState::Finished(ChessGameOutcome::Draw(DrawType::ThreefoldRepetition));
+        }
+
         ChessGameState::Running
     }
 }

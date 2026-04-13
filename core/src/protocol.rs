@@ -338,6 +338,12 @@ impl NetMessage for ServerMessage {
                 let win_type = VictoryType::from_u8(win_type_byte, winner);
                 Ok(ServerMessage::GameWon(game_id, win_type, winner))
             }
+            Self::GAME_DRAWN => {
+                let game_id = reader.read_u32_le()?;
+                let draw_type_byte = reader.read_u8()?;
+                let draw_type = DrawType::from_u8(draw_type_byte);
+                Ok(ServerMessage::GameDrawn(game_id, draw_type))
+            }
             Self::GAME_DETAILS => {
                 let game_id = reader.read_u32_le()?;
                 let white_id = reader.read_u32_le()?;
