@@ -195,12 +195,13 @@ impl Chess {
             full_moves,
             hash: ZobristHash::new(),
         };
-        chess.hash.set_hash(
+        chess.hash.compute_full_hash(
             &chess.tiles,
             chess.active_player,
             &chess.castle_rights,
             chess.en_passant,
         );
+
         chess
     }
 
