@@ -3,8 +3,10 @@ use std::fmt;
 use std::ops::Index;
 use std::ops::IndexMut;
 
+use crate::chess::hash::ZobristHash;
 use crate::chess::pieces::*;
 use crate::piece;
+use chess_core::piece::Id;
 use chess_core::*;
 
 /// The chess struct holds all information for a game of chess.
@@ -19,6 +21,7 @@ pub struct Chess {
     pub en_passant: Option<Tile>,
     half_moves: usize,
     full_moves: usize,
+    pub hash: ZobristHash,
 }
 
 /// makes it possible to iterate over a chessboard.
@@ -183,14 +186,22 @@ impl Chess {
         let half_moves = usize::from_str_radix(half_move_str, 10).unwrap();
         let full_moves = usize::from_str_radix(full_move_str, 10).unwrap();
 
-        Chess {
+        let mut chess = Chess {
             tiles,
             active_player,
             castle_rights,
             en_passant,
             half_moves,
             full_moves,
-        }
+            hash: ZobristHash::new(),
+        };
+        chess.hash.set_hash(
+            &chess.tiles,
+            chess.active_player,
+            &chess.castle_rights,
+            chess.en_passant,
+        );
+        chess
     }
 
     /// Get the FEN of the current position.
@@ -521,11 +532,19 @@ impl Chess {
             }
         }
 
-        // 6. If all succeeded, we do the real move on the real board.
-        // but first, we need to get the information we need to update the half-moves field
-        // for the 50-moves-rules.
         let is_capture = self[dst].is_some();
         let is_pawn_move = self[src].unwrap().typ == ChessPiece::Pawn;
+
+        let prev_castle_rights = self.castle_rights.clone();
+        let prev_en_passant = self.en_passant.clone();
+
+        // Collect old pieces for tiles that will be updated
+        let mut simulation_for_diff = self.clone();
+        let updated_tiles_basic = simulation_for_diff.make_move_unchecked(mov)?;
+        let mut diff_tiles = Vec::new();
+        for (tile, new_piece) in updated_tiles_basic {
+            diff_tiles.push((tile, self[tile], new_piece));
+        }
 
         let updated_tiles = self.make_move_unchecked(mov)?;
 
@@ -541,6 +560,15 @@ impl Chess {
 
         // it's the opponents turn now
         self.active_player = !self.active_player;
+
+        self.hash.update_hash(
+            diff_tiles,
+            prev_castle_rights,
+            self.castle_rights,
+            prev_en_passant,
+            self.en_passant,
+            true,
+        );
 
         debug!("executed move: {style_bold}{fg_green}{src}{dst}{style_reset}{fg_reset}!");
         Ok(updated_tiles)

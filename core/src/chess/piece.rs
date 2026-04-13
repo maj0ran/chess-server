@@ -88,3 +88,62 @@ impl fmt::Debug for WoodPiece {
         fmt::Display::fmt(self, f)
     }
 }
+pub trait Id {
+    fn id(&self) -> u32;
+}
+
+/// used for Zobrist Hashing
+impl Id for WoodPiece {
+    fn id(&self) -> u32 {
+        match self {
+            WoodPiece {
+                typ: ChessPiece::King,
+                color: ChessColor::White,
+            } => 0,
+            WoodPiece {
+                typ: ChessPiece::Queen,
+                color: ChessColor::White,
+            } => 1,
+            WoodPiece {
+                typ: ChessPiece::Rook,
+                color: ChessColor::White,
+            } => 2,
+            WoodPiece {
+                typ: ChessPiece::Bishop,
+                color: ChessColor::White,
+            } => 3,
+            WoodPiece {
+                typ: ChessPiece::Knight,
+                color: ChessColor::White,
+            } => 4,
+            WoodPiece {
+                typ: ChessPiece::Pawn,
+                color: ChessColor::White,
+            } => 5,
+            WoodPiece {
+                typ: ChessPiece::King,
+                color: ChessColor::Black,
+            } => 6,
+            WoodPiece {
+                typ: ChessPiece::Queen,
+                color: ChessColor::Black,
+            } => 7,
+            WoodPiece {
+                typ: ChessPiece::Rook,
+                color: ChessColor::Black,
+            } => 8,
+            WoodPiece {
+                typ: ChessPiece::Bishop,
+                color: ChessColor::Black,
+            } => 9,
+            WoodPiece {
+                typ: ChessPiece::Knight,
+                color: ChessColor::Black,
+            } => 10,
+            WoodPiece {
+                typ: ChessPiece::Pawn,
+                color: ChessColor::Black,
+            } => 11,
+        }
+    }
+}
