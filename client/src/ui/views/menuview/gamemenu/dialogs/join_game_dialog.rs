@@ -1,7 +1,8 @@
 use crate::state::{ClientBackend, Overlay};
 use bevy::prelude::*;
 use bevy_flair::prelude::*;
-use chess_core::{ClientMessage, JoinGameParams, UserRoleSelection};
+use chess_core::protocol::messages::ClientMessage;
+use chess_core::protocol::{JoinGameParams, UserRoleSelection};
 
 #[derive(Component)]
 pub struct JoinDialogComponent;

@@ -1,6 +1,8 @@
 use crate::chess::chess::Chess;
 use crate::chess::san::San;
 use crate::server::chessgame::ChessGame;
+use chess_core::protocol::messages::{ClientMessage, ServerMessage};
+use chess_core::protocol::{JoinGameParams, NewGameParams};
 use chess_core::states::{ChessGameOutcome, ChessGameState};
 use chess_core::*;
 use chrono::prelude::*;

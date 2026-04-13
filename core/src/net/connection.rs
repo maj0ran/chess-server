@@ -1,6 +1,6 @@
 use crate::net::buffer::Buffer;
+use crate::protocol::parser::NetMessage;
 use crate::NetError;
-use crate::NetMessage;
 use crate::NetResult;
 use smol::io::AsyncReadExt;
 use smol::io::AsyncWriteExt;

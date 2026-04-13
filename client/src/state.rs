@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::network::NetworkInterface;
 use bevy::prelude::*;
-use chess_core::UserRoleSelection;
+use chess_core::protocol::UserRoleSelection;
 use chess_core::{ChessColor, GameId, Tile};
 use std::collections::HashMap;
 

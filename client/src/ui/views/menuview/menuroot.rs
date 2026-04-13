@@ -15,6 +15,7 @@ use crate::ui::views::menuview::puzzlemenu::puzzle_menu::{cleanup_puzzle_menu, s
 
 use bevy::prelude::*;
 use bevy_flair::prelude::*;
+use chess_core::protocol::messages::ClientMessage;
 
 pub struct MenuRootPlugin;
 
@@ -76,7 +77,7 @@ pub fn setup_menu_root(
     mut next_tab: ResMut<NextState<MenuTab>>,
     asset_server: Res<AssetServer>,
 ) {
-    state.network.send(chess_core::ClientMessage::QueryGames);
+    state.network.send(ClientMessage::QueryGames);
 
     // set the current Tab manually so we trigger the logic for
     // the Games tab.

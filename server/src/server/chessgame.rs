@@ -1,5 +1,6 @@
 use crate::chess::chess::Chess;
 use crate::chess::pieces::Piece;
+use chess_core::protocol::UserRoleSelection;
 use chess_core::states::{ChessGameOutcome, ChessGameState, DrawType, VictoryType};
 use chess_core::*;
 use std::time::{SystemTime, UNIX_EPOCH};

@@ -1,5 +1,5 @@
 use chess_core::net::connection::Connection;
-use chess_core::{ClientMessage, GameId, NetError, NetMessage, NetResult, ServerMessage};
+use chess_core::{GameId, NetError, NetResult};
 use smol::channel::{Receiver, Sender};
 use smol::net::TcpStream;
 
@@ -100,6 +100,8 @@ use crate::config::Config;
 use crate::state::{ClientBackend, GameDetails, Overlay, Screen};
 use crate::ui::gamelist_menu::UpdateGamesList;
 use bevy::prelude::*;
+use chess_core::protocol::messages::{ClientMessage, ServerMessage};
+use chess_core::protocol::parser::NetMessage;
 use std::collections::HashMap;
 
 pub fn poll_network(

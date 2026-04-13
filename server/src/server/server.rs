@@ -1,6 +1,7 @@
 use super::manager::GameManager;
 use super::session::ClientSession;
-use chess_core::{ClientId, ClientMessage};
+use chess_core::protocol::messages::ClientMessage;
+use chess_core::ClientId;
 use smol::channel::{unbounded, Sender};
 use smol::net::*;
 

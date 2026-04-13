@@ -1,7 +1,7 @@
 use crate::state::{ClientBackend, Overlay, Screen};
 use bevy::prelude::*;
 use bevy_flair::prelude::*;
-use chess_core::ClientMessage;
+use chess_core::protocol::messages::ClientMessage;
 
 /// Marker that indicates a dialog for quitting the current game
 #[derive(Component)]

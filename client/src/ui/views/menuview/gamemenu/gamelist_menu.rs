@@ -4,7 +4,7 @@ use crate::ui::views::menuview::MenuTabComponent;
 use bevy::prelude::*;
 use bevy::ui_widgets::{ControlOrientation, CoreScrollbarThumb, Scrollbar};
 use bevy_flair::prelude::*;
-use chess_core::ClientMessage;
+use chess_core::protocol::messages::ClientMessage;
 
 pub struct MenuPlugin;
 

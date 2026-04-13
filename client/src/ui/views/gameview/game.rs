@@ -9,7 +9,8 @@ use crate::ui::{COLOR_LIGHT2, COLOR_MID};
 use bevy::ecs::relationship::RelatedSpawnerCommands;
 use bevy::prelude::*;
 use bevy_flair::prelude::*;
-use chess_core::{ChessMove, ClientMessage, Promotion, Tile};
+use chess_core::protocol::messages::ClientMessage;
+use chess_core::{ChessMove, Promotion, Tile};
 use std::collections::HashMap;
 
 #[derive(Component)]

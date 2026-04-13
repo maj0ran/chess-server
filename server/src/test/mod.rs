@@ -12,7 +12,8 @@ pub mod testgames {
 
     use super::testclient::TestClient;
     use crate::test;
-    use chess_core::{ServerMessage, UserRoleSelection};
+    use chess_core::protocol::messages::ServerMessage;
+    use chess_core::protocol::UserRoleSelection;
     use smol::Timer;
     use smol_macros::test;
 

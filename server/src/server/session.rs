@@ -1,6 +1,7 @@
 use chess_core::error::*;
 use chess_core::net::*;
-use chess_core::protocol::*;
+use chess_core::protocol::messages::{ClientMessage, ServerMessage};
+use chess_core::protocol::parser::NetMessage;
 use chess_core::ClientId;
 use smol::channel::{unbounded, Receiver, Sender};
 use smol::future;
