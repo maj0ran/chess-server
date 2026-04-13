@@ -177,7 +177,7 @@ impl GameManager {
             if let Some(gid) = c.in_game {
                 c.in_game = None;
                 if let Some(game) = self.games.get_mut(&gid) {
-                    if let Some(side) = game.remove_player(client_id) {
+                    if let Some(_side) = game.remove_player(client_id) {
                         let response = ServerMessage::GameLeft(gid, client_id);
                         if let Some(c) = self.clients.get(&client_id) {
                             let _ = c.tx.send(response).await;

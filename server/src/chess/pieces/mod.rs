@@ -9,8 +9,9 @@ pub mod queen;
 pub mod rook;
 
 use crate::chess::chess::Chess;
-pub use bishop::*;
 use chess_core::{ChessColor, ChessPiece, Tile, WoodPiece};
+
+pub use bishop::*;
 pub use king::*;
 pub use knight::*;
 pub use pawn::*;

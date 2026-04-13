@@ -1,7 +1,7 @@
+#[cfg(test)]
 use chess_core::net::Connection;
-use chess_core::{
-    ClientMessage, JoinGameParams, NetMessage, NewGameParams, ServerMessage, UserRoleSelection,
-};
+#[cfg(test)]
+use chess_core::*;
 #[cfg(test)]
 use smol::net::TcpStream;
 

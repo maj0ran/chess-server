@@ -25,7 +25,7 @@ pub struct ChessGame {
 impl ChessGame {
     /// Starts a chess game.
     /// Chess game can only start when two players are joined.
-    pub fn start_game(&mut self) -> GameManagerResult<()> {
+    pub fn _start_game(&mut self) -> GameManagerResult<()> {
         if self.white_player.is_none() {
             return Err(GameManagerError::InvalidGameStatus(
                 "White player missing".to_string(),
@@ -167,7 +167,7 @@ impl ChessGame {
         &mut self,
         mov: ChessMove,
         client_id: ClientId,
-    ) -> ChessResult<(Vec<(Tile, Option<Piece>)>)> {
+    ) -> ChessResult<Vec<(Tile, Option<Piece>)>> {
         let is_current_player = match self.chess.active_player {
             ChessColor::White => self.white_player == Some(client_id),
             ChessColor::Black => self.black_player == Some(client_id),

@@ -7,7 +7,6 @@ use std::ops::IndexMut;
 use crate::chess::hash::ZobristHash;
 use crate::chess::pieces::*;
 use crate::piece;
-use chess_core::piece::Id;
 use chess_core::*;
 
 /// The chess struct holds all information for a game of chess.
@@ -26,7 +25,7 @@ pub struct Chess {
 }
 
 /// makes it possible to iterate over a chessboard.
-/// iterating over a chesboard means going through all tiles of the board.
+/// iterating over a chess board means going through all tiles of the board.
 pub struct ChessboardIterator<'a> {
     board: &'a Chess,
     pub index: usize,
@@ -149,7 +148,7 @@ impl Chess {
             } else if c.is_numeric() {
                 curr_pos += char::to_digit(c, 10).unwrap() as usize;
             } else if c == '/' {
-                assert!(curr_pos % 8 == 0)
+                assert_eq!(curr_pos % 8, 0)
             }
         }
 
@@ -282,9 +281,9 @@ impl Chess {
         fen
     }
 
-    ///get the tiles controlled by the piece on the given tile
-    ///A controlled tile is a tile that is attacked by a piece, e.g., a empty tile or a tile with an
-    ///opponent piece. For pawns, the diagonal tiles are attacking tiles.
+    /// Get the tiles controlled by the piece on the given tile
+    /// A controlled tile is a tile that is attacked by a piece, e.g., an empty tile or a tile with an
+    /// opponent piece. For pawns, the diagonal tiles are attacking tiles.
     pub fn get_tiles_controlled(&self, tile: Tile) -> Vec<Tile> {
         match &self[tile] {
             Some(p) => (p.get_tiles_controlled)(self, tile),
@@ -343,8 +342,8 @@ impl Chess {
     }
 
     /// Helper method to handle en passant moves.
-    /// updates the vector of moves for this piece.
-    /// Only makes sense to use with pawns.
+    /// Updates the vector of moves for this piece.
+    /// Only makes sense to use it with pawns.
     fn handle_en_passant(
         &mut self,
         piece: &Piece,
@@ -431,7 +430,7 @@ impl Chess {
     }
 
     /// Helper method to update castling rights.
-    /// If king or a rook moves, update the loss of castling rights.
+    /// If the king or a rook moves, update the loss of castling rights.
     fn update_castle_rights(&mut self, piece: &Piece, src: Tile) {
         // if King moves, lose both castling rights
         if piece.typ == ChessPiece::King {
@@ -465,7 +464,7 @@ impl Chess {
     }
 
     /// Helper method to update en passant square.
-    /// If pawn moves two squares, update the en passant square.
+    /// If a pawn moves two squares, update the en passant square.
     fn update_en_passant_square(&mut self, piece: &Piece, src: Tile, dst: Tile) {
         if piece.typ == ChessPiece::Pawn {
             self.en_passant = if piece.color == ChessColor::White {
@@ -524,7 +523,7 @@ impl Chess {
         }
 
         // 5. Special check for castling through check
-        // A bit awkward to make the test here, but it's yet again such a special chess rule
+        // A bit awkward to make the test here, but it's yet again such a special chess rule;
         // castling is the only move we can't do to leave a check + we can't castle through check.
         if p.typ == ChessPiece::King && (mov.dst.file as i8 - mov.src.file as i8).abs() == 2 {
             if self.is_in_check(self.active_player) {
@@ -560,7 +559,7 @@ impl Chess {
             self.half_moves += 1;
         }
 
-        // it's the opponents turn now
+        // it's the opponents' turn now
         self.active_player = !self.active_player;
 
         self.hash.update_hash(
@@ -643,7 +642,7 @@ impl Chess {
 }
 
 /// Indexing Tiles on a Chess board.
-/// index[0] is a8, index[63] is h1
+/// `index[0]` is a8, `index[63]` is h1
 impl Index<Tile> for Chess {
     type Output = Option<Piece>;
 
@@ -656,7 +655,7 @@ impl Index<Tile> for Chess {
         if idx > 63 {
             return &None;
         }
-        &self.tiles[idx as usize]
+        &self.tiles[idx]
     }
 }
 
@@ -689,7 +688,7 @@ impl fmt::Display for Chess {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut board_string = String::new();
 
-        // a .. h row
+        // a..h row
         board_string += " ";
         for i in 'a'..='h' {
             board_string = board_string + " " + i.to_string().as_str() + " ";

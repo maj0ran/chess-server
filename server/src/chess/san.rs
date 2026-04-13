@@ -3,6 +3,7 @@ use chess_core::{ChessColor, ChessMove, ChessPiece, Promotion, Tile};
 
 pub trait San {
     fn to_san(&self, board: &Chess) -> String;
+    #[allow(dead_code)]
     fn from_san(board: &Chess, san: &str) -> Option<ChessMove>;
 }
 
@@ -125,6 +126,7 @@ impl San for ChessMove {
     /// HINT: This is not used for now, as client and server usually work with `ChessMove`s,
     /// and SAN is only used for humans who want to read the chess move. But let's keep it in case
     /// we want direct client<->server communication using SAN, e.g., when we use a UCI adapter.
+    #[allow(dead_code)]
     fn from_san(board: &Chess, san: &str) -> Option<ChessMove> {
         let san = san.trim();
         // check castle moves first
