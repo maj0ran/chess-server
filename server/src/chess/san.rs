@@ -106,7 +106,7 @@ impl San for ChessMove {
         // for these suffixes we have to simulate the move on a cloned board and use its
         // functionality to test for checks and mates.
         let mut next_board = board.clone();
-        next_board.make_move_unchecked(*self);
+        let _ = next_board.make_move_unchecked(*self);
         // swap player since make_move_unchecked doesn't do it,
         // and we need the other player to test for check
         next_board.active_player = !next_board.active_player;

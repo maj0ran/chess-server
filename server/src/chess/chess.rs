@@ -347,7 +347,7 @@ impl Chess {
         &mut self,
         piece: &Piece,
         dst: Tile,
-        updated_tiles: &mut Vec<(Tile, Option<Piece>)>,
+        updated_tiles: &mut Vec<(Tile, Option<Piece>, Option<Piece>)>,
     ) {
         if piece.typ == ChessPiece::Pawn {
             if let Some(en_passant_tile) = self.en_passant {
@@ -358,8 +358,8 @@ impl Chess {
                         Tile::UP
                     };
                     if let Some(capture_tile) = dst + capture_dir {
-                        self.take(capture_tile);
-                        updated_tiles.push((capture_tile, None));
+                        let old_piece = self.take(capture_tile);
+                        updated_tiles.push((capture_tile, old_piece, None));
                     }
                 }
             }
@@ -374,7 +374,7 @@ impl Chess {
         piece: &Piece,
         src: Tile,
         dst: Tile,
-        updated_tiles: &mut Vec<(Tile, Option<Piece>)>,
+        updated_tiles: &mut Vec<(Tile, Option<Piece>, Option<Piece>)>,
     ) {
         if piece.typ == ChessPiece::King {
             let (rank, home_rank) = if piece.color == ChessColor::White {
@@ -387,15 +387,19 @@ impl Chess {
                 if dst.file == 'g' {
                     let rook_src = Tile::new('h', rank).unwrap();
                     let rook_dst = Tile::new('f', rank).unwrap();
-                    self[rook_dst] = self.take(rook_src);
-                    updated_tiles.push((rook_src, None));
-                    updated_tiles.push((rook_dst, self[rook_dst]));
+                    let old_rook = self.take(rook_src);
+                    let old_dst_piece = self[rook_dst];
+                    self[rook_dst] = old_rook;
+                    updated_tiles.push((rook_src, old_rook, None));
+                    updated_tiles.push((rook_dst, old_dst_piece, self[rook_dst]));
                 } else if dst.file == 'c' {
                     let rook_src = Tile::new('a', rank).unwrap();
                     let rook_dst = Tile::new('d', rank).unwrap();
-                    self[rook_dst] = self.take(rook_src);
-                    updated_tiles.push((rook_src, None));
-                    updated_tiles.push((rook_dst, self[rook_dst]));
+                    let old_rook = self.take(rook_src);
+                    let old_dst_piece = self[rook_dst];
+                    self[rook_dst] = old_rook;
+                    updated_tiles.push((rook_src, old_rook, None));
+                    updated_tiles.push((rook_dst, old_dst_piece, self[rook_dst]));
                 }
             }
         }
@@ -538,15 +542,11 @@ impl Chess {
         let prev_castle_rights = self.castle_rights.clone();
         let prev_en_passant = self.en_passant.clone();
 
-        // Collect old pieces for tiles that will be updated
-        let mut simulation_for_diff = self.clone();
-        let updated_tiles_basic = simulation_for_diff.make_move_unchecked(mov)?;
-        let mut diff_tiles = Vec::new();
-        for (tile, new_piece) in updated_tiles_basic {
-            diff_tiles.push((tile, self[tile], new_piece));
-        }
-
-        let updated_tiles = self.make_move_unchecked(mov)?;
+        let diff_tiles = self.make_move_unchecked(mov)?;
+        let updated_tiles: Vec<(Tile, Option<Piece>)> = diff_tiles
+            .iter()
+            .map(|(tile, _, new_piece)| (*tile, *new_piece))
+            .collect();
 
         // update full moves and half moves
         if self.active_player == ChessColor::White {
@@ -576,10 +576,11 @@ impl Chess {
 
     /// Helper method for pseudo-legal moves. These are all moves that can be made by the
     /// movement rules of the pieces but where checks are not considered.
+    /// This method returns a vector of tuples containing the tile, the old piece, and the new piece.
     pub fn make_move_unchecked(
         &mut self,
         chessmove: ChessMove,
-    ) -> ChessResult<Vec<(Tile, Option<Piece>)>> {
+    ) -> ChessResult<Vec<(Tile, Option<Piece>, Option<Piece>)>> {
         let src = chessmove.src;
         let dst = chessmove.dst;
 
@@ -590,16 +591,17 @@ impl Chess {
             return Err(ChessError::IllegalMove(chessmove));
         }
 
-        let mut updated_tiles = vec![(src, None)];
+        let mut updated_tiles = vec![(src, Some(piece), None)];
         // handle special cases. note that en_passant and castling need to update different tiles
         // than the destination tile
         self.handle_en_passant(&piece, dst, &mut updated_tiles);
         self.handle_castling(&piece, src, dst, &mut updated_tiles);
         self.handle_promotion(&mut piece, dst, &chessmove.special);
 
-        /* now the destination tile gets updated with our moved piece */
+        // now the destination tile gets updated with our moved piece
+        let old_dst_piece = self[dst];
         self[dst] = Some(piece);
-        updated_tiles.push((dst, Some(piece)));
+        updated_tiles.push((dst, old_dst_piece, Some(piece)));
 
         self.update_castle_rights(&piece, src);
         self.update_en_passant_square(&piece, src, dst);
@@ -725,7 +727,7 @@ mod tests {
         let game = Chess::load_fen("4k3/4b3/8/8/8/8/4R3/4K3 b - - 0 1");
         let mv: ChessMove = "e7d6".parse().unwrap();
         let mut simulation = game.clone();
-        simulation.make_move_unchecked(mv).unwrap();
+        let _ = simulation.make_move_unchecked(mv).unwrap();
         assert!(simulation.is_in_check(simulation.active_player)); // Reveals check
     }
 
