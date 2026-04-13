@@ -6,47 +6,42 @@ A chess program as a client-server architecture. The server is responsible for a
 
 Could evolve in either a small-sized online chess or a chess analysis software if I will ever care enough.
 
+### Done:
+
+- [x] Client-Server Architecture:
+  - [x] Basic Management for multiple games and clients
+  - [x] Protocol for communicating online-chess-related messages (hosting games, making moves, ...)
+
+- [x] All mandatory rules for a chessgame:
+  - [x] All Piece logic
+  - [x] Checkmate and Stalemate detection
+  - [x] 50-Moves-Rule
+  - [x] Threefold-Repetition
+
+- [x] Basic GUI Client:
+  - [x] Create, Join and List Games
+  - [x] Move Pieces, Promote
+  - [x] Response to opponent moves, game over, etc.
+
+- [x] SAN converter
+
+- [x] Nicknames
+
 ### Short/Mid-Term TODO:
 
-- [x] Server: Basic chess logic (looks good, but not battle tested yet)
+- [ ] Better Client with better GUI
 
-- [x] Server: Accepting connections, handling requests for creating, joining games and making moves
+- [ ] Insufficient Material Draw
 
-- [x] Server: Managing multiple games at once
+- [ ] Offer Draw
 
-- [x] Server: Setting nicknames
+- [ ] Resigning
 
-- [ ] Server: 50-Moves-Rules
+- [ ] Move history
 
-- [ ] Server: 3-Moves-Repetition
+- [ ] Time control management
 
-- [ ] Server: Insufficient Material Draw
-
-- [ ] Server: Offer Draw
-
-- [ ] Server: Resigning
-
-- [x] Server: Log move history
-
-- [ ] Server: Time control management
-
-- [x] Client: Basic chess playing (moving pieces with mouse, promoting)
-
-- [x] Client: Receiving messages for game states (moves made / game over)
-
-- [x] Client: Create, list and join games
-
-- [ ] Client: Resigning
-
-- [ ] Client: Better connection settings (rudimentary config file exists)
-
-- [ ] Client: Material overview
-
-- [ ] Client: Show move history
-
-- [ ] Client: setup game time controls
-
-- [ ] Protocol: Algebraic Notation
+- [ ] Material overview
 
 
 ### Long-Term TODO:
@@ -58,13 +53,3 @@ Could evolve in either a small-sized online chess or a chess analysis software i
 - [ ] Analysis
 
 - [ ] UCI Bridge (Stockfish integration)
-
-
-
-### Quirks:
-
-- [ ] Client: Pieces can be dragged outside the board
-
-- [ ] Client: Scrollbar in games list doesn't fit very nicely
-
-
