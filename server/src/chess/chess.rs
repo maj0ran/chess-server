@@ -1,4 +1,5 @@
 use log::debug;
+use std::collections::HashMap;
 use std::fmt;
 use std::ops::Index;
 use std::ops::IndexMut;
@@ -610,8 +611,34 @@ impl Chess {
         Ok(updated_tiles)
     }
 
+    /// Check for 50-Moves-Rule
     pub fn is_fifty_moves_rule(&self) -> bool {
         self.full_moves >= 100
+    }
+
+    /// Check for 3-Fold-Repitition
+    pub fn is_repetition(&self) -> bool {
+        // a map to count duplicate hashes
+        let mut dupe_count = HashMap::<u64, usize>::new();
+        // we only need to check since the half_moves counter has been reset. Half-moves are
+        // reset when a pawn has moved or a piece was captured, so it is impossible to have a repetition
+        // after those actions.
+        let start_range = self.hash.hash_list.len() - self.half_moves;
+
+        for h in self.hash.hash_list[start_range..].iter() {
+            dupe_count
+                .entry(*h)
+                .and_modify(|count| *count += 1)
+                .or_insert(1);
+        }
+
+        for c in dupe_count.values() {
+            if *c >= 3 {
+                return true;
+            }
+        }
+
+        false
     }
 }
 
@@ -760,5 +787,29 @@ mod tests {
         assert!(game
             .make_move("e1g1".parse::<ChessMove>().unwrap())
             .is_err());
+    }
+
+    #[test]
+    fn test_threefold_repetition() {
+        let mut game = Chess::new();
+        game.make_move("b1c3".parse().unwrap()).unwrap();
+        game.make_move("b8c6".parse().unwrap()).unwrap();
+        game.make_move("c3b1".parse().unwrap()).unwrap();
+        game.make_move("c6b8".parse().unwrap()).unwrap();
+
+        assert!(!game.is_repetition());
+
+        game.make_move("b1c3".parse().unwrap()).unwrap();
+        game.make_move("b8c6".parse().unwrap()).unwrap();
+        game.make_move("c3b1".parse().unwrap()).unwrap();
+        game.make_move("c6b8".parse().unwrap()).unwrap();
+
+        // according to FIDE rules, the starting position is not count in the repetition. So
+        // even though we are the third time in the starting position, this test is correct.
+        assert!(!game.is_repetition());
+
+        // here is the repetition.
+        game.make_move("b1c3".parse().unwrap()).unwrap();
+        assert!(game.is_repetition());
     }
 }

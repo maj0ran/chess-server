@@ -1,9 +1,9 @@
-use crate::chess::chess::Chess;
-use crate::chess::pieces::Piece;
-use crate::chess::san::San;
-use chess_core::piece::Id;
-use chess_core::{ChessColor, ChessMove, ChessPiece, Tile, WoodPiece};
 use rand::Rng;
+
+use chess_core::piece::Id;
+use chess_core::{ChessColor, Tile};
+
+use crate::chess::pieces::Piece;
 
 #[derive(Clone)]
 pub struct ZobristHash {
@@ -12,7 +12,7 @@ pub struct ZobristHash {
     castle_rights: [u64; 4],
     en_passant_file: [u64; 8],
 
-    hash_list: Vec<u64>,
+    pub hash_list: Vec<u64>,
 }
 
 /// Initialize the Zobrist Hash.
@@ -148,6 +148,10 @@ impl ZobristHash {
 
 #[test]
 fn test_zobrist_hash() {
+    use crate::chess::chess::Chess;
+    use crate::chess::san::San;
+    use chess_core::ChessMove;
+
     let mut chess = Chess::load_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     let start_pos = chess.hash.get_current_hash();
 
