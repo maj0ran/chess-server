@@ -475,7 +475,7 @@ impl NetMessage for ServerMessage {
             ServerMessage::GameDrawn(game_id, draw_type) => {
                 let mut data = vec![Self::GAME_DRAWN];
                 data.extend_from_slice(&game_id.to_le_bytes());
-                data.extend_from_slice(&(*draw_type as u8).to_le_bytes());
+                data.push(draw_type.to_u8());
                 data
             }
         }

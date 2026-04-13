@@ -28,6 +28,15 @@ impl DrawType {
             _ => panic!("Invalid draw type"),
         }
     }
+
+    pub fn to_u8(&self) -> u8 {
+        match self {
+            DrawType::Stalemate => 1,
+            DrawType::ThreefoldRepetition => 2,
+            DrawType::InsufficientMaterial => 3,
+            DrawType::FiftyMoveRule => 4,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Copy)]
