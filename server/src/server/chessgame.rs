@@ -1,7 +1,7 @@
 use crate::chess::chess::Chess;
 use crate::chess::pieces::Piece;
 use chess_core::protocol::UserRoleSelection;
-use chess_core::states::{ChessGameOutcome, ChessGameState, DrawType, VictoryType};
+use chess_core::states::{ChessGameState, GameOverReason};
 use chess_core::*;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -185,19 +185,17 @@ impl ChessGame {
 
     pub fn get_game_state(&mut self) -> ChessGameState {
         if self.chess.is_checkmate() {
-            return ChessGameState::Finished(ChessGameOutcome::Victory(VictoryType::Checkmate(
-                !self.chess.active_player,
-            )));
+            return ChessGameState::Finished(GameOverReason::Checkmate(!self.chess.active_player));
         }
         if self.chess.is_stalemate() {
-            return ChessGameState::Finished(ChessGameOutcome::Draw(DrawType::Stalemate));
+            return ChessGameState::Finished(GameOverReason::Stalemate);
         }
         if self.chess.is_fifty_moves_rule() {
-            return ChessGameState::Finished(ChessGameOutcome::Draw(DrawType::FiftyMoveRule));
+            return ChessGameState::Finished(GameOverReason::FiftyMovesRule);
         }
 
         if self.chess.is_repetition() {
-            return ChessGameState::Finished(ChessGameOutcome::Draw(DrawType::ThreefoldRepetition));
+            return ChessGameState::Finished(GameOverReason::ThreefoldRepetition);
         }
 
         ChessGameState::Running

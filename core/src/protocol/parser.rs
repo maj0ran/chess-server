@@ -1,7 +1,7 @@
 use crate::chess::ChessColor;
 use crate::protocol::messages::{ClientMessage, ServerMessage};
 use crate::protocol::{JoinGameParams, NewGameParams, Reader, UserRoleSelection};
-use crate::states::{DrawType, VictoryType};
+use crate::states::GameOverReason;
 use crate::{ChessError, NetError, NetResult};
 use crate::{ChessMove, Tile, WoodPiece as Piece};
 
@@ -164,22 +164,27 @@ impl NetMessage for ServerMessage {
                 }
                 Ok(ServerMessage::GamesList(game_ids))
             }
-            Self::GAME_WON => {
+            Self::GAME_OVER => {
                 let game_id = reader.read_u32_le()?;
-                let win_type_byte = reader.read_u8()?;
-                let winner = if reader.read_u8()? == 0 {
-                    ChessColor::Black
-                } else {
-                    ChessColor::White
+                let reason_byte = reader.read_u8()?;
+                let winner_byte = reader.read_u8()?;
+                let winner = match winner_byte {
+                    0 => ChessColor::Black,
+                    1 => ChessColor::White,
+                    _ => ChessColor::White, // fallback
                 };
-                let win_type = VictoryType::from_u8(win_type_byte, winner);
-                Ok(ServerMessage::GameWon(game_id, win_type, winner))
-            }
-            Self::GAME_DRAWN => {
-                let game_id = reader.read_u32_le()?;
-                let draw_type_byte = reader.read_u8()?;
-                let draw_type = DrawType::from_u8(draw_type_byte);
-                Ok(ServerMessage::GameDrawn(game_id, draw_type))
+
+                let reason = match reason_byte {
+                    1 => GameOverReason::Checkmate(winner),
+                    2 => GameOverReason::Resignation(winner),
+                    3 => GameOverReason::TimeOut(winner),
+                    4 => GameOverReason::Stalemate,
+                    5 => GameOverReason::ThreefoldRepetition,
+                    6 => GameOverReason::InsufficientMaterial,
+                    7 => GameOverReason::FiftyMovesRule,
+                    _ => panic!("Invalid game over reason"),
+                };
+                Ok(ServerMessage::GameOver(game_id, reason))
             }
             Self::GAME_DETAILS => {
                 let game_id = reader.read_u32_le()?;
@@ -271,14 +276,16 @@ impl NetMessage for ServerMessage {
                 }
                 data
             }
-            ServerMessage::GameWon(game_id, win_type, winner) => {
-                let mut data = vec![Self::GAME_WON];
+            ServerMessage::GameOver(game_id, reason) => {
+                let mut data = vec![Self::GAME_OVER];
                 data.extend_from_slice(&game_id.to_le_bytes());
-                data.push(win_type.to_u8());
-                data.push(match winner {
-                    ChessColor::Black => 0,
-                    ChessColor::White => 1,
-                });
+                data.push(reason.to_u8());
+                let winner_byte = match reason.get_winner() {
+                    Some(ChessColor::Black) => 0,
+                    Some(ChessColor::White) => 1,
+                    None => 2,
+                };
+                data.push(winner_byte);
                 data
             }
             ServerMessage::LoginAccepted(client_id) => {
@@ -307,12 +314,6 @@ impl NetMessage for ServerMessage {
                 let mut data = vec![Self::GAME_LEFT];
                 data.extend_from_slice(&game_id.to_le_bytes());
                 data.extend_from_slice(&client_id.to_le_bytes());
-                data
-            }
-            ServerMessage::GameDrawn(game_id, draw_type) => {
-                let mut data = vec![Self::GAME_DRAWN];
-                data.extend_from_slice(&game_id.to_le_bytes());
-                data.push(draw_type.to_u8());
                 data
             }
         }

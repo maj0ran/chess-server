@@ -4,8 +4,7 @@ use crate::ui::views::gameview::chessboard::board::{
     draw_pieces, handle_move, on_resize_board, reset_selections,
 };
 use crate::ui::views::gameview::dialogs::game_over_dialog::{
-    cleanup_game_over_dialog, game_over_dialog_action_system, on_game_drawn, on_game_won,
-    setup_game_over_dialog,
+    cleanup_game_over_dialog, game_over_dialog_action_system, on_game_over,
 };
 use crate::ui::views::gameview::dialogs::promotion_dialog::{
     despawn_promotion_dialog, promotion_action_system, spawn_promotion_dialog,
@@ -60,8 +59,7 @@ impl Plugin for ChessboardPlugin {
             .init_resource::<ChessAssets>()
             .add_observer(draw_pieces)
             .add_observer(reset_selections)
-            .add_observer(on_game_won)
-            .add_observer(on_game_drawn)
+            .add_observer(on_game_over)
             .add_systems(
                 Update,
                 handle_move.run_if(
@@ -75,7 +73,6 @@ impl Plugin for ChessboardPlugin {
                 Update,
                 promotion_action_system.run_if(in_state(Overlay::Promotion)),
             )
-            .add_systems(OnEnter(Overlay::GameOver), setup_game_over_dialog)
             .add_systems(OnExit(Overlay::GameOver), cleanup_game_over_dialog)
             // listening for keyboard input (only ESC for now)
             .add_systems(

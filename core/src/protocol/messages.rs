@@ -1,5 +1,5 @@
 use crate::protocol::{JoinGameParams, NewGameParams, UserRoleSelection};
-use crate::states::{DrawType, VictoryType};
+use crate::states::GameOverReason;
 use crate::*;
 use smol::channel::Sender;
 use std::fmt;
@@ -63,8 +63,7 @@ pub enum ServerMessage {
     GamesList(Vec<GameId>),
     GameDetails(GameId, Option<ClientId>, Option<ClientId>, u32, u32),
     ClientDetails(ClientId, String),
-    GameWon(GameId, VictoryType, ChessColor),
-    GameDrawn(GameId, DrawType),
+    GameOver(GameId, GameOverReason),
     LoginAccepted(ClientId),
 }
 
@@ -75,8 +74,7 @@ impl ServerMessage {
     pub const MOVE_ACCEPTED: u8 = 0x83;
     pub const ILLEGAL_MOVE: u8 = 0x85;
     pub const GAMES_LIST: u8 = 0x86;
-    pub const GAME_WON: u8 = 0x87;
-    pub const GAME_DRAWN: u8 = 0x88;
+    pub const GAME_OVER: u8 = 0x87;
     pub const GAME_DETAILS: u8 = 0x8D;
     pub const CLIENT_DETAILS: u8 = 0x8E;
     pub const LOGIN_ACCEPTED: u8 = 0xF0;
@@ -88,12 +86,11 @@ impl ServerMessage {
             ServerMessage::MoveAccepted(_, _, _) => Self::MOVE_ACCEPTED,
             ServerMessage::IllegalMove(_) => Self::ILLEGAL_MOVE,
             ServerMessage::GamesList(_) => Self::GAMES_LIST,
-            ServerMessage::GameWon(_, _, _) => Self::GAME_WON,
+            ServerMessage::GameOver(_, _) => Self::GAME_OVER,
             ServerMessage::GameDetails(_, _, _, _, _) => Self::GAME_DETAILS,
             ServerMessage::ClientDetails(_, _) => Self::CLIENT_DETAILS,
             ServerMessage::LoginAccepted(_) => Self::LOGIN_ACCEPTED,
             ServerMessage::GameLeft(_, _) => Self::GAME_LEFT,
-            ServerMessage::GameDrawn(_, _) => Self::GAME_DRAWN,
         }
     }
 }

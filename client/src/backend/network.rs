@@ -1,5 +1,5 @@
 use crate::backend::client::{
-    BoardUpdate, ClientBackend, GameDetails, GameDrawnEvent, GameJoinedEvent, GameWonEvent,
+    BoardUpdate, ClientBackend, GameDetails, GameJoinedEvent, GameOverEvent,
 };
 use crate::backend::config::Config;
 use crate::ui::gamelist_menu::UpdateGamesList;
@@ -145,11 +145,8 @@ pub fn poll_network(mut commands: Commands, mut state: ResMut<ClientBackend>) {
             ServerMessage::IllegalMove(err) => {
                 log::warn!("{}", err);
             }
-            ServerMessage::GameWon(_gid, _win_type, winner) => {
-                commands.trigger(GameWonEvent { winner });
-            }
-            ServerMessage::GameDrawn(_gid, _draw_type) => {
-                commands.trigger(GameDrawnEvent);
+            ServerMessage::GameOver(_gid, reason) => {
+                commands.trigger(GameOverEvent { reason });
             }
             ServerMessage::GameDetails(game_id, white_id, black_id, time, inc) => {
                 let game_details = GameDetails {

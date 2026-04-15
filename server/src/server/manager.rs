@@ -3,7 +3,7 @@ use crate::chess::san::San;
 use crate::server::chessgame::ChessGame;
 use chess_core::protocol::messages::{ClientMessage, ServerMessage};
 use chess_core::protocol::{JoinGameParams, NewGameParams};
-use chess_core::states::{ChessGameOutcome, ChessGameState};
+use chess_core::states::ChessGameState;
 use chess_core::*;
 use chrono::prelude::*;
 use smol::channel::{Receiver, Sender};
@@ -251,23 +251,12 @@ impl GameManager {
                             let _ = self.save_game(&game).await;
                         }
                         match outcome {
-                            ChessGameOutcome::Victory(win_type) => {
-                                let winner = win_type.get_winner();
+                            reason => {
                                 for c in &clients {
                                     if let Some(handler) = self.clients.get(&c) {
                                         let _ = handler
                                             .tx
-                                            .send(ServerMessage::GameWon(game_id, win_type, winner))
-                                            .await;
-                                    }
-                                }
-                            }
-                            ChessGameOutcome::Draw(draw_type) => {
-                                for c in &clients {
-                                    if let Some(handler) = self.clients.get(&c) {
-                                        let _ = handler
-                                            .tx
-                                            .send(ServerMessage::GameDrawn(game_id, draw_type))
+                                            .send(ServerMessage::GameOver(game_id, reason))
                                             .await;
                                     }
                                 }

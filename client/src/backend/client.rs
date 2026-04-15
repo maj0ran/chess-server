@@ -1,7 +1,8 @@
 use crate::backend::config::Config;
 use crate::backend::network::NetworkInterface;
 use bevy::prelude::*;
-use chess_core::{ChessColor, GameId};
+use chess_core::GameId;
+use chess_core::states::GameOverReason;
 use std::collections::HashMap;
 
 #[derive(Event)]
@@ -13,12 +14,9 @@ pub struct GameJoinedEvent {
 }
 
 #[derive(Event)]
-pub struct GameWonEvent {
-    pub winner: ChessColor,
+pub struct GameOverEvent {
+    pub reason: GameOverReason,
 }
-
-#[derive(Event)]
-pub struct GameDrawnEvent;
 
 #[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
 pub enum Screen {
@@ -64,7 +62,6 @@ pub struct MenuState {
 
 pub struct GameState {
     pub internal_board: HashMap<String, char>, // the internal board representation. Can be rendered on a GUI board.
-    pub winner: Option<ChessColor>,
 }
 
 /// ClientBackend is the shared resource for all our bevy UI.
@@ -99,7 +96,6 @@ impl ClientBackend {
             // the state of the currently active game
             game_state: GameState {
                 internal_board: HashMap::new(),
-                winner: None,
             },
             name,
         }
