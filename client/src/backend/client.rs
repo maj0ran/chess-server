@@ -48,15 +48,11 @@ pub struct MenuState {
     pub games: HashMap<GameId, Option<GameDetails>>,
     // local store for ClientDetails. Note: we only have names currently, but this should be a whole struct later.
     pub client_names: HashMap<usize, String>,
-    pub error_msg: Option<String>,
 }
 
 pub struct GameState {
     pub internal_board: HashMap<String, char>, // the internal board representation. Can be rendered on a GUI board.
-    pub dragging_piece: Option<(char, f32, f32, String)>, // piece, x, y, from_tile
-    pub pending_promotion: Option<(Tile, Tile)>,
     pub winner: Option<ChessColor>,
-    pub dirty: bool,
 }
 
 /// ClientBackend is the shared resource for all our bevy UI.
@@ -87,15 +83,11 @@ impl ClientBackend {
             menu_state: MenuState {
                 games: HashMap::new(),
                 client_names: HashMap::new(),
-                error_msg: None,
             },
             // the state of the currently active game
             game_state: GameState {
                 internal_board: HashMap::new(),
-                dragging_piece: None,
-                pending_promotion: None,
                 winner: None,
-                dirty: true,
             },
             name,
         }

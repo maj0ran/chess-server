@@ -3,6 +3,7 @@ use crate::backend::config::Config;
 use crate::ui::gamelist_menu::UpdateGamesList;
 use crate::ui::views::gameview::chessboard::RequestMove;
 use crate::ui::views::gameview::chessboard::board::ResetSelection;
+
 use bevy::prelude::*;
 use chess_core::net::connection::Connection;
 use chess_core::protocol::messages::{ClientMessage, ServerMessage};
@@ -12,11 +13,11 @@ use smol::channel::{Receiver, Sender};
 use smol::net::TcpStream;
 use std::collections::HashMap;
 
-#[derive(Clone)]
-/// `ChessClient` manages the network connection for a chess client.
+/// `NetworkInterface` manages the network connection for a chess client.
 /// It is designed to be cloned, which allows multiple threads to interact with the same underlying
-/// TCP connection concurrently. Cloning `ChessClient` creates a new `Connection` object that
+/// TCP connection concurrently. Cloning `NetworkInterface` creates a new `Connection` object that
 /// shares the same socket handle, as `smol::net::TcpStream` supports concurrent read and write operations.
+#[derive(Clone)]
 pub struct NetworkInterface {
     pub cmd_tx: Sender<ClientMessage>,
     pub resp_rx: Receiver<ServerMessage>,
@@ -94,11 +95,11 @@ pub async fn transmit_thread(mut conn: Connection, cmd_rx: Receiver<ClientMessag
     log::info!("Transmit thread shutting down");
 }
 
-/// Receive Commands from the server and transmit them to the UI
-/// resp_tx is the Sender channel Client -> UI
-pub async fn receive_thread(mut conn: Connection, resp_tx: Sender<ServerMessage>) {
-    while let Ok(event) = conn.read_msg::<ServerMessage>().await {
-        if resp_tx.send(event).await.is_err() {
+/// Receive `ServerMessage` from the server and forward it to the main thread.
+/// `msg_tx` is the Sender channel to the main thread.
+pub async fn receive_thread(mut conn: Connection, msg_tx: Sender<ServerMessage>) {
+    while let Ok(server_msg) = conn.read_msg::<ServerMessage>().await {
+        if msg_tx.send(server_msg).await.is_err() {
             log::error!("Failed to send event to UI");
         }
     }
@@ -129,7 +130,6 @@ pub fn poll_network(
             }
             ServerMessage::GameJoined(_, _, _, fen) => {
                 state.update_internal_board_from_fen(&fen);
-                state.game_state.dirty = true;
                 next_screen.set(Screen::Ingame);
                 next_overlay.set(Overlay::None);
             }
@@ -145,25 +145,17 @@ pub fn poll_network(
                         state.game_state.internal_board.remove(&tile.to_string());
                     }
                 }
-                state.game_state.dirty = true;
                 commands.trigger(BoardUpdate);
             }
             ServerMessage::IllegalMove(err) => {
                 log::warn!("{}", err);
-                state.menu_state.error_msg = Some(err.to_string());
-                // even though the move was illegal, we set the game_state dirty. This is because
-                // the user dragged a piece somewhere on the board UI, and we have to
-                // let the UI update the board back to its original state.
-                state.game_state.dirty = true;
             }
             ServerMessage::GameWon(_gid, _win_type, winner) => {
-                state.menu_state.error_msg = Some("Game Won!".to_string());
                 state.game_state.winner = Some(winner);
                 next_overlay.set(Overlay::GameOver);
                 log::info!("Game Won!");
             }
             ServerMessage::GameDrawn(gid, draw_type) => {
-                state.menu_state.error_msg = Some("Draw!".to_string());
                 next_overlay.set(Overlay::GameOver);
                 log::info!("Draw!");
             }
