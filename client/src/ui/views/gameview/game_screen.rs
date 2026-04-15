@@ -1,6 +1,6 @@
 use super::GameScreenComponent;
 use super::chessboard::board::draw_chessboard;
-use crate::backend::client::{BoardUpdate, Overlay, Screen};
+use crate::backend::client::{BoardUpdate, ClientBackend, GameJoinedEvent, Overlay, Screen};
 
 use bevy::prelude::*;
 
@@ -12,8 +12,20 @@ pub struct ChessPlugin;
 impl Plugin for ChessPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(Screen::Ingame), setup_gamescreen)
-            .add_systems(OnExit(Screen::Ingame), cleanup_game);
+            .add_systems(OnExit(Screen::Ingame), cleanup_game)
+            .add_observer(on_game_joined);
     }
+}
+
+pub fn on_game_joined(
+    ev: On<GameJoinedEvent>,
+    mut next_screen: ResMut<NextState<Screen>>,
+    mut next_overlay: ResMut<NextState<Overlay>>,
+    mut backend: ResMut<ClientBackend>,
+) {
+    backend.update_internal_board_from_fen(&ev.fen);
+    next_screen.set(Screen::Ingame);
+    next_overlay.set(Overlay::None);
 }
 
 /// Set-ups the in-game screen. Draws the chessboard and the two players.

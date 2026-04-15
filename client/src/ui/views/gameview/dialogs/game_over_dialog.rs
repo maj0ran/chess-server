@@ -1,9 +1,29 @@
-use crate::backend::client::{ClientBackend, Overlay, Screen};
+use crate::backend::client::{ClientBackend, GameDrawnEvent, GameWonEvent, Overlay, Screen};
 use bevy::prelude::*;
 use bevy_flair::prelude::*;
 
 #[derive(Component)]
 pub struct GameOverDialogComponent;
+
+pub fn on_game_won(
+    ev: On<GameWonEvent>,
+    mut state: ResMut<ClientBackend>,
+    mut next_overlay: ResMut<NextState<Overlay>>,
+) {
+    state.game_state.winner = Some(ev.winner);
+    next_overlay.set(Overlay::GameOver);
+    log::info!("Game Won!");
+}
+
+pub fn on_game_drawn(
+    _ev: On<GameDrawnEvent>,
+    mut state: ResMut<ClientBackend>,
+    mut next_overlay: ResMut<NextState<Overlay>>,
+) {
+    state.game_state.winner = None;
+    next_overlay.set(Overlay::GameOver);
+    log::info!("Draw!");
+}
 
 pub fn setup_game_over_dialog(
     mut commands: Commands,

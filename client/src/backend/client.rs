@@ -1,12 +1,24 @@
 use crate::backend::config::Config;
 use crate::backend::network::NetworkInterface;
 use bevy::prelude::*;
-use chess_core::protocol::UserRoleSelection;
-use chess_core::{ChessColor, GameId, Tile};
+use chess_core::{ChessColor, GameId};
 use std::collections::HashMap;
 
 #[derive(Event)]
 pub struct BoardUpdate;
+
+#[derive(Event)]
+pub struct GameJoinedEvent {
+    pub fen: String,
+}
+
+#[derive(Event)]
+pub struct GameWonEvent {
+    pub winner: ChessColor,
+}
+
+#[derive(Event)]
+pub struct GameDrawnEvent;
 
 #[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
 pub enum Screen {

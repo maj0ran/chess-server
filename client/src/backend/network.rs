@@ -1,4 +1,6 @@
-use crate::backend::client::{BoardUpdate, ClientBackend, GameDetails, Overlay, Screen};
+use crate::backend::client::{
+    BoardUpdate, ClientBackend, GameDetails, GameDrawnEvent, GameJoinedEvent, GameWonEvent,
+};
 use crate::backend::config::Config;
 use crate::ui::gamelist_menu::UpdateGamesList;
 use crate::ui::views::gameview::chessboard::RequestMove;
@@ -106,12 +108,7 @@ pub async fn receive_thread(mut conn: Connection, msg_tx: Sender<ServerMessage>)
     log::info!("Receive thread shutting down");
 }
 
-pub fn poll_network(
-    mut commands: Commands,
-    mut state: ResMut<ClientBackend>,
-    mut next_screen: ResMut<NextState<Screen>>,
-    mut next_overlay: ResMut<NextState<Overlay>>,
-) {
+pub fn poll_network(mut commands: Commands, mut state: ResMut<ClientBackend>) {
     while let Ok(server_msg) = state.network.resp_rx.try_recv() {
         log::debug!("Received server message: {:?}", server_msg);
         match server_msg {
@@ -129,9 +126,7 @@ pub fn poll_network(
                 state.network.send(ClientMessage::QueryGames);
             }
             ServerMessage::GameJoined(_, _, _, fen) => {
-                state.update_internal_board_from_fen(&fen);
-                next_screen.set(Screen::Ingame);
-                next_overlay.set(Overlay::None);
+                commands.trigger(GameJoinedEvent { fen });
             }
             ServerMessage::MoveAccepted(san_len, san, updates) => {
                 log::info!("Move accepted: {} {}", san_len, san);
@@ -151,13 +146,10 @@ pub fn poll_network(
                 log::warn!("{}", err);
             }
             ServerMessage::GameWon(_gid, _win_type, winner) => {
-                state.game_state.winner = Some(winner);
-                next_overlay.set(Overlay::GameOver);
-                log::info!("Game Won!");
+                commands.trigger(GameWonEvent { winner });
             }
-            ServerMessage::GameDrawn(gid, draw_type) => {
-                next_overlay.set(Overlay::GameOver);
-                log::info!("Draw!");
+            ServerMessage::GameDrawn(_gid, _draw_type) => {
+                commands.trigger(GameDrawnEvent);
             }
             ServerMessage::GameDetails(game_id, white_id, black_id, time, inc) => {
                 let game_details = GameDetails {
@@ -200,11 +192,7 @@ pub fn poll_network(
     }
 }
 
-pub fn on_move_request(
-    ev: On<RequestMove>,
-    mut commands: Commands,
-    mut backend: ResMut<ClientBackend>,
-) {
+pub fn on_move_request(ev: On<RequestMove>, mut commands: Commands, backend: Res<ClientBackend>) {
     let src = Tile::from(ev.source.as_str());
     let dst = Tile::from(ev.destination.as_str());
     let promotion = ev.promotion;
