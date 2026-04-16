@@ -1,6 +1,7 @@
 use super::GameScreenComponent;
-use crate::backend::client::{ClientBackend, GameJoinedEvent, Overlay, Screen};
+use crate::backend::client::{ClientBackend, GameJoinedEvent};
 
+use crate::ui::{Overlay, Screen};
 use bevy::prelude::*;
 
 pub const SOURCE_COLOR: Color = Color::srgb_u8(250, 113, 113);

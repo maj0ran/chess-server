@@ -21,33 +21,6 @@ pub struct GameOverEvent {
     pub reason: GameOverReason,
 }
 
-#[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
-pub enum Screen {
-    #[default]
-    Menu,
-    Game,
-}
-
-#[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
-pub enum MenuTab {
-    #[default]
-    None,
-    Games,
-    Analysis,
-    Puzzle,
-}
-
-#[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
-pub enum Overlay {
-    #[default]
-    None,
-    CreateDialog,
-    JoinDialog,
-    QuitGameDialog,
-    GameOver,
-    Promotion,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GameDetails {
     pub white_player: Option<usize>,

@@ -1,8 +1,9 @@
-use crate::backend::client::{ClientBackend, Overlay};
+use crate::backend::client::ClientBackend;
+use crate::ui::Overlay;
 use bevy::prelude::*;
 use bevy_flair::prelude::*;
-use chess_core::protocol::messages::ClientMessage;
 use chess_core::protocol::NewGameParams;
+use chess_core::protocol::messages::ClientMessage;
 
 #[derive(Component)]
 pub struct CreateDialogComponent;

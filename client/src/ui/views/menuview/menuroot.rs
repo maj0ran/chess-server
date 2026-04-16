@@ -1,4 +1,4 @@
-use crate::backend::client::{ClientBackend, MenuTab, Overlay, Screen};
+use crate::backend::client::ClientBackend;
 use crate::ui::views::menuview::analysismenu::analysis_menu::{
     cleanup_analysis_menu, setup_analysis_menu,
 };
@@ -13,6 +13,7 @@ use crate::ui::views::menuview::gamemenu::gamelist_menu::{
 };
 use crate::ui::views::menuview::puzzlemenu::puzzle_menu::{cleanup_puzzle_menu, setup_puzzle_menu};
 
+use crate::ui::{MenuTab, Overlay, Screen};
 use bevy::prelude::*;
 use bevy_flair::prelude::*;
 use chess_core::protocol::messages::ClientMessage;

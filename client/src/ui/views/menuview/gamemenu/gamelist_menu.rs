@@ -1,4 +1,5 @@
-use crate::backend::client::{ClientBackend, Overlay};
+use crate::backend::client::ClientBackend;
+use crate::ui::Overlay;
 use crate::ui::views::menuview::MenuTabComponent;
 use crate::ui::views::menuview::menuroot::MenuTabContainer;
 use bevy::prelude::*;

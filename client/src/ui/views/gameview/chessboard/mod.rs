@@ -1,4 +1,3 @@
-use crate::backend::client::{Overlay, Screen};
 use crate::ui::views::gameview::chessboard::assets::ChessAssets;
 use crate::ui::views::gameview::chessboard::board::{
     draw_chessboard, draw_pieces, handle_move, on_resize_board, reset_selections, rotate_board,
@@ -12,6 +11,7 @@ use crate::ui::views::gameview::dialogs::promotion_dialog::{
 use crate::ui::views::gameview::dialogs::quit_game_dialog::{
     cleanup_quit_game_dialog, quit_game_dialog_action_system, setup_quit_game_dialog,
 };
+use crate::ui::{Overlay, Screen};
 use bevy::prelude::*;
 use chess_core::Promotion;
 

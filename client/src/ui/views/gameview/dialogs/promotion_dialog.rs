@@ -1,4 +1,4 @@
-use crate::backend::client::Overlay;
+use crate::ui::Overlay;
 use crate::ui::views::gameview::chessboard::assets::ChessAssets;
 use crate::ui::views::gameview::chessboard::{PendingMove, RequestMove};
 use bevy::prelude::*;

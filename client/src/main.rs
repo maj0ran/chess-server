@@ -6,9 +6,10 @@ use bevy::ui_widgets::ScrollbarPlugin;
 use bevy::window::{WindowResized, WindowResolution};
 use bevy_flair::prelude::*;
 
-use backend::client::{ClientBackend, MenuTab, Overlay, Screen};
+use backend::client::ClientBackend;
 use ui::COLOR_DARK;
 
+use crate::ui::{MenuTab, Overlay, Screen};
 use backend::ClientPlugin;
 use ui::views::gameview::chessboard::ChessboardPlugin;
 use ui::views::gameview::game_screen::GameScreenPlugin;
