@@ -45,10 +45,15 @@ fn setup_gamescreen(mut commands: Commands) {
 
 /// Despawn all entities that are part of the in-game screen.
 /// Obviously happens when we leave a game.
-fn cleanup_game(mut commands: Commands, query: Query<Entity, With<GameScreenComponent>>) {
+fn cleanup_game(
+    mut commands: Commands,
+    query: Query<Entity, With<GameScreenComponent>>,
+    mut backend: ResMut<ClientBackend>,
+) {
     for entity in query.iter() {
         commands.entity(entity).despawn();
     }
+    backend.game_state = None;
 }
 
 fn listen_keyboard_input(

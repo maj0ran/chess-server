@@ -81,7 +81,10 @@ pub fn draw_pieces(
     squares: Query<(Entity, &ChessSquare), With<ChessSquare>>,
     backend: ResMut<ClientBackend>,
 ) {
-    let pieces = &backend.game_state.internal_board;
+    let Some(game_state) = &backend.game_state else {
+        return;
+    };
+    let pieces = &game_state.internal_board;
 
     // we iterate through all squares. We remove the piece on every square from
     // the previous draw, no matter what. Then we draw the current piece on the square.

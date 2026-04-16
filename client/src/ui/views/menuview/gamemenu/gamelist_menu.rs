@@ -176,8 +176,8 @@ pub fn gamelist_menu_action_system(
                 MenuAction::ListGames => {
                     state.network.send(ClientMessage::QueryGames);
                 }
-                MenuAction::JoinGame(id) => {
-                    state.in_game_id = Some(*id);
+                MenuAction::JoinGame(gid) => {
+                    state.pending_join_game = Some(*gid);
                     next_overlay.set(Overlay::JoinDialog);
                 }
             }

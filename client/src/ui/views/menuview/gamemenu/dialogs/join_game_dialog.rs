@@ -82,19 +82,20 @@ pub fn cleanup_join_dialog(
 
 pub fn join_dialog_action_system(
     mut interaction_query: Query<(&Interaction, &JoinAction), (Changed<Interaction>, With<Button>)>,
-    state: ResMut<ClientBackend>,
+    mut state: ResMut<ClientBackend>,
     mut next_overlay: ResMut<NextState<Overlay>>,
 ) {
     for (interaction, action) in interaction_query.iter_mut() {
         if *interaction == Interaction::Pressed {
             match action {
                 JoinAction::Select(side) => {
-                    if let Some(game_id) = state.in_game_id {
+                    if let Some(gid) = state.pending_join_game {
                         state.network.send(ClientMessage::JoinGame(JoinGameParams {
-                            game_id,
+                            game_id: gid,
                             side: side.clone(),
                         }));
                     }
+                    state.pending_join_game = None;
                     next_overlay.set(Overlay::None);
                 }
                 JoinAction::Cancel => {

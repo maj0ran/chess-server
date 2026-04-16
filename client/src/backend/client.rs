@@ -10,6 +10,7 @@ pub struct BoardUpdate;
 
 #[derive(Event)]
 pub struct GameJoinedEvent {
+    pub gid: GameId,
     pub fen: String,
 }
 
@@ -61,6 +62,7 @@ pub struct MenuState {
 }
 
 pub struct GameState {
+    pub gid: GameId,
     pub internal_board: HashMap<String, char>, // the internal board representation. Can be rendered on a GUI board.
 }
 
@@ -68,10 +70,11 @@ pub struct GameState {
 #[derive(Resource)]
 pub struct ClientBackend {
     pub network: NetworkInterface,
-    pub in_game_id: Option<GameId>,
+
     pub name: String,
     pub menu_state: MenuState,
-    pub game_state: GameState,
+    pub game_state: Option<GameState>,
+    pub pending_join_game: Option<GameId>,
 }
 
 /// Creating a new client state sets up its own thread for the network messaging with the server.
@@ -87,24 +90,27 @@ impl ClientBackend {
         Self {
             // interface for the network logic to communicate with the server.
             network: NetworkInterface::with_config(config),
-            in_game_id: None,
             // state of the main menu, i.e., list of games, selected game.
             menu_state: MenuState {
                 games: HashMap::new(),
                 client_names: HashMap::new(),
             },
             // the state of the currently active game
-            game_state: GameState {
-                internal_board: HashMap::new(),
-            },
+            game_state: None,
             name,
+            pending_join_game: None,
         }
     }
 
     /// Sets up a board from a given FEN. Used for game start.
     /// TODO: A strange place for this method...
     pub fn update_internal_board_from_fen(&mut self, fen: &str) {
-        self.game_state.internal_board.clear();
+        if self.game_state.is_none() {
+            return;
+        }
+        let game_state = self.game_state.as_mut().unwrap();
+
+        game_state.internal_board.clear();
         let fen_parts: Vec<&str> = fen.split(' ').collect();
         if fen_parts.is_empty() {
             return;
@@ -119,7 +125,7 @@ impl ClientBackend {
                     if f < 8 {
                         let tile =
                             format!("{}{}", (97 + f) as u8 as char, (8 - r + 48) as u8 as char);
-                        self.game_state.internal_board.insert(tile, c);
+                        game_state.internal_board.insert(tile, c);
                         f += 1;
                     }
                 }

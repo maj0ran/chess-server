@@ -1,5 +1,5 @@
 use crate::backend::client::{
-    BoardUpdate, ClientBackend, GameDetails, GameJoinedEvent, GameOverEvent,
+    BoardUpdate, ClientBackend, GameDetails, GameJoinedEvent, GameOverEvent, GameState,
 };
 use crate::backend::config::Config;
 use crate::ui::gamelist_menu::UpdateGamesList;
@@ -130,24 +130,33 @@ pub fn poll_network(mut commands: Commands, mut state: ResMut<ClientBackend>) {
                 state.network.send(ClientMessage::QueryGames);
             }
 
-            ServerMessage::GameJoined(_gid, _cid, _side, fen) => {
+            ServerMessage::GameJoined(gid, _cid, _side, fen) => {
                 // HINT: we only receive this message for our own client, not when someone
                 // else joined. This is a TODO on the server.
-                commands.trigger(GameJoinedEvent { fen });
+                // once we change the behavior of the server, we also have to add additional
+                // logic here to handle the case when someone else joins.
+                let game_state = GameState {
+                    internal_board: HashMap::new(),
+                    gid,
+                };
+                state.game_state = Some(game_state);
+
+                commands.trigger(GameJoinedEvent { gid, fen });
             }
 
             ServerMessage::MoveAccepted(_, _san, updates) => {
-                for (tile, piece) in updates {
-                    if let Some(p) = piece {
-                        state
-                            .game_state
-                            .internal_board
-                            .insert(tile.to_string(), p.as_byte());
-                    } else {
-                        state.game_state.internal_board.remove(&tile.to_string());
+                if let Some(game_state) = state.game_state.as_mut() {
+                    for (tile, piece) in updates {
+                        if let Some(p) = piece {
+                            game_state
+                                .internal_board
+                                .insert(tile.to_string(), p.as_byte());
+                        } else {
+                            game_state.internal_board.remove(&tile.to_string());
+                        }
                     }
+                    commands.trigger(BoardUpdate);
                 }
-                commands.trigger(BoardUpdate);
             }
 
             ServerMessage::IllegalMove(_) => {}
@@ -194,7 +203,7 @@ pub fn poll_network(mut commands: Commands, mut state: ResMut<ClientBackend>) {
             }
 
             ServerMessage::GameLeft(_gid, _cid) => {
-                state.in_game_id = None;
+                state.game_state = None;
                 commands.trigger(UpdateGamesList);
             }
         }
@@ -205,7 +214,8 @@ pub fn on_move_request(ev: On<RequestMove>, mut commands: Commands, backend: Res
     let src = Tile::from(ev.source.as_str());
     let dst = Tile::from(ev.destination.as_str());
     let promotion = ev.promotion;
-    let game_id = backend.in_game_id.unwrap(); // cannot be None, as we can only trigger this event when in a game
+    let game_id = backend.game_state.as_ref().unwrap().gid;
+
     backend.network.send(ClientMessage::Move(
         game_id,
         ChessMove {

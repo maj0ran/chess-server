@@ -169,6 +169,7 @@ impl GameManager {
         }
     }
 
+    // TODO: This informs only the player who left the game.
     async fn handle_leave_game(&mut self, cid: ClientId) {
         if let Some(c) = self.clients.get_mut(&cid) {
             if let Some(gid) = c.in_game {
