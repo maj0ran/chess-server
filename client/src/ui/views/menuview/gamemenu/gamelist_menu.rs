@@ -208,7 +208,7 @@ pub fn update_games_list(
 
     // render new game list
     commands.entity(container).with_children(|parent| {
-        for (game_id, details) in &state.menu_state.games {
+        for (gid, details) in &state.menu_state.games {
             let game_info = if let Some(d) = details {
                 // from the Client ID, get the name from the internal client list,
                 // otherwise use the ID as a fallback (should not happen tbh).
@@ -243,7 +243,7 @@ pub fn update_games_list(
                 ClassList::new("game-item"),
                 children![
                     (
-                        Text::new(format!("#{}", game_id)),
+                        Text::new(format!("#{}", gid)),
                         ClassList::new("label-small"),
                     ),
                     (Text::new(game_info), ClassList::new("label-small")),
@@ -251,7 +251,7 @@ pub fn update_games_list(
                         Button,
                         Interaction::default(),
                         ClassList::new("join-button"),
-                        MenuAction::JoinGame(*game_id),
+                        MenuAction::JoinGame(*gid),
                         children![Text::new("Join")],
                     )
                 ],

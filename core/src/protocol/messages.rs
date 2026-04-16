@@ -50,12 +50,12 @@ impl fmt::Display for ClientMessage {
 }
 
 ///=======================================///
-/// Messages from the server to a server. ///
+/// Messages from the server to a client. ///
 ///=======================================///
 
 #[derive(Debug, Clone)]
 pub enum ServerMessage {
-    MoveAccepted(u8, String, Vec<(Tile, Option<WoodPiece>)>),
+    MoveAccepted(u8, String, Vec<(Tile, Option<WoodPiece>)>), // len(SAN), SAN, [updates tiles]
     GameCreated(GameId, ClientId),
     GameJoined(GameId, ClientId, UserRoleSelection, String),
     GameLeft(GameId, ClientId),

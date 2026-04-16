@@ -81,7 +81,6 @@ pub fn draw_pieces(
     squares: Query<(Entity, &ChessSquare), With<ChessSquare>>,
     backend: ResMut<ClientBackend>,
 ) {
-    log::info!("Drawing pieces");
     let pieces = &backend.game_state.internal_board;
 
     // we iterate through all squares. We remove the piece on every square from
@@ -113,21 +112,19 @@ pub fn select_square(
     ev: On<Pointer<Press>>,
     mut src: ResMut<SourceSelect>,
     mut dst: ResMut<DestinationSelect>,
-    mut query: Query<(&mut Sprite, &ChessSquare)>,
+    mut query: Query<&mut Sprite, With<ChessSquare>>,
 ) {
     let clicked: Entity = ev.event_target();
 
     if src.entity == None {
-        if let Ok((mut sprite, c)) = query.get_mut(clicked) {
+        if let Ok(mut sprite) = query.get_mut(clicked) {
             src.entity = Some(clicked);
             sprite.color = SOURCE_COLOR;
-            log::info!("source selected: {}", c.name);
         }
     } else if dst.entity == None {
-        if let Ok((mut sprite, c)) = query.get_mut(clicked) {
+        if let Ok(mut sprite) = query.get_mut(clicked) {
             dst.entity = Some(clicked);
             sprite.color = DESTINATION_COLOR;
-            log::info!("dest selected: {}", c.name);
         }
     }
 }
@@ -156,7 +153,6 @@ pub fn handle_move(
     let (src_sq, src_children) = query.get(src_entity).unwrap();
     let (dst_sq, _) = query.get(dst_entity).unwrap();
 
-    log::info!("handle_move: src: {}, dst: {}", src_sq.name, dst_sq.name);
     /* Some hassle to get the piece that sits on the square... */
     let chess_piece = src_children
         .and_then(|children| children.last())
@@ -234,5 +230,6 @@ pub fn on_resize_board(
 
     board.1.scale.x = (size / BOARD_SIZE) * 0.7;
     board.1.scale.y = (size / BOARD_SIZE) * 0.7;
-    log::error!("Resized board to {}", size);
+
+    log::debug!("Resized board to {}px", board.1.scale.x * BOARD_SIZE);
 }

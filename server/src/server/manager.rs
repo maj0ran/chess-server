@@ -87,37 +87,36 @@ impl GameManager {
     pub async fn run(&mut self) {
         loop {
             match self.rx.recv().await {
-                Ok((client_id, cmd)) => {
+                Ok((cid, cmd)) => {
                     // the actual command
                     match cmd {
                         ClientMessage::NewGame(game_params) => {
-                            self.handle_new_game(client_id, game_params).await;
+                            self.handle_new_game(cid, game_params).await;
                         }
                         ClientMessage::JoinGame(join_params) => {
-                            self.handle_join_game(client_id, join_params).await;
+                            self.handle_join_game(cid, join_params).await;
                         }
                         ClientMessage::Register(tx) => {
-                            self.handle_register(client_id, tx).await;
+                            self.handle_register(cid, tx).await;
                         }
-                        ClientMessage::Move(game_id, mov) => {
-                            self.handle_move(client_id, game_id, mov).await;
+                        ClientMessage::Move(gid, mov) => {
+                            self.handle_move(cid, gid, mov).await;
                         }
                         ClientMessage::QueryGames => {
-                            self.handle_query_games(client_id).await;
+                            self.handle_query_games(cid).await;
                         }
-                        ClientMessage::QueryGameDetails(game_id) => {
-                            self.handle_query_game_details(client_id, game_id).await;
+                        ClientMessage::QueryGameDetails(gid) => {
+                            self.handle_query_game_details(cid, gid).await;
                         }
-                        ClientMessage::QueryClientDetails(client_id_query) => {
-                            self.handle_query_client_details(client_id, client_id_query)
-                                .await;
+                        ClientMessage::QueryClientDetails(cid_query) => {
+                            self.handle_query_client_details(cid, cid_query).await;
                         }
                         ClientMessage::LeaveGame => {
-                            self.handle_leave_game(client_id).await;
+                            self.handle_leave_game(cid).await;
                         }
                         ClientMessage::SetNickname(name) => {
-                            log::info!("Set nickname for client {} to {}", client_id, name);
-                            self.handle_set_nickname(client_id, name).await;
+                            log::info!("Set nickname for client {} to {}", cid, name);
+                            self.handle_set_nickname(cid, name).await;
                         }
                     }
                 }
@@ -128,60 +127,56 @@ impl GameManager {
         }
     }
     /// Create a new game and inform all `ClientSessions` about it.
-    async fn handle_new_game(&mut self, client_id: ClientId, game_params: NewGameParams) {
+    async fn handle_new_game(&mut self, cid: ClientId, game_params: NewGameParams) {
         let game = self.create_game(game_params);
         let id = game.id;
         self.games.insert(id, game);
         // inform all clients of new game
         for c in &self.clients {
-            let _ = c.1.tx.send(ServerMessage::GameCreated(id, client_id)).await;
+            let _ = c.1.tx.send(ServerMessage::GameCreated(id, cid)).await;
         }
     }
 
     /// Assign a client to a game and inform the `ClientSession` about it.
     /// TODO: should inform all clients that are connected to the game.
-    async fn handle_join_game(&mut self, client_id: ClientId, join_params: JoinGameParams) {
-        let game_id = join_params.game_id;
+    async fn handle_join_game(&mut self, cid: ClientId, join_params: JoinGameParams) {
+        let gid = join_params.game_id;
         let side = join_params.side;
 
         // we want the information which side the player joined and the FEN of the joined game
-        // to send back to the client.
+        // and send those back to the client.
         let res = (|| {
             let game = self
                 .games
-                .get_mut(&game_id)
-                .ok_or(GameManagerError::GameNotFound(game_id))?;
-            game.add_player(client_id, side)
+                .get_mut(&gid)
+                .ok_or(GameManagerError::GameNotFound(gid))?;
+            game.add_player(cid, side)
                 .map(|side| (side, game.chess.get_fen()))
         })();
 
         match res {
             Ok((side, fen)) => {
-                let response = ServerMessage::GameJoined(game_id, client_id, side, fen);
-                if let Some(c) = self.clients.get_mut(&client_id) {
+                let response = ServerMessage::GameJoined(gid, cid, side, fen);
+                if let Some(c) = self.clients.get_mut(&cid) {
                     let _ = c.tx.send(response).await;
-                    c.in_game = Some(game_id);
+                    c.in_game = Some(gid);
                 }
             }
             Err(_e) => {
                 // TODO: Joining game failed; currently we do not propagate a specific event to client here.
-                log::warn!(
-                    "JoinGame failed for client {} in game {}",
-                    client_id,
-                    game_id
-                );
+                log::warn!("JoinGame failed for client {} in game {}", cid, gid);
             }
         }
     }
 
-    async fn handle_leave_game(&mut self, client_id: ClientId) {
-        if let Some(c) = self.clients.get_mut(&client_id) {
+    async fn handle_leave_game(&mut self, cid: ClientId) {
+        if let Some(c) = self.clients.get_mut(&cid) {
             if let Some(gid) = c.in_game {
                 c.in_game = None;
                 if let Some(game) = self.games.get_mut(&gid) {
-                    if let Some(_side) = game.remove_player(client_id) {
-                        let response = ServerMessage::GameLeft(gid, client_id);
-                        if let Some(c) = self.clients.get(&client_id) {
+                    if let Some(_side) = game.remove_player(cid) {
+                        let response = ServerMessage::GameLeft(gid, cid);
+                        if let Some(c) = self.clients.get(&cid) {
                             let _ = c.tx.send(response).await;
                         }
                     }
@@ -193,20 +188,20 @@ impl GameManager {
     /// register a client after a new connection is accepted
     /// TODO: this is quite a dummy as long we don't have persistent accounts.
     /// TODO: later, we probably need to work here when we have real accounts.
-    async fn handle_register(&mut self, client_id: ClientId, tx: Sender<ServerMessage>) {
+    async fn handle_register(&mut self, cid: ClientId, tx: Sender<ServerMessage>) {
         let client = ClientEndpoint::new(tx);
-        self.clients.insert(client_id, client);
+        self.clients.insert(cid, client);
     }
 
     /// Handle a `ChessMove` from a `ClientSession`.
     /// Moves can be accepted (when legal) and rejected (when illegal).
     /// Will also send separate `ServerMessages` for checkmate and stalemate.
-    async fn handle_move(&mut self, client_id: ClientId, game_id: GameId, mov: ChessMove) {
-        let game = match self.games.get_mut(&game_id) {
+    async fn handle_move(&mut self, cid: ClientId, gid: GameId, mov: ChessMove) {
+        let game = match self.games.get_mut(&gid) {
             Some(g) => g,
             None => {
                 // a move made on a non-existing game
-                if let Some(c) = self.clients.get(&client_id) {
+                if let Some(c) = self.clients.get(&cid) {
                     let _ =
                         c.tx.send(ServerMessage::IllegalMove(ChessError::IllegalMove(mov)))
                             .await;
@@ -218,7 +213,7 @@ impl GameManager {
         let san = mov.to_san(&game.chess);
         let san_len = san.len() as u8;
 
-        match game.make_move(mov, client_id) {
+        match game.make_move(mov, cid) {
             // a legal move was made and accepted.
             // Update move history and send the updated squares to all clients in the game.
             Ok(changes) => {
@@ -247,7 +242,7 @@ impl GameManager {
                         // Game is finished; save the history in a file, remove it from the game list
                         // and send the outcome to all clients in the game.
                         // Note: we have to remove the game from the list first to get ownership for save_game
-                        if let Some(game) = self.games.remove(&game_id) {
+                        if let Some(game) = self.games.remove(&gid) {
                             let _ = self.save_game(&game).await;
                         }
                         match outcome {
@@ -256,7 +251,7 @@ impl GameManager {
                                     if let Some(handler) = self.clients.get(&c) {
                                         let _ = handler
                                             .tx
-                                            .send(ServerMessage::GameOver(game_id, reason))
+                                            .send(ServerMessage::GameOver(gid, reason))
                                             .await;
                                     }
                                 }
@@ -268,7 +263,7 @@ impl GameManager {
 
             // The move was illegal and thus rejected
             Err(e) => {
-                if let Some(c) = self.clients.get(&client_id) {
+                if let Some(c) = self.clients.get(&cid) {
                     let _ = c.tx.send(ServerMessage::IllegalMove(e)).await;
                 }
             }
@@ -276,23 +271,23 @@ impl GameManager {
     }
 
     /// The client asked for listing all games.
-    async fn handle_query_games(&self, client_id: ClientId) {
+    async fn handle_query_games(&self, cid: ClientId) {
         let game_ids: Vec<GameId> = self.games.keys().cloned().collect();
-        if let Some(c) = self.clients.get(&client_id) {
+        if let Some(c) = self.clients.get(&cid) {
             let _ = c.tx.send(ServerMessage::GamesList(game_ids)).await;
         }
     }
 
     /// The client asked for details of a specific game.
     /// (which players are in it, time settings, etc.)
-    async fn handle_query_game_details(&self, client_id: ClientId, game_id: GameId) {
-        let game = self.games.get(&game_id);
+    async fn handle_query_game_details(&self, cid: ClientId, gid: GameId) {
+        let game = self.games.get(&gid);
         match game {
             Some(game) => {
-                if let Some(c) = self.clients.get(&client_id) {
+                if let Some(c) = self.clients.get(&cid) {
                     let _ =
                         c.tx.send(ServerMessage::GameDetails(
-                            game_id,
+                            gid,
                             game.white_player,
                             game.black_player,
                             game._time,
@@ -302,7 +297,7 @@ impl GameManager {
                 }
             }
             None => {
-                log::warn!("Client asked for invalid game: {}", game_id)
+                log::warn!("Client asked for invalid game: {}", gid)
             }
         }
     }
@@ -310,23 +305,23 @@ impl GameManager {
     /// The client asked for details of another client.
     /// E.g., initially a client only knows other client IDs.
     /// From these IDs, we can look up the name and other client information.
-    async fn handle_query_client_details(&self, client_id: ClientId, query_id: ClientId) {
-        if let Some(c) = self.clients.get(&client_id) {
+    async fn handle_query_client_details(&self, cid: ClientId, query_cid: ClientId) {
+        if let Some(c) = self.clients.get(&cid) {
             let name = self
                 .clients
-                .get(&query_id)
+                .get(&query_cid)
                 .map(|client| client.name.clone())
                 .unwrap_or_else(|| "Unknown".to_string());
 
             let _ =
-                c.tx.send(ServerMessage::ClientDetails(query_id, name))
+                c.tx.send(ServerMessage::ClientDetails(query_cid, name))
                     .await;
         }
     }
 
     /// Setting the nickname of a client.
-    async fn handle_set_nickname(&mut self, client_id: ClientId, nickname: String) {
-        if let Some(c) = self.clients.get_mut(&client_id) {
+    async fn handle_set_nickname(&mut self, cid: ClientId, nickname: String) {
+        if let Some(c) = self.clients.get_mut(&cid) {
             c.name = nickname;
         }
     }

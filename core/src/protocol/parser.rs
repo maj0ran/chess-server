@@ -34,15 +34,15 @@ impl NetMessage for ClientMessage {
             }
 
             Self::JOIN_GAME => {
-                let game_id = reader.read_u32_le()?;
+                let gid = reader.read_u32_le()?;
                 let side = UserRoleSelection::from_u8(reader.read_u8()?);
 
-                let join_params = JoinGameParams { game_id, side };
+                let join_params = JoinGameParams { game_id: gid, side };
                 Ok(ClientMessage::JoinGame(join_params))
             }
             Self::QUERY_GAMES => Ok(ClientMessage::QueryGames),
             Self::MAKE_MOVE => {
-                let game_id = reader.read_u32_le()?;
+                let gid = reader.read_u32_le()?;
 
                 let mov_str = String::from_utf8(reader.remaining().to_vec())
                     .map_err(|_| NetError::Protocol("Failed to parse move string".to_string()))?;
@@ -50,15 +50,15 @@ impl NetMessage for ClientMessage {
                 let mov: ChessMove = mov_str.parse().map_err(|e: String| {
                     NetError::Protocol(format!("could not parse chess move!: {:?}", e))
                 })?;
-                Ok(ClientMessage::Move(game_id, mov))
+                Ok(ClientMessage::Move(gid, mov))
             }
             Self::QUERY_GAME_DETAILS => {
-                let game_id = reader.read_u32_le()?;
-                Ok(ClientMessage::QueryGameDetails(game_id))
+                let gid = reader.read_u32_le()?;
+                Ok(ClientMessage::QueryGameDetails(gid))
             }
             Self::QUERY_CLIENT_DETAILS => {
-                let client_id = reader.read_u32_le()? as usize;
-                Ok(ClientMessage::QueryClientDetails(client_id))
+                let cid = reader.read_u32_le()? as usize;
+                Ok(ClientMessage::QueryClientDetails(cid))
             }
             Self::LEAVE_GAME => Ok(ClientMessage::LeaveGame),
             Self::SET_NICKNAME => {
@@ -86,19 +86,19 @@ impl NetMessage for ClientMessage {
                 data
             }
             ClientMessage::QueryGames => vec![Self::QUERY_GAMES],
-            ClientMessage::QueryGameDetails(game_id) => {
+            ClientMessage::QueryGameDetails(gid) => {
                 let mut data = vec![Self::QUERY_GAME_DETAILS];
-                data.extend_from_slice(&game_id.to_le_bytes());
+                data.extend_from_slice(&gid.to_le_bytes());
                 data
             }
-            ClientMessage::QueryClientDetails(client_id) => {
+            ClientMessage::QueryClientDetails(cid) => {
                 let mut data = vec![Self::QUERY_CLIENT_DETAILS];
-                data.extend_from_slice(&(*client_id as u32).to_le_bytes());
+                data.extend_from_slice(&(*cid as u32).to_le_bytes());
                 data
             }
-            ClientMessage::Move(game_id, mov) => {
+            ClientMessage::Move(gid, mov) => {
                 let mut data = vec![Self::MAKE_MOVE];
-                data.extend_from_slice(&game_id.to_le_bytes());
+                data.extend_from_slice(&gid.to_le_bytes());
                 data.extend_from_slice(mov.to_string().as_bytes());
                 data
             }
@@ -139,16 +139,16 @@ impl NetMessage for ServerMessage {
                 Ok(ServerMessage::MoveAccepted(san_len, san, updates))
             }
             Self::GAME_CREATED => {
-                let game_id = reader.read_u32_le()?;
-                let client_id = reader.read_u32_le()? as usize;
-                Ok(ServerMessage::GameCreated(game_id, client_id))
+                let gid = reader.read_u32_le()?;
+                let cid = reader.read_u32_le()? as usize;
+                Ok(ServerMessage::GameCreated(gid, cid))
             }
             Self::JOIN_GAME => {
-                let game_id = reader.read_u32_le()?;
-                let client_id = reader.read_u32_le()? as usize;
+                let gid = reader.read_u32_le()?;
+                let cid = reader.read_u32_le()? as usize;
                 let side = UserRoleSelection::from_u8(reader.read_u8()?);
                 let fen = String::from_utf8_lossy(reader.remaining()).to_string();
-                Ok(ServerMessage::GameJoined(game_id, client_id, side, fen))
+                Ok(ServerMessage::GameJoined(gid, cid, side, fen))
             }
             Self::ILLEGAL_MOVE => {
                 let err = ChessError::from_bytes(reader.remaining()).map_err(|e| {
@@ -159,13 +159,13 @@ impl NetMessage for ServerMessage {
             Self::GAMES_LIST => {
                 let mut game_ids = Vec::new();
                 while reader.remaining().len() >= 4 {
-                    let id = reader.read_u32_le()?;
-                    game_ids.push(id);
+                    let gid = reader.read_u32_le()?;
+                    game_ids.push(gid);
                 }
                 Ok(ServerMessage::GamesList(game_ids))
             }
             Self::GAME_OVER => {
-                let game_id = reader.read_u32_le()?;
+                let gid = reader.read_u32_le()?;
                 let reason_byte = reader.read_u8()?;
                 let winner_byte = reader.read_u8()?;
                 let winner = match winner_byte {
@@ -184,10 +184,10 @@ impl NetMessage for ServerMessage {
                     7 => GameOverReason::FiftyMovesRule,
                     _ => panic!("Invalid game over reason"),
                 };
-                Ok(ServerMessage::GameOver(game_id, reason))
+                Ok(ServerMessage::GameOver(gid, reason))
             }
             Self::GAME_DETAILS => {
-                let game_id = reader.read_u32_le()?;
+                let gid = reader.read_u32_le()?;
                 let white_id = reader.read_u32_le()?;
                 let white_id_opt = if white_id > 0 {
                     Some(white_id as usize)
@@ -204,7 +204,7 @@ impl NetMessage for ServerMessage {
                 let inc = reader.read_u32_le()?;
 
                 Ok(ServerMessage::GameDetails(
-                    game_id,
+                    gid,
                     white_id_opt,
                     black_id_opt,
                     time,
@@ -212,19 +212,19 @@ impl NetMessage for ServerMessage {
                 ))
             }
             Self::CLIENT_DETAILS => {
-                let client_id = reader.read_u32_le()? as usize;
+                let cid = reader.read_u32_le()? as usize;
                 let name = String::from_utf8(reader.remaining().to_vec())
                     .map_err(|_| NetError::Protocol("Failed to parse nickname".to_string()))?;
-                Ok(ServerMessage::ClientDetails(client_id, name))
+                Ok(ServerMessage::ClientDetails(cid, name))
             }
             Self::GAME_LEFT => {
-                let game_id = reader.read_u32_le()?;
-                let client_id = reader.read_u32_le()? as usize;
-                Ok(ServerMessage::GameLeft(game_id, client_id))
+                let gid = reader.read_u32_le()?;
+                let cid = reader.read_u32_le()? as usize;
+                Ok(ServerMessage::GameLeft(gid, cid))
             }
             Self::LOGIN_ACCEPTED => {
-                let client_id = reader.read_u32_le()? as usize;
-                Ok(ServerMessage::LoginAccepted(client_id))
+                let cid = reader.read_u32_le()? as usize;
+                Ok(ServerMessage::LoginAccepted(cid))
             }
             _ => Err(NetError::Protocol(format!(
                 "Unknown opcode: {}",
@@ -255,30 +255,30 @@ impl NetMessage for ServerMessage {
                 data.extend_from_slice(&err.to_bytes());
                 data
             }
-            ServerMessage::GameCreated(game_id, client_id) => {
+            ServerMessage::GameCreated(gid, cid) => {
                 let mut data = vec![Self::GAME_CREATED];
-                data.extend_from_slice(&game_id.to_le_bytes());
-                data.extend_from_slice(&(*client_id as u32).to_le_bytes());
+                data.extend_from_slice(&gid.to_le_bytes());
+                data.extend_from_slice(&(*cid as u32).to_le_bytes());
                 data
             }
-            ServerMessage::GameJoined(game_id, client_id, side, fen) => {
+            ServerMessage::GameJoined(gid, cid, side, fen) => {
                 let mut data = vec![Self::JOIN_GAME];
-                data.extend_from_slice(&game_id.to_le_bytes());
-                data.extend_from_slice(&(*client_id as u32).to_le_bytes());
+                data.extend_from_slice(&gid.to_le_bytes());
+                data.extend_from_slice(&(*cid as u32).to_le_bytes());
                 data.push(*side as u8);
                 data.extend_from_slice(fen.as_bytes());
                 data
             }
             ServerMessage::GamesList(game_ids) => {
                 let mut data = vec![Self::GAMES_LIST];
-                for id in game_ids {
-                    data.extend_from_slice(&id.to_le_bytes());
+                for gid in game_ids {
+                    data.extend_from_slice(&gid.to_le_bytes());
                 }
                 data
             }
-            ServerMessage::GameOver(game_id, reason) => {
+            ServerMessage::GameOver(gid, reason) => {
                 let mut data = vec![Self::GAME_OVER];
-                data.extend_from_slice(&game_id.to_le_bytes());
+                data.extend_from_slice(&gid.to_le_bytes());
                 data.push(reason.to_u8());
                 let winner_byte = match reason.get_winner() {
                     Some(ChessColor::Black) => 0,
@@ -288,14 +288,14 @@ impl NetMessage for ServerMessage {
                 data.push(winner_byte);
                 data
             }
-            ServerMessage::LoginAccepted(client_id) => {
+            ServerMessage::LoginAccepted(cid) => {
                 let mut data = vec![Self::LOGIN_ACCEPTED];
-                data.extend_from_slice(&(*client_id as u32).to_le_bytes());
+                data.extend_from_slice(&(*cid as u32).to_le_bytes());
                 data
             }
-            ServerMessage::GameDetails(game_id, white_id, black_id, time, inc) => {
+            ServerMessage::GameDetails(gid, white_id, black_id, time, inc) => {
                 let mut data = vec![Self::GAME_DETAILS];
-                data.extend_from_slice(&game_id.to_le_bytes());
+                data.extend_from_slice(&gid.to_le_bytes());
                 let white_id = white_id.map(|id| id as u32).unwrap_or(0);
                 data.extend_from_slice(&white_id.to_le_bytes());
                 let black_id = black_id.map(|id| id as u32).unwrap_or(0);
@@ -304,16 +304,16 @@ impl NetMessage for ServerMessage {
                 data.extend_from_slice(&inc.to_le_bytes());
                 data
             }
-            ServerMessage::ClientDetails(client_id, name) => {
+            ServerMessage::ClientDetails(cid, name) => {
                 let mut data = vec![Self::CLIENT_DETAILS];
-                data.extend_from_slice(&(*client_id as u32).to_le_bytes());
+                data.extend_from_slice(&(*cid as u32).to_le_bytes());
                 data.extend_from_slice(name.as_bytes());
                 data
             }
-            ServerMessage::GameLeft(game_id, client_id) => {
+            ServerMessage::GameLeft(gid, cid) => {
                 let mut data = vec![Self::GAME_LEFT];
-                data.extend_from_slice(&game_id.to_le_bytes());
-                data.extend_from_slice(&client_id.to_le_bytes());
+                data.extend_from_slice(&gid.to_le_bytes());
+                data.extend_from_slice(&cid.to_le_bytes());
                 data
             }
         }

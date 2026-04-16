@@ -36,8 +36,8 @@ pub mod testgames {
 
             let mut client = TestClient::new(port).await;
 
-            let game_id = client.create_game(1, 120, 0).await;
-            client.join_game(game_id, UserRoleSelection::Both).await;
+            let gid = client.create_game(1, 120, 0).await;
+            client.join_game(gid, UserRoleSelection::Both).await;
 
             let file = File::open(test::TEST_GAME_FILE).unwrap();
             let moves = io::BufReader::new(file).lines();
@@ -56,7 +56,7 @@ pub mod testgames {
                         let mov_str = testmove[0];
                         let expected = testmove[1];
 
-                        let response = client.make_move(game_id, mov_str).await;
+                        let response = client.make_move(gid, mov_str).await;
                         let response_opcode = response.opcode();
 
                         match expected {
@@ -83,17 +83,17 @@ pub mod testgames {
             let mut client2 = TestClient::new(port).await;
 
             // client 1: create new game
-            let game_id = client1.create_game(1, 120, 0).await;
+            let gid = client1.create_game(1, 120, 0).await;
 
             // client 2: list games
             let game_ids = client2.list_games().await;
-            assert!(game_ids.contains(&game_id));
+            assert!(game_ids.contains(&gid));
 
             // client 1 joins as white
-            client1.join_game(game_id, UserRoleSelection::White).await;
+            client1.join_game(gid, UserRoleSelection::White).await;
 
             // client 2 joins as black
-            client2.join_game(game_id, UserRoleSelection::Black).await;
+            client2.join_game(gid, UserRoleSelection::Black).await;
 
             let file = File::open(test::TEST_GAME_FILE).unwrap();
             let moves = io::BufReader::new(file).lines();
@@ -116,7 +116,7 @@ pub mod testgames {
 
                         let current_client = if white_turn { &mut c1 } else { &mut c2 };
 
-                        let response = current_client.make_move(game_id, mov_str).await;
+                        let response = current_client.make_move(gid, mov_str).await;
                         let response_opcode = response.opcode();
 
                         match expected {

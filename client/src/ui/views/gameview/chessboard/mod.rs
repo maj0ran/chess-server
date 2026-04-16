@@ -12,7 +12,6 @@ use crate::ui::views::gameview::dialogs::promotion_dialog::{
 use crate::ui::views::gameview::dialogs::quit_game_dialog::{
     cleanup_quit_game_dialog, quit_game_dialog_action_system, setup_quit_game_dialog,
 };
-use crate::ui::views::gameview::game_screen::listen_keyboard_input;
 use bevy::prelude::*;
 use chess_core::Promotion;
 
@@ -74,11 +73,6 @@ impl Plugin for ChessboardPlugin {
                 promotion_action_system.run_if(in_state(Overlay::Promotion)),
             )
             .add_systems(OnExit(Overlay::GameOver), cleanup_game_over_dialog)
-            // listening for keyboard input (only ESC for now)
-            .add_systems(
-                Update,
-                listen_keyboard_input.run_if(in_state(Screen::Ingame)),
-            )
             .add_systems(
                 Update,
                 game_over_dialog_action_system.run_if(in_state(Overlay::GameOver)),

@@ -89,7 +89,6 @@ pub async fn network_thread(
 /// cmd_rx it the Receiver channel UI -> Client
 pub async fn transmit_thread(mut conn: Connection, cmd_rx: Receiver<ClientMessage>) {
     while let Ok(cmd) = cmd_rx.recv().await {
-        log::debug!("Received command from UI: {:?} - sending to server.", cmd);
         if let Err(e) = conn.write_out(&cmd.to_bytes()).await {
             log::error!("Failed to send command to server: {}", e);
         }
@@ -97,7 +96,7 @@ pub async fn transmit_thread(mut conn: Connection, cmd_rx: Receiver<ClientMessag
     log::info!("Transmit thread shutting down");
 }
 
-/// Receive `ServerMessage` from the server and forward it to the main thread.
+/// Receive `ServerMessage` from the server and forward it to the network system (poll_network).
 /// `msg_tx` is the Sender channel to the main thread.
 pub async fn receive_thread(mut conn: Connection, msg_tx: Sender<ServerMessage>) {
     while let Ok(server_msg) = conn.read_msg::<ServerMessage>().await {
@@ -108,28 +107,36 @@ pub async fn receive_thread(mut conn: Connection, msg_tx: Sender<ServerMessage>)
     log::info!("Receive thread shutting down");
 }
 
+/// The network main thread that receives messages from the receive-thread and reacts by sending
+/// events to the UI.
+/// This is currently a bevy system in the `Update` schedule and hence called every tick
+/// to check for new messages from the server. An event-based system might be worth considering...
 pub fn poll_network(mut commands: Commands, mut state: ResMut<ClientBackend>) {
     while let Ok(server_msg) = state.network.resp_rx.try_recv() {
         log::debug!("Received server message: {:?}", server_msg);
+
         match server_msg {
             ServerMessage::GamesList(games) => {
+                // After receiving a list of games, we instantly ask for the details of each game.
                 let mut games_map: HashMap<GameId, Option<GameDetails>> = HashMap::new();
-                for &game_id in &games {
-                    log::debug!("Querying for game {}", game_id);
-                    state.network.send(ClientMessage::QueryGameDetails(game_id));
-                    games_map.insert(game_id, None);
+                for &gid in &games {
+                    state.network.send(ClientMessage::QueryGameDetails(gid));
+                    games_map.insert(gid, None);
                 }
                 state.menu_state.games = games_map;
             }
-            ServerMessage::GameCreated(id, _) => {
-                log::debug!("Game created with ID: {}", id);
+
+            ServerMessage::GameCreated(_gid, _cid) => {
                 state.network.send(ClientMessage::QueryGames);
             }
-            ServerMessage::GameJoined(_, _, _, fen) => {
+
+            ServerMessage::GameJoined(_gid, _cid, _side, fen) => {
+                // HINT: we only receive this message for our own client, not when someone
+                // else joined. This is a TODO on the server.
                 commands.trigger(GameJoinedEvent { fen });
             }
-            ServerMessage::MoveAccepted(san_len, san, updates) => {
-                log::info!("Move accepted: {} {}", san_len, san);
+
+            ServerMessage::MoveAccepted(_, _san, updates) => {
                 for (tile, piece) in updates {
                     if let Some(p) = piece {
                         state
@@ -142,22 +149,22 @@ pub fn poll_network(mut commands: Commands, mut state: ResMut<ClientBackend>) {
                 }
                 commands.trigger(BoardUpdate);
             }
-            ServerMessage::IllegalMove(err) => {
-                log::warn!("{}", err);
-            }
+
+            ServerMessage::IllegalMove(_) => {}
+
             ServerMessage::GameOver(_gid, reason) => {
                 commands.trigger(GameOverEvent { reason });
             }
-            ServerMessage::GameDetails(game_id, white_id, black_id, time, inc) => {
+
+            ServerMessage::GameDetails(gid, white_id, black_id, time, inc) => {
                 let game_details = GameDetails {
                     white_player: white_id,
                     black_player: black_id,
                     _time: time,
                     _time_inc: inc,
                 };
-                if state.menu_state.games.contains_key(&game_id) {
-                    state.menu_state.games.insert(game_id, Some(game_details));
-                    log::info!("Received game details for game ID: {}", game_id);
+                if state.menu_state.games.contains_key(&gid) {
+                    state.menu_state.games.insert(gid, Some(game_details));
                 }
                 // From GameDetails, we received the client IDs for white and black player.
                 // Query those clients to receive their names.
@@ -174,17 +181,22 @@ pub fn poll_network(mut commands: Commands, mut state: ResMut<ClientBackend>) {
 
                 commands.trigger(UpdateGamesList);
             }
-            ServerMessage::ClientDetails(client_id, name) => {
+
+            ServerMessage::ClientDetails(cid, name) => {
                 // when we receive ClientDetails, we store those details locally.
-                state.menu_state.client_names.insert(client_id, name);
+                state.menu_state.client_names.insert(cid, name);
                 commands.trigger(UpdateGamesList);
             }
+
             ServerMessage::LoginAccepted(_) => {
-                log::info!("Login accepted");
                 let name = state.name.clone();
                 state.network.send(ClientMessage::SetNickname(name));
             }
-            ServerMessage::GameLeft(_gid, _cid) => {}
+
+            ServerMessage::GameLeft(_gid, _cid) => {
+                state.in_game_id = None;
+                commands.trigger(UpdateGamesList);
+            }
         }
     }
 }

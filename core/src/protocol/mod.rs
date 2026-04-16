@@ -1,4 +1,5 @@
 use crate::{NetError, NetResult};
+use std::fmt::Display;
 
 pub mod messages;
 pub mod parser;
@@ -51,6 +52,18 @@ impl UserRoleSelection {
             3 => UserRoleSelection::Spectator,
             4 => UserRoleSelection::Both,
             _ => UserRoleSelection::Spectator,
+        }
+    }
+}
+
+impl Display for UserRoleSelection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UserRoleSelection::Black => write!(f, "Black"),
+            UserRoleSelection::White => write!(f, "White"),
+            UserRoleSelection::Random => write!(f, "Random"),
+            UserRoleSelection::Spectator => write!(f, "Spectator"),
+            UserRoleSelection::Both => write!(f, "Both"),
         }
     }
 }

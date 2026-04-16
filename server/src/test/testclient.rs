@@ -41,7 +41,7 @@ impl TestClient {
         self.conn.write_out(&cmd.to_bytes()).await.unwrap();
 
         match self.conn.read_msg::<ServerMessage>().await {
-            Ok(ServerMessage::GameCreated(game_id, _)) => game_id,
+            Ok(ServerMessage::GameCreated(gid, _)) => gid,
             Ok(e) => panic!("Expected GAME_CREATED response, got {:?}", e),
             Err(e) => panic!("Error reading GAME_CREATED: {:?}", e),
         }
@@ -53,7 +53,7 @@ impl TestClient {
 
         loop {
             match self.conn.read_msg::<ServerMessage>().await {
-                Ok(ServerMessage::GamesList(game_ids)) => return game_ids,
+                Ok(ServerMessage::GamesList(gids)) => return gids,
                 Ok(_) => continue,
                 Err(e) => panic!("Error reading games list: {:?}", e),
             }

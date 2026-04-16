@@ -26,8 +26,6 @@ fn on_resize_system(
     mut win_res: ResMut<WindowSize>,
 ) {
     for e in resize_reader.read() {
-        let text = format!("{:.1} x {:.1}", e.width, e.height);
-        log::warn!("Window resized: {}", text);
         win_res.width = e.width;
         win_res.height = e.height;
     }
