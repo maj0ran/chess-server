@@ -330,11 +330,12 @@ impl GameManager {
     pub async fn save_game(&self, game: &ChessGame) -> std::io::Result<()> {
         let date = Utc::now().format("%Y-%m-%d_%H-%M-%S").to_string();
 
-        let white = game.white_player.unwrap();
-        let white = &self.clients.get(&white).unwrap().name;
-
-        let black = game.black_player.unwrap();
-        let black = &self.clients.get(&black).unwrap().name;
+        let white = game.white_player.map_or("Unknown".to_string(), |p| {
+            self.clients.get(&p).unwrap().name.clone()
+        });
+        let black = game.black_player.map_or("Unknown".to_string(), |p| {
+            self.clients.get(&p).unwrap().name.clone()
+        });
 
         let filename = format!("{}-vs-{}_{}.txt", white, black, date);
         let mut file = File::create(filename).await?;
