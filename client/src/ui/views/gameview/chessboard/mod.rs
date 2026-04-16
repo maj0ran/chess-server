@@ -1,7 +1,7 @@
 use crate::backend::client::{Overlay, Screen};
 use crate::ui::views::gameview::chessboard::assets::ChessAssets;
 use crate::ui::views::gameview::chessboard::board::{
-    draw_pieces, handle_move, on_resize_board, reset_selections,
+    draw_pieces, handle_move, on_resize_board, reset_selections, rotate_board,
 };
 use crate::ui::views::gameview::dialogs::game_over_dialog::{
     cleanup_game_over_dialog, game_over_dialog_action_system, on_game_over,
@@ -59,6 +59,7 @@ impl Plugin for ChessboardPlugin {
             .add_observer(draw_pieces)
             .add_observer(reset_selections)
             .add_observer(on_game_over)
+            .add_observer(rotate_board)
             .add_systems(
                 Update,
                 handle_move.run_if(

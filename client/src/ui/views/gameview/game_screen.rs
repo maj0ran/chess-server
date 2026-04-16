@@ -35,10 +35,10 @@ pub fn on_game_joined(
 
 /// Sets up the in-game screen.
 /// Draws the chessboard and triggers a `BoardUpdate` event to trigger piece position retrievement.
-fn setup_gamescreen(mut commands: Commands) {
+fn setup_gamescreen(mut commands: Commands, backend: Res<ClientBackend>) {
     log::info!("Setting up gamescreen");
 
-    draw_chessboard(&mut commands);
+    draw_chessboard(&mut commands, &backend);
 
     commands.trigger(BoardUpdate);
 }

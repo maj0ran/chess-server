@@ -8,7 +8,11 @@ pub struct ChessPiece {
 }
 
 impl ChessPiece {
-    pub fn new(id: char, assets: &Res<ChessAssets>) -> (ChessPiece, Sprite, Transform, Pickable) {
+    pub fn new(
+        id: char,
+        assets: &Res<ChessAssets>,
+        flip: bool,
+    ) -> (ChessPiece, Sprite, Transform, Pickable) {
         let image = assets.get(id).unwrap();
         (
             ChessPiece { id },
@@ -18,6 +22,7 @@ impl ChessPiece {
             },
             Transform {
                 translation: Vec3::new(0.0, 0.0, 1.0),
+                rotation: Quat::from_rotation_z(if flip { std::f32::consts::PI } else { 0.0 }),
                 ..default()
             },
             Pickable::default(),

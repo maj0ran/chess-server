@@ -1,8 +1,9 @@
 use crate::backend::config::Config;
 use crate::backend::network::NetworkInterface;
 use bevy::prelude::*;
-use chess_core::GameId;
+use chess_core::protocol::UserRoleSelection;
 use chess_core::states::GameOverReason;
+use chess_core::{ChessColor, GameId};
 use std::collections::HashMap;
 
 #[derive(Event)]
@@ -11,6 +12,7 @@ pub struct BoardUpdate;
 #[derive(Event)]
 pub struct GameJoinedEvent {
     pub gid: GameId,
+    pub side: UserRoleSelection,
     pub fen: String,
 }
 
@@ -63,6 +65,7 @@ pub struct MenuState {
 
 pub struct GameState {
     pub gid: GameId,
+    pub side: UserRoleSelection,
     pub internal_board: HashMap<String, char>, // the internal board representation. Can be rendered on a GUI board.
 }
 

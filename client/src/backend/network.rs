@@ -130,18 +130,19 @@ pub fn poll_network(mut commands: Commands, mut state: ResMut<ClientBackend>) {
                 state.network.send(ClientMessage::QueryGames);
             }
 
-            ServerMessage::GameJoined(gid, _cid, _side, fen) => {
+            ServerMessage::GameJoined(gid, _cid, side, fen) => {
                 // HINT: we only receive this message for our own client, not when someone
                 // else joined. This is a TODO on the server.
                 // once we change the behavior of the server, we also have to add additional
                 // logic here to handle the case when someone else joins.
                 let game_state = GameState {
-                    internal_board: HashMap::new(),
                     gid,
+                    side,
+                    internal_board: HashMap::new(),
                 };
                 state.game_state = Some(game_state);
 
-                commands.trigger(GameJoinedEvent { gid, fen });
+                commands.trigger(GameJoinedEvent { gid, side, fen });
             }
 
             ServerMessage::MoveAccepted(_, _san, updates) => {

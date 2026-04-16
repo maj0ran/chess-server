@@ -5,14 +5,19 @@ use super::square::ChessSquare;
 use super::*;
 use crate::backend::client::{BoardUpdate, ClientBackend, Overlay};
 use crate::ui::{COLOR_LIGHT2, COLOR_MID};
+use std::f32::consts::PI;
 
 use crate::ui::views::gameview::game_screen::{DESTINATION_COLOR, SOURCE_COLOR};
 use bevy::color::Color;
 use bevy::math::{Vec2, Vec3};
+use chess_core::protocol::UserRoleSelection;
 
 /// Event from the backend that is triggered when the server has accepted or rejected a move.
 #[derive(Event)]
 pub struct ResetSelection;
+/// Event for rotating the board if the player is black
+#[derive(Event)]
+pub struct RotateBoardEvent;
 
 /// The `ChessBoard` is a simple plane that acts as a reference position for anything else.
 /// The plane alone isn't even chessy - it has no squares. Squares are standalone components
@@ -39,7 +44,7 @@ impl ChessBoard {
 }
 /// Helper method to draw the chessboard. Spawns the `ChessBoard` plane and
 /// 64 `ChessSquare` as children onto it.
-pub fn draw_chessboard(commands: &mut Commands) {
+pub fn draw_chessboard(commands: &mut Commands, state: &Res<ClientBackend>) {
     commands.spawn(ChessBoard::new()).with_children(|parent| {
         let mut file = 'a';
         let mut rank = '1';
@@ -70,6 +75,10 @@ pub fn draw_chessboard(commands: &mut Commands) {
             }
         }
     });
+
+    if state.game_state.as_ref().unwrap().side == UserRoleSelection::Black {
+        commands.trigger(RotateBoardEvent);
+    }
 }
 
 /// Triggered on `BoardUpdate` event which is sent by the backend when it receives an update from the server.
@@ -78,7 +87,7 @@ pub fn draw_pieces(
     _board_update: On<BoardUpdate>,
     mut commands: Commands,
     assets: Res<ChessAssets>,
-    squares: Query<(Entity, &ChessSquare), With<ChessSquare>>,
+    squares: Query<(Entity, &ChessSquare)>,
     backend: ResMut<ClientBackend>,
 ) {
     let Some(game_state) = &backend.game_state else {
@@ -86,6 +95,7 @@ pub fn draw_pieces(
     };
     let pieces = &game_state.internal_board;
 
+    let flipped = backend.game_state.as_ref().unwrap().side == UserRoleSelection::Black;
     // we iterate through all squares. We remove the piece on every square from
     // the previous draw, no matter what. Then we draw the current piece on the square.
     // TODO: this could be better by just updating those squares that have changed.
@@ -98,7 +108,7 @@ pub fn draw_pieces(
         match p {
             None => {}
             Some(p) => {
-                let piece_entity = commands.spawn((ChessPiece::new(*p, &assets),)).id();
+                let piece_entity = commands.spawn(ChessPiece::new(*p, &assets, flipped)).id();
                 commands.entity(square_entity).add_child(piece_entity);
             }
         };
@@ -235,4 +245,15 @@ pub fn on_resize_board(
     board.1.scale.y = (size / BOARD_SIZE) * 0.7;
 
     log::debug!("Resized board to {}px", board.1.scale.x * BOARD_SIZE);
+}
+
+pub fn rotate_board(
+    _ev: On<RotateBoardEvent>,
+    mut board_query: Query<&mut Transform, With<ChessBoard>>,
+) {
+    log::debug!("Rotating board");
+
+    // rotate the board 180'
+    let mut board = board_query.single_mut().unwrap();
+    board.rotate_z(PI);
 }
