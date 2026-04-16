@@ -1,23 +1,19 @@
 use super::GameScreenComponent;
-use super::chessboard::board::draw_chessboard;
-use crate::backend::client::{BoardUpdate, ClientBackend, GameJoinedEvent, Overlay, Screen};
+use crate::backend::client::{ClientBackend, GameJoinedEvent, Overlay, Screen};
 
 use bevy::prelude::*;
 
 pub const SOURCE_COLOR: Color = Color::srgb_u8(250, 113, 113);
 pub const DESTINATION_COLOR: Color = Color::srgb_u8(113, 250, 113);
 
-pub struct ChessPlugin;
+pub struct GameScreenPlugin;
 
-impl Plugin for ChessPlugin {
+impl Plugin for GameScreenPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(Screen::Ingame), setup_gamescreen)
-            .add_systems(OnExit(Screen::Ingame), cleanup_game)
+        app.add_systems(OnEnter(Screen::Game), setup_gamescreen)
+            .add_systems(OnExit(Screen::Game), cleanup_gamescreen)
             // listening for keyboard input (only ESC for now)
-            .add_systems(
-                Update,
-                listen_keyboard_input.run_if(in_state(Screen::Ingame)),
-            )
+            .add_systems(Update, listen_keyboard_input.run_if(in_state(Screen::Game)))
             .add_observer(on_game_joined);
     }
 }
@@ -29,23 +25,30 @@ pub fn on_game_joined(
     mut backend: ResMut<ClientBackend>,
 ) {
     backend.update_internal_board_from_fen(&ev.fen);
-    next_screen.set(Screen::Ingame);
+    next_screen.set(Screen::Game);
     next_overlay.set(Overlay::None);
 }
 
+#[derive(Component)]
+pub struct ChessboardContainer;
+#[derive(Component)]
+pub struct ChessboardRoot;
+
+#[derive(Event)]
+pub struct GameScreenInitialized;
+
 /// Sets up the in-game screen.
 /// Draws the chessboard and triggers a `BoardUpdate` event to trigger piece position retrievement.
-fn setup_gamescreen(mut commands: Commands, backend: Res<ClientBackend>) {
+fn setup_gamescreen(mut commands: Commands) {
     log::info!("Setting up gamescreen");
 
-    draw_chessboard(&mut commands, &backend);
+    commands.spawn((GameScreenComponent, ChessboardContainer));
 
-    commands.trigger(BoardUpdate);
+    commands.trigger(GameScreenInitialized);
 }
-
 /// Despawn all entities that are part of the in-game screen.
 /// Obviously happens when we leave a game.
-fn cleanup_game(
+fn cleanup_gamescreen(
     mut commands: Commands,
     query: Query<Entity, With<GameScreenComponent>>,
     mut backend: ResMut<ClientBackend>,

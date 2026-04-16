@@ -11,7 +11,7 @@ use ui::COLOR_DARK;
 
 use backend::ClientPlugin;
 use ui::views::gameview::chessboard::ChessboardPlugin;
-use ui::views::gameview::game_screen::ChessPlugin;
+use ui::views::gameview::game_screen::GameScreenPlugin;
 use ui::views::menuview::menuroot::MenuRootPlugin;
 
 #[derive(Resource)]
@@ -58,7 +58,12 @@ fn main() {
         .init_state::<Overlay>()
         .add_systems(Startup, setup_camera)
         .add_systems(Update, on_resize_system)
-        .add_plugins((MenuRootPlugin, ChessPlugin, ChessboardPlugin, ClientPlugin))
+        .add_plugins((
+            MenuRootPlugin,
+            GameScreenPlugin,
+            ChessboardPlugin,
+            ClientPlugin,
+        ))
         .insert_resource(ClearColor(COLOR_DARK))
         .insert_resource(WindowSize {
             width: 0.0,

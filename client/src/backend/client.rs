@@ -1,9 +1,9 @@
 use crate::backend::config::Config;
 use crate::backend::network::NetworkInterface;
 use bevy::prelude::*;
+use chess_core::GameId;
 use chess_core::protocol::UserRoleSelection;
 use chess_core::states::GameOverReason;
-use chess_core::{ChessColor, GameId};
 use std::collections::HashMap;
 
 #[derive(Event)]
@@ -26,7 +26,6 @@ pub enum Screen {
     #[default]
     Menu,
     Game,
-    Ingame,
 }
 
 #[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]

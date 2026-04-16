@@ -1,7 +1,7 @@
 use crate::backend::client::{Overlay, Screen};
 use crate::ui::views::gameview::chessboard::assets::ChessAssets;
 use crate::ui::views::gameview::chessboard::board::{
-    draw_pieces, handle_move, on_resize_board, reset_selections, rotate_board,
+    draw_chessboard, draw_pieces, handle_move, on_resize_board, reset_selections, rotate_board,
 };
 use crate::ui::views::gameview::dialogs::game_over_dialog::{
     cleanup_game_over_dialog, game_over_dialog_action_system, on_game_over,
@@ -56,6 +56,7 @@ impl Plugin for ChessboardPlugin {
         app.insert_resource(SourceSelect { entity: None })
             .insert_resource(DestinationSelect { entity: None })
             .init_resource::<ChessAssets>()
+            .add_observer(draw_chessboard)
             .add_observer(draw_pieces)
             .add_observer(reset_selections)
             .add_observer(on_game_over)
@@ -85,6 +86,6 @@ impl Plugin for ChessboardPlugin {
                 Update,
                 quit_game_dialog_action_system.run_if(in_state(Overlay::QuitGameDialog)),
             )
-            .add_systems(Update, on_resize_board.run_if(in_state(Screen::Ingame)));
+            .add_systems(Update, on_resize_board.run_if(in_state(Screen::Game)));
     }
 }

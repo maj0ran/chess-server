@@ -7,7 +7,9 @@ use crate::backend::client::{BoardUpdate, ClientBackend, Overlay};
 use crate::ui::{COLOR_LIGHT2, COLOR_MID};
 use std::f32::consts::PI;
 
-use crate::ui::views::gameview::game_screen::{DESTINATION_COLOR, SOURCE_COLOR};
+use crate::ui::views::gameview::game_screen::{
+    ChessboardContainer, DESTINATION_COLOR, GameScreenInitialized, SOURCE_COLOR,
+};
 use bevy::color::Color;
 use bevy::math::{Vec2, Vec3};
 use chess_core::protocol::UserRoleSelection;
@@ -44,41 +46,57 @@ impl ChessBoard {
 }
 /// Helper method to draw the chessboard. Spawns the `ChessBoard` plane and
 /// 64 `ChessSquare` as children onto it.
-pub fn draw_chessboard(commands: &mut Commands, state: &Res<ClientBackend>) {
-    commands.spawn(ChessBoard::new()).with_children(|parent| {
-        let mut file = 'a';
-        let mut rank = '1';
-        for r in 0..8 {
-            for f in 0..8 {
-                let color = if (f + r) % 2 == 0 {
-                    COLOR_LIGHT2
-                } else {
-                    COLOR_MID
-                };
-                let name = format!("{file}{rank}");
-                parent
-                    .spawn(ChessSquare::new(
-                        name,
-                        Vec2::new(
-                            (-BOARD_SIZE / 2.0) + (SQUARE_SIZE / 2.0) + (f as f32 * SQUARE_SIZE),
-                            (-BOARD_SIZE / 2.0) + (SQUARE_SIZE / 2.0) + (r as f32 * SQUARE_SIZE),
-                        ),
-                        color,
-                    ))
-                    .observe(select_square);
+pub fn draw_chessboard(
+    _ev: On<GameScreenInitialized>,
+    mut commands: Commands,
+    state: Res<ClientBackend>,
+    query: Query<Entity, With<ChessboardContainer>>,
+) {
+    let container = query.single().unwrap();
 
-                file = ((file as u8) + 1) as char;
-                if file > 'h' {
-                    file = 'a';
-                    rank = ((rank as u8) + 1) as char;
+    commands
+        .entity(container)
+        .insert(ChessBoard::new())
+        .with_children(|parent| {
+            let mut file = 'a';
+            let mut rank = '1';
+            for r in 0..8 {
+                for f in 0..8 {
+                    let color = if (f + r) % 2 == 0 {
+                        COLOR_LIGHT2
+                    } else {
+                        COLOR_MID
+                    };
+                    let name = format!("{file}{rank}");
+                    parent
+                        .spawn(ChessSquare::new(
+                            name,
+                            Vec2::new(
+                                (-BOARD_SIZE / 2.0)
+                                    + (SQUARE_SIZE / 2.0)
+                                    + (f as f32 * SQUARE_SIZE),
+                                (-BOARD_SIZE / 2.0)
+                                    + (SQUARE_SIZE / 2.0)
+                                    + (r as f32 * SQUARE_SIZE),
+                            ),
+                            color,
+                        ))
+                        .observe(select_square);
+
+                    file = ((file as u8) + 1) as char;
+                    if file > 'h' {
+                        file = 'a';
+                        rank = ((rank as u8) + 1) as char;
+                    }
                 }
             }
-        }
-    });
+        });
 
     if state.game_state.as_ref().unwrap().side == UserRoleSelection::Black {
         commands.trigger(RotateBoardEvent);
     }
+
+    commands.trigger(BoardUpdate);
 }
 
 /// Triggered on `BoardUpdate` event which is sent by the backend when it receives an update from the server.
