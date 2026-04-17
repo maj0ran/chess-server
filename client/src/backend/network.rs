@@ -15,11 +15,8 @@ use smol::channel::{Receiver, Sender};
 use smol::net::TcpStream;
 use std::collections::HashMap;
 
-/// `NetworkInterface` manages the network connection for a chess client.
-/// It is designed to be cloned, which allows multiple threads to interact with the same underlying
-/// TCP connection concurrently. Cloning `NetworkInterface` creates a new `Connection` object that
-/// shares the same socket handle, as `smol::net::TcpStream` supports concurrent read and write operations.
-#[derive(Clone)]
+/// `NetworkInterface` is the tunnel to networking.
+/// it holds the tx/rx channels to communicate from the transmit/receive threads to the main/bevy thread.
 pub struct NetworkInterface {
     pub cmd_tx: Sender<ClientMessage>,
     pub resp_rx: Receiver<ServerMessage>,
