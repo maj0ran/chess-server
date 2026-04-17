@@ -1,7 +1,7 @@
 use bevy::prelude::{Event, Resource};
-use chess_core::GameId;
 use chess_core::protocol::UserRoleSelection;
 use chess_core::states::GameOverReason;
+use chess_core::{ClientId, GameId};
 use std::collections::HashMap;
 
 #[derive(Event)]
@@ -18,19 +18,20 @@ pub struct GameOverEvent {
     pub reason: GameOverReason,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct GameDetails {
-    pub white_player: Option<usize>,
-    pub black_player: Option<usize>,
+    pub white_player: Option<ClientId>,
+    pub black_player: Option<ClientId>,
     pub _time: u32,
     pub _time_inc: u32,
 }
 
-#[derive(Resource)]
+#[derive(Resource, Debug)]
 pub struct ActiveGame {
     pub gid: GameId,
     pub side: UserRoleSelection,
     pub internal_board: HashMap<String, char>,
+    pub game_info: GameDetails,
 }
 
 impl ActiveGame {

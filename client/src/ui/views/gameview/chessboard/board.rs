@@ -4,13 +4,11 @@ use super::piece::ChessPiece;
 use super::square::ChessSquare;
 use super::*;
 use crate::client::game::{ActiveGame, BoardUpdate};
-use crate::ui::{COLOR_LIGHT2, COLOR_MID};
-use std::f32::consts::PI;
-
 use crate::client::network::NetworkSend;
 use crate::ui::views::gameview::game_screen::{
-    ChessboardContainer, DESTINATION_COLOR, GameScreenInitialized, SOURCE_COLOR,
+    DESTINATION_COLOR, GameScreenContainer, GameScreenInitialized, SOURCE_COLOR,
 };
+use crate::ui::{COLOR_LIGHT2, COLOR_MID};
 use bevy::color::Color;
 use bevy::math::{Vec2, Vec3};
 use chess_core::protocol::UserRoleSelection;
@@ -53,13 +51,12 @@ pub fn draw_chessboard(
     _ev: On<GameScreenInitialized>,
     mut commands: Commands,
     active_game: Res<ActiveGame>,
-    query: Query<Entity, With<ChessboardContainer>>,
+    query: Query<Entity, With<GameScreenContainer>>,
 ) {
     let container = query.single().expect("ChessboardContainer not found");
 
-    commands
-        .entity(container)
-        .insert(ChessBoard::new())
+    let board = commands
+        .spawn(ChessBoard::new())
         .with_children(|parent| {
             let mut file = 'a';
             let mut rank = '1';
@@ -93,7 +90,10 @@ pub fn draw_chessboard(
                     }
                 }
             }
-        });
+        })
+        .id();
+
+    commands.entity(container).add_child(board);
 
     if active_game.side == UserRoleSelection::Black {
         commands.trigger(RotateBoardEvent);
@@ -257,38 +257,4 @@ pub fn on_move_request(ev: On<RequestMove>, mut commands: Commands, active_game:
         },
     )));
     commands.trigger(ResetSelection);
-}
-
-pub fn on_resize_board(
-    mut resize_reader: MessageReader<bevy::window::WindowResized>,
-    mut board_query: Query<(Entity, &mut Transform), With<ChessBoard>>,
-) {
-    // Trigger only when there was at least one resize event
-    let mut new_size = None;
-    for e in resize_reader.read() {
-        new_size = Some(Vec2::new(e.width, e.height));
-    }
-    let Some(size) = new_size else {
-        return;
-    };
-
-    let size = if size.x < size.y { size.x } else { size.y };
-
-    let mut board = board_query.single_mut().unwrap(); // we're in-game, so a board must exist.
-
-    board.1.scale.x = (size / BOARD_SIZE) * 0.7;
-    board.1.scale.y = (size / BOARD_SIZE) * 0.7;
-
-    log::debug!("Resized board to {}px", board.1.scale.x * BOARD_SIZE);
-}
-
-pub fn rotate_board(
-    _ev: On<RotateBoardEvent>,
-    mut board_query: Query<&mut Transform, With<ChessBoard>>,
-) {
-    log::debug!("Rotating board");
-
-    // rotate the board 180'
-    let mut board = board_query.single_mut().unwrap();
-    board.rotate_z(PI);
 }

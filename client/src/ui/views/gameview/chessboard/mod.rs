@@ -1,7 +1,7 @@
+use crate::ui::Overlay;
 use crate::ui::views::gameview::chessboard::assets::ChessAssets;
 use crate::ui::views::gameview::chessboard::board::{
-    draw_chessboard, draw_pieces, handle_move, on_move_request, on_resize_board, reset_selections,
-    rotate_board,
+    draw_chessboard, draw_pieces, handle_move, on_move_request, reset_selections,
 };
 use crate::ui::views::gameview::dialogs::game_over_dialog::{
     cleanup_game_over_dialog, game_over_dialog_action_system, on_game_over,
@@ -12,7 +12,6 @@ use crate::ui::views::gameview::dialogs::promotion_dialog::{
 use crate::ui::views::gameview::dialogs::quit_game_dialog::{
     cleanup_quit_game_dialog, quit_game_dialog_action_system, setup_quit_game_dialog,
 };
-use crate::ui::{Overlay, Screen};
 use bevy::prelude::*;
 use chess_core::Promotion;
 
@@ -62,7 +61,6 @@ impl Plugin for ChessboardPlugin {
             .add_observer(on_move_request)
             .add_observer(reset_selections)
             .add_observer(on_game_over)
-            .add_observer(rotate_board)
             .add_systems(
                 Update,
                 handle_move.run_if(
@@ -87,7 +85,6 @@ impl Plugin for ChessboardPlugin {
             .add_systems(
                 Update,
                 quit_game_dialog_action_system.run_if(in_state(Overlay::QuitGameDialog)),
-            )
-            .add_systems(Update, on_resize_board.run_if(in_state(Screen::Game)));
+            );
     }
 }

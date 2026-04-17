@@ -126,10 +126,14 @@ pub fn poll_network(
                 // else joined. This is a TODO on the server.
                 // once we change the behavior of the server, we also have to add additional
                 // logic here to handle the case when someone else joins.
-                let mut game = ActiveGame {
+
+                commands.trigger(NetworkSend(ClientMessage::QueryGameDetails(gid)));
+                let game_info = lobby.get_game_info(gid).copied().unwrap();
+                let game = ActiveGame {
                     gid,
                     side,
                     internal_board: HashMap::new(),
+                    game_info,
                 };
                 commands.insert_resource(game);
                 commands.trigger(GameJoinedEvent { gid, side });
@@ -168,6 +172,12 @@ pub fn poll_network(
                     _time_inc: inc,
                 };
                 lobby.update_game_info(gid, game_details);
+
+                if let Some(ref mut active_game) = active_game {
+                    if active_game.gid == gid {
+                        active_game.game_info = game_details;
+                    }
+                }
 
                 if let Some(wid) = white_id {
                     if !lobby.has_client_info(wid) {
