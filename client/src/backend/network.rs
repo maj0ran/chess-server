@@ -212,7 +212,6 @@ pub fn poll_network(
             // TODO: Here and in the server, this should not be only for us but for all clients in a game.
             ServerMessage::GameLeft(_gid, _cid) => {
                 commands.remove_resource::<ActiveGame>();
-                commands.trigger(UpdateGamesList);
             }
         }
     }

@@ -197,7 +197,14 @@ pub fn update_games_list(
 ) {
     // get the container where the game list is rendered into.
     // see menuroot.rs for this.
-    let container = container_query.single().unwrap();
+    let container = container_query.single();
+
+    let container = match container {
+        Ok(c) => c,
+        Err(_) => {
+            return;
+        }
+    };
 
     // despawn previous game list
     if let Ok(children) = children_query.get(container) {
