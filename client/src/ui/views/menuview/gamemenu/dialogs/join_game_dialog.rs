@@ -1,4 +1,4 @@
-use crate::backend::client::LobbyState;
+use crate::backend::client::lobby::LobbyState;
 use crate::backend::network::NetworkSend;
 use crate::ui::Overlay;
 use bevy::prelude::*;

@@ -2,6 +2,10 @@ use crate::backend::client::*;
 use crate::backend::config::*;
 use crate::ui::gamelist_menu::UpdateGamesList;
 
+use crate::backend::client::game::{
+    ActiveGame, BoardUpdate, GameDetails, GameJoinedEvent, GameOverEvent,
+};
+use crate::backend::client::lobby::LobbyState;
 use bevy::prelude::*;
 use chess_core::net::connection::Connection;
 use chess_core::protocol::messages::{ClientMessage, ServerMessage};

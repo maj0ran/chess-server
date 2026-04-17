@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::prelude::{Event, Resource};
 use chess_core::GameId;
 use chess_core::protocol::UserRoleSelection;
 use chess_core::states::GameOverReason;
@@ -19,24 +19,12 @@ pub struct GameOverEvent {
     pub reason: GameOverReason,
 }
 
-#[derive(Resource)]
-pub struct ClientConfig {
-    pub name: String,
-}
-
 #[derive(Debug)]
 pub struct GameDetails {
     pub white_player: Option<usize>,
     pub black_player: Option<usize>,
     pub _time: u32,
     pub _time_inc: u32,
-}
-
-#[derive(Resource, Default)]
-pub struct LobbyState {
-    pub games: HashMap<GameId, Option<GameDetails>>,
-    pub client_names: HashMap<usize, String>,
-    pub pending_join_game: Option<GameId>,
 }
 
 #[derive(Resource)]

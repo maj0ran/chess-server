@@ -1,5 +1,11 @@
+use bevy::prelude::Resource;
 use std::collections::HashMap;
 use std::fs::read_to_string;
+
+#[derive(Resource)]
+pub struct ClientConfig {
+    pub name: String,
+}
 
 #[derive(Clone)]
 pub struct Config {

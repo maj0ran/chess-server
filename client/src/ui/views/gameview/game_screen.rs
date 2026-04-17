@@ -1,5 +1,5 @@
 use super::GameScreenComponent;
-use crate::backend::client::GameJoinedEvent;
+use crate::backend::client::game::GameJoinedEvent;
 
 use crate::ui::{Overlay, Screen};
 use bevy::prelude::*;

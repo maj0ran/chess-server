@@ -3,7 +3,7 @@ use super::assets::ChessAssets;
 use super::piece::ChessPiece;
 use super::square::ChessSquare;
 use super::*;
-use crate::backend::client::{ActiveGame, BoardUpdate};
+use crate::backend::client::game::{ActiveGame, BoardUpdate};
 use crate::ui::{COLOR_LIGHT2, COLOR_MID};
 use std::f32::consts::PI;
 

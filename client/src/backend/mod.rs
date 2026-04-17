@@ -1,5 +1,5 @@
 use super::backend::network::*;
-use crate::backend::client::*;
+use crate::backend::client::lobby::LobbyState;
 use crate::backend::config::*;
 use bevy::prelude::*;
 
