@@ -6,7 +6,6 @@ use bevy::ui_widgets::ScrollbarPlugin;
 use bevy::window::{WindowResized, WindowResolution};
 use bevy_flair::prelude::*;
 
-use backend::client::ClientBackend;
 use ui::COLOR_DARK;
 
 use crate::ui::{MenuTab, Overlay, Screen};
@@ -53,7 +52,6 @@ fn main() {
             ScrollbarPlugin,
             FlairPlugin,
         ))
-        .insert_resource(ClientBackend::with_config(config))
         .init_state::<Screen>()
         .init_state::<MenuTab>()
         .init_state::<Overlay>()

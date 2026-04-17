@@ -1,4 +1,4 @@
-use crate::backend::client::ClientBackend;
+use crate::backend::client::ClientRequest;
 use crate::ui::Overlay;
 use bevy::prelude::*;
 use bevy_flair::prelude::*;
@@ -57,18 +57,18 @@ pub fn create_dialog_action_system(
         (&Interaction, &CreateAction),
         (Changed<Interaction>, With<Button>),
     >,
-    state: ResMut<ClientBackend>,
     mut next_overlay: ResMut<NextState<Overlay>>,
+    mut commands: Commands,
 ) {
     for (interaction, action) in interaction_query.iter_mut() {
         if *interaction == Interaction::Pressed {
             match action {
                 CreateAction::Confirm => {
-                    state.network.send(ClientMessage::NewGame(NewGameParams {
+                    commands.trigger(ClientRequest(ClientMessage::NewGame(NewGameParams {
                         mode: 0,
                         time: 600,
                         time_inc: 10,
-                    }));
+                    })));
                     next_overlay.set(Overlay::None);
                 }
                 CreateAction::Cancel => {

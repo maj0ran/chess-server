@@ -1,8 +1,7 @@
-use crate::backend::config::Config;
-use crate::backend::network::NetworkInterface;
 use bevy::prelude::*;
 use chess_core::GameId;
 use chess_core::protocol::UserRoleSelection;
+use chess_core::protocol::messages::ClientMessage;
 use chess_core::states::GameOverReason;
 use std::collections::HashMap;
 
@@ -21,6 +20,14 @@ pub struct GameOverEvent {
     pub reason: GameOverReason,
 }
 
+#[derive(Resource)]
+pub struct ClientConfig {
+    pub name: String,
+}
+
+#[derive(Event)]
+pub struct ClientRequest(pub ClientMessage);
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GameDetails {
     pub white_player: Option<usize>,
@@ -29,63 +36,23 @@ pub struct GameDetails {
     pub _time_inc: u32,
 }
 
-pub struct MenuState {
+#[derive(Resource, Default)]
+pub struct LobbyState {
     pub games: HashMap<GameId, Option<GameDetails>>,
-    // local store for ClientDetails. Note: we only have names currently, but this should be a whole struct later.
     pub client_names: HashMap<usize, String>,
-}
-
-pub struct GameState {
-    pub gid: GameId,
-    pub side: UserRoleSelection,
-    pub internal_board: HashMap<String, char>, // the internal board representation. Can be rendered on a GUI board.
-}
-
-/// ClientBackend is the shared resource for all our bevy UI.
-#[derive(Resource)]
-pub struct ClientBackend {
-    pub network: NetworkInterface,
-
-    pub name: String,
-    pub menu_state: MenuState,
-    pub game_state: Option<GameState>,
     pub pending_join_game: Option<GameId>,
 }
 
-/// Creating a new client state sets up its own thread for the network messaging with the server.
-/// To communicate from the UI with this thread, we use channels.
-impl ClientBackend {
-    pub fn new() -> Self {
-        let config = Config::read("settings.cfg");
-        Self::with_config(config)
-    }
+#[derive(Resource)]
+pub struct ActiveGame {
+    pub gid: GameId,
+    pub side: UserRoleSelection,
+    pub internal_board: HashMap<String, char>,
+}
 
-    pub fn with_config(config: Config) -> Self {
-        let name = config.name.clone();
-        Self {
-            // interface for the network logic to communicate with the server.
-            network: NetworkInterface::with_config(config),
-            // state of the main menu, i.e., list of games, selected game.
-            menu_state: MenuState {
-                games: HashMap::new(),
-                client_names: HashMap::new(),
-            },
-            // the state of the currently active game
-            game_state: None,
-            name,
-            pending_join_game: None,
-        }
-    }
-
-    /// Sets up a board from a given FEN. Used for game start.
-    /// TODO: A strange place for this method...
+impl ActiveGame {
     pub fn update_internal_board_from_fen(&mut self, fen: &str) {
-        if self.game_state.is_none() {
-            return;
-        }
-        let game_state = self.game_state.as_mut().unwrap();
-
-        game_state.internal_board.clear();
+        self.internal_board.clear();
         let fen_parts: Vec<&str> = fen.split(' ').collect();
         if fen_parts.is_empty() {
             return;
@@ -100,7 +67,7 @@ impl ClientBackend {
                     if f < 8 {
                         let tile =
                             format!("{}{}", (97 + f) as u8 as char, (8 - r + 48) as u8 as char);
-                        game_state.internal_board.insert(tile, c);
+                        self.internal_board.insert(tile, c);
                         f += 1;
                     }
                 }

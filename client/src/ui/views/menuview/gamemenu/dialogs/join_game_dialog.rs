@@ -1,4 +1,4 @@
-use crate::backend::client::ClientBackend;
+use crate::backend::client::{ClientRequest, LobbyState};
 use crate::ui::Overlay;
 use bevy::prelude::*;
 use bevy_flair::prelude::*;
@@ -83,20 +83,21 @@ pub fn cleanup_join_dialog(
 
 pub fn join_dialog_action_system(
     mut interaction_query: Query<(&Interaction, &JoinAction), (Changed<Interaction>, With<Button>)>,
-    mut state: ResMut<ClientBackend>,
+    mut lobby: ResMut<LobbyState>,
     mut next_overlay: ResMut<NextState<Overlay>>,
+    mut commands: Commands,
 ) {
     for (interaction, action) in interaction_query.iter_mut() {
         if *interaction == Interaction::Pressed {
             match action {
                 JoinAction::Select(side) => {
-                    if let Some(gid) = state.pending_join_game {
-                        state.network.send(ClientMessage::JoinGame(JoinGameParams {
+                    if let Some(gid) = lobby.pending_join_game {
+                        commands.trigger(ClientRequest(ClientMessage::JoinGame(JoinGameParams {
                             game_id: gid,
                             side: side.clone(),
-                        }));
+                        })));
                     }
-                    state.pending_join_game = None;
+                    lobby.pending_join_game = None;
                     next_overlay.set(Overlay::None);
                 }
                 JoinAction::Cancel => {

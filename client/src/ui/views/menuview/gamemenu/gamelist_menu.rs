@@ -1,4 +1,4 @@
-use crate::backend::client::ClientBackend;
+use crate::backend::client::{ClientRequest, LobbyState};
 use crate::ui::Overlay;
 use crate::ui::views::menuview::MenuTabComponent;
 use crate::ui::views::menuview::menuroot::MenuTabContainer;
@@ -165,8 +165,9 @@ pub fn cleanup_gamelist_menu(
 
 pub fn gamelist_menu_action_system(
     mut interaction_query: Query<(&Interaction, &MenuAction), (Changed<Interaction>, With<Button>)>,
-    mut state: ResMut<ClientBackend>,
+    mut lobby: ResMut<LobbyState>,
     mut next_overlay: ResMut<NextState<Overlay>>,
+    mut commands: Commands,
 ) {
     for (interaction, action) in interaction_query.iter_mut() {
         if *interaction == Interaction::Pressed {
@@ -175,10 +176,10 @@ pub fn gamelist_menu_action_system(
                     next_overlay.set(Overlay::CreateDialog);
                 }
                 MenuAction::ListGames => {
-                    state.network.send(ClientMessage::QueryGames);
+                    commands.trigger(ClientRequest(ClientMessage::QueryGames));
                 }
                 MenuAction::JoinGame(gid) => {
-                    state.pending_join_game = Some(*gid);
+                    lobby.pending_join_game = Some(*gid);
                     next_overlay.set(Overlay::JoinDialog);
                 }
             }
@@ -188,17 +189,14 @@ pub fn gamelist_menu_action_system(
 
 pub fn update_games_list(
     _clicked: On<UpdateGamesList>,
-    state: Res<ClientBackend>,
+    lobby: Res<LobbyState>,
     mut commands: Commands,
     container_query: Query<Entity, With<GamesListContainer>>,
     children_query: Query<&Children, With<GamesListContainer>>,
 ) {
     // get the container where the game list is rendered into.
     // see menuroot.rs for this.
-    let container = match container_query.single() {
-        Ok(c) => c,
-        Err(_) => return,
-    };
+    let container = container_query.single().unwrap();
 
     // despawn previous game list
     if let Ok(children) = children_query.get(container) {
@@ -209,7 +207,7 @@ pub fn update_games_list(
 
     // render new game list
     commands.entity(container).with_children(|parent| {
-        for (gid, details) in &state.menu_state.games {
+        for (gid, details) in &lobby.games {
             let game_info = if let Some(d) = details {
                 // from the Client ID, get the name from the internal client list,
                 // otherwise use the ID as a fallback (should not happen tbh).
@@ -217,7 +215,7 @@ pub fn update_games_list(
                 // is connected to a game)
                 let white = d
                     .white_player
-                    .and_then(|id| state.menu_state.client_names.get(&id))
+                    .and_then(|id| lobby.client_names.get(&id))
                     .cloned()
                     .unwrap_or_else(|| {
                         d.white_player
@@ -227,7 +225,7 @@ pub fn update_games_list(
                 // ditto
                 let black = d
                     .black_player
-                    .and_then(|id| state.menu_state.client_names.get(&id))
+                    .and_then(|id| lobby.client_names.get(&id))
                     .cloned()
                     .unwrap_or_else(|| {
                         d.black_player

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fs::read_to_string;
 
+#[derive(Clone)]
 pub struct Config {
     pub server: String,
     pub name: String,

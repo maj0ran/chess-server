@@ -1,4 +1,4 @@
-use crate::backend::client::ClientBackend;
+use crate::backend::client::ClientRequest;
 use crate::ui::views::menuview::analysismenu::analysis_menu::{
     cleanup_analysis_menu, setup_analysis_menu,
 };
@@ -74,11 +74,10 @@ impl Plugin for MenuRootPlugin {
 
 pub fn setup_menu_root(
     mut commands: Commands,
-    state: Res<ClientBackend>,
     mut next_tab: ResMut<NextState<MenuTab>>,
     asset_server: Res<AssetServer>,
 ) {
-    state.network.send(ClientMessage::QueryGames);
+    commands.trigger(ClientRequest(ClientMessage::QueryGames));
 
     // set the current Tab manually so we trigger the logic for
     // the Games tab.

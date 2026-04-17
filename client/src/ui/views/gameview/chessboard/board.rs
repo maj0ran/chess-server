@@ -3,7 +3,7 @@ use super::assets::ChessAssets;
 use super::piece::ChessPiece;
 use super::square::ChessSquare;
 use super::*;
-use crate::backend::client::{BoardUpdate, ClientBackend};
+use crate::backend::client::{ActiveGame, BoardUpdate};
 use crate::ui::{COLOR_LIGHT2, COLOR_MID};
 use std::f32::consts::PI;
 
@@ -49,10 +49,10 @@ impl ChessBoard {
 pub fn draw_chessboard(
     _ev: On<GameScreenInitialized>,
     mut commands: Commands,
-    state: Res<ClientBackend>,
+    active_game: Res<ActiveGame>,
     query: Query<Entity, With<ChessboardContainer>>,
 ) {
-    let container = query.single().unwrap();
+    let container = query.single().expect("ChessboardContainer not found");
 
     commands
         .entity(container)
@@ -92,7 +92,7 @@ pub fn draw_chessboard(
             }
         });
 
-    if state.game_state.as_ref().unwrap().side == UserRoleSelection::Black {
+    if active_game.side == UserRoleSelection::Black {
         commands.trigger(RotateBoardEvent);
     }
 
@@ -106,14 +106,11 @@ pub fn draw_pieces(
     mut commands: Commands,
     assets: Res<ChessAssets>,
     squares: Query<(Entity, &ChessSquare)>,
-    backend: ResMut<ClientBackend>,
+    active_game: Res<ActiveGame>,
 ) {
-    let Some(game_state) = &backend.game_state else {
-        return;
-    };
-    let pieces = &game_state.internal_board;
+    let pieces = &active_game.internal_board;
 
-    let flipped = backend.game_state.as_ref().unwrap().side == UserRoleSelection::Black;
+    let flipped = active_game.side == UserRoleSelection::Black;
     // we iterate through all squares. We remove the piece on every square from
     // the previous draw, no matter what. Then we draw the current piece on the square.
     // TODO: this could be better by just updating those squares that have changed.

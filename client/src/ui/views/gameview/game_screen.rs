@@ -1,5 +1,5 @@
 use super::GameScreenComponent;
-use crate::backend::client::{ClientBackend, GameJoinedEvent};
+use crate::backend::client::GameJoinedEvent;
 
 use crate::ui::{Overlay, Screen};
 use bevy::prelude::*;
@@ -20,12 +20,10 @@ impl Plugin for GameScreenPlugin {
 }
 
 pub fn on_game_joined(
-    ev: On<GameJoinedEvent>,
+    _ev: On<GameJoinedEvent>,
     mut next_screen: ResMut<NextState<Screen>>,
     mut next_overlay: ResMut<NextState<Overlay>>,
-    mut backend: ResMut<ClientBackend>,
 ) {
-    backend.update_internal_board_from_fen(&ev.fen);
     next_screen.set(Screen::Game);
     next_overlay.set(Overlay::None);
 }
@@ -49,15 +47,10 @@ fn setup_gamescreen(mut commands: Commands) {
 }
 /// Despawn all entities that are part of the in-game screen.
 /// Obviously happens when we leave a game.
-fn cleanup_gamescreen(
-    mut commands: Commands,
-    query: Query<Entity, With<GameScreenComponent>>,
-    mut backend: ResMut<ClientBackend>,
-) {
+fn cleanup_gamescreen(mut commands: Commands, query: Query<Entity, With<GameScreenComponent>>) {
     for entity in query.iter() {
         commands.entity(entity).despawn();
     }
-    backend.game_state = None;
 }
 
 fn listen_keyboard_input(
