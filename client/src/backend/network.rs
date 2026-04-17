@@ -1,5 +1,4 @@
 use crate::backend::client::*;
-use crate::backend::config::*;
 use crate::ui::gamelist_menu::UpdateGamesList;
 
 use crate::backend::client::game::{
@@ -28,15 +27,9 @@ pub struct NetTransport {
 pub struct NetworkSend(pub ClientMessage);
 
 impl NetTransport {
-    pub fn new() -> Self {
-        let config = Config::read("settings.cfg");
-        Self::with_config(config)
-    }
-
-    pub fn with_config(config: Config) -> Self {
+    pub fn new(server_addr: String) -> Self {
         let (tx_to_server, rx_from_client) = smol::channel::unbounded();
         let (tx_to_client, rx_from_server) = smol::channel::unbounded();
-        let server_addr = config.server;
 
         std::thread::spawn(move || {
             match smol::block_on(network_thread(&server_addr, rx_from_client, tx_to_client)) {
@@ -110,7 +103,7 @@ pub fn poll_network(
     network: Res<NetTransport>,
     mut lobby: ResMut<LobbyState>,
     active_game: Option<ResMut<ActiveGame>>,
-    client_config: Res<ClientConfig>,
+    client_config: Res<ClientSession>,
 ) {
     let mut active_game = active_game;
     while let Ok(server_msg) = network.rx.try_recv() {

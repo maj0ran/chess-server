@@ -1,11 +1,5 @@
-use bevy::prelude::Resource;
 use std::collections::HashMap;
 use std::fs::read_to_string;
-
-#[derive(Resource)]
-pub struct ClientConfig {
-    pub name: String,
-}
 
 #[derive(Clone)]
 pub struct Config {
@@ -33,7 +27,7 @@ impl Config {
             server: settings
                 .get("server")
                 .cloned()
-                .unwrap_or_else(|| "127.0.0.1:8080".to_string()),
+                .unwrap_or_else(|| "127.0.0.1:7878".to_string()),
             name: settings
                 .get("name")
                 .cloned()

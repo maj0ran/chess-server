@@ -34,8 +34,6 @@ fn on_resize_system(
 fn main() {
     env_logger::init();
 
-    let config = backend::config::Config::read("settings.cfg");
-
     App::new()
         .add_plugins((
             // always needed
