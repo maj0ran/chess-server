@@ -1,7 +1,5 @@
-use crate::backend::client::{
-    ActiveGame, BoardUpdate, ClientConfig, GameDetails, GameJoinedEvent, GameOverEvent, LobbyState,
-};
-use crate::backend::config::Config;
+use crate::backend::client::*;
+use crate::backend::config::*;
 use crate::ui::gamelist_menu::UpdateGamesList;
 
 use bevy::prelude::*;

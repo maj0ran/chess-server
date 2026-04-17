@@ -24,7 +24,7 @@ pub struct ClientConfig {
     pub name: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug)]
 pub struct GameDetails {
     pub white_player: Option<usize>,
     pub black_player: Option<usize>,

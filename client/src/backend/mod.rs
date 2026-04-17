@@ -1,7 +1,6 @@
-use crate::backend::client::{ClientConfig, LobbyState};
-use crate::backend::config::Config;
-use crate::backend::network::{NetTransport, poll_network, send_message};
-use bevy::app::{App, Plugin};
+use super::backend::network::*;
+use crate::backend::client::*;
+use crate::backend::config::*;
 use bevy::prelude::*;
 
 pub mod client;
