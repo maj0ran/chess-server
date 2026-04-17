@@ -1,4 +1,4 @@
-use crate::backend::client::ClientRequest;
+use crate::backend::network::NetworkSend;
 use crate::ui::Overlay;
 use bevy::prelude::*;
 use bevy_flair::prelude::*;
@@ -64,7 +64,7 @@ pub fn create_dialog_action_system(
         if *interaction == Interaction::Pressed {
             match action {
                 CreateAction::Confirm => {
-                    commands.trigger(ClientRequest(ClientMessage::NewGame(NewGameParams {
+                    commands.trigger(NetworkSend(ClientMessage::NewGame(NewGameParams {
                         mode: 0,
                         time: 600,
                         time_inc: 10,

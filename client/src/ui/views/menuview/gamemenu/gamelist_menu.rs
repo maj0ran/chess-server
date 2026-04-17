@@ -1,4 +1,5 @@
-use crate::backend::client::{ClientRequest, LobbyState};
+use crate::backend::client::LobbyState;
+use crate::backend::network::NetworkSend;
 use crate::ui::Overlay;
 use crate::ui::views::menuview::MenuTabComponent;
 use crate::ui::views::menuview::menuroot::MenuTabContainer;
@@ -176,7 +177,7 @@ pub fn gamelist_menu_action_system(
                     next_overlay.set(Overlay::CreateDialog);
                 }
                 MenuAction::ListGames => {
-                    commands.trigger(ClientRequest(ClientMessage::QueryGames));
+                    commands.trigger(NetworkSend(ClientMessage::QueryGames));
                 }
                 MenuAction::JoinGame(gid) => {
                     lobby.pending_join_game = Some(*gid);

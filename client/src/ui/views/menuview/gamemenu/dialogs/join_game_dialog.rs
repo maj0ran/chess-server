@@ -1,4 +1,5 @@
-use crate::backend::client::{ClientRequest, LobbyState};
+use crate::backend::client::LobbyState;
+use crate::backend::network::NetworkSend;
 use crate::ui::Overlay;
 use bevy::prelude::*;
 use bevy_flair::prelude::*;
@@ -92,7 +93,7 @@ pub fn join_dialog_action_system(
             match action {
                 JoinAction::Select(side) => {
                     if let Some(gid) = lobby.pending_join_game {
-                        commands.trigger(ClientRequest(ClientMessage::JoinGame(JoinGameParams {
+                        commands.trigger(NetworkSend(ClientMessage::JoinGame(JoinGameParams {
                             game_id: gid,
                             side: side.clone(),
                         })));

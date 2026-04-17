@@ -1,8 +1,6 @@
 use crate::backend::client::{ClientConfig, LobbyState};
 use crate::backend::config::Config;
-use crate::backend::network::{
-    NetTransport, handle_client_requests, on_move_request, poll_network,
-};
+use crate::backend::network::{NetTransport, poll_network, send_message};
 use bevy::app::{App, Plugin};
 use bevy::prelude::*;
 
@@ -21,7 +19,6 @@ impl Plugin for ClientPlugin {
 
         app.add_systems(FixedUpdate, poll_network);
         app.insert_resource(Time::<Fixed>::from_hz(30.0)); // FixedUpdate tick-rate
-        app.add_observer(on_move_request);
-        app.add_observer(handle_client_requests);
+        app.add_observer(send_message);
     }
 }

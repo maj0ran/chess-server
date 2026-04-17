@@ -1,4 +1,4 @@
-use crate::backend::client::ClientRequest;
+use crate::backend::network::NetworkSend;
 use crate::ui::views::menuview::analysismenu::analysis_menu::{
     cleanup_analysis_menu, setup_analysis_menu,
 };
@@ -77,7 +77,7 @@ pub fn setup_menu_root(
     mut next_tab: ResMut<NextState<MenuTab>>,
     asset_server: Res<AssetServer>,
 ) {
-    commands.trigger(ClientRequest(ClientMessage::QueryGames));
+    commands.trigger(NetworkSend(ClientMessage::QueryGames));
 
     // set the current Tab manually so we trigger the logic for
     // the Games tab.

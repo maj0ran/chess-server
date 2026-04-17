@@ -1,4 +1,4 @@
-use crate::backend::client::ClientRequest;
+use crate::backend::network::NetworkSend;
 use crate::ui::{Overlay, Screen};
 use bevy::prelude::*;
 use bevy_flair::prelude::*;
@@ -75,7 +75,7 @@ pub fn quit_game_dialog_action_system(
         if *interaction == Interaction::Pressed {
             match action {
                 QuitGameAction::Confirm => {
-                    commands.trigger(ClientRequest(ClientMessage::LeaveGame));
+                    commands.trigger(NetworkSend(ClientMessage::LeaveGame));
                     next_screen.set(Screen::Menu);
                     next_overlay.set(Overlay::None);
                 }

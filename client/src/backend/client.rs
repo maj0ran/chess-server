@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 use chess_core::GameId;
 use chess_core::protocol::UserRoleSelection;
-use chess_core::protocol::messages::ClientMessage;
 use chess_core::states::GameOverReason;
 use std::collections::HashMap;
 
@@ -24,9 +23,6 @@ pub struct GameOverEvent {
 pub struct ClientConfig {
     pub name: String,
 }
-
-#[derive(Event)]
-pub struct ClientRequest(pub ClientMessage);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GameDetails {

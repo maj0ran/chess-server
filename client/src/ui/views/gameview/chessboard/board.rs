@@ -7,12 +7,15 @@ use crate::backend::client::{ActiveGame, BoardUpdate};
 use crate::ui::{COLOR_LIGHT2, COLOR_MID};
 use std::f32::consts::PI;
 
+use crate::backend::network::NetworkSend;
 use crate::ui::views::gameview::game_screen::{
     ChessboardContainer, DESTINATION_COLOR, GameScreenInitialized, SOURCE_COLOR,
 };
 use bevy::color::Color;
 use bevy::math::{Vec2, Vec3};
 use chess_core::protocol::UserRoleSelection;
+use chess_core::protocol::messages::ClientMessage;
+use chess_core::{ChessMove, Tile};
 
 /// Event from the backend that is triggered when the server has accepted or rejected a move.
 #[derive(Event)]
@@ -237,6 +240,23 @@ pub fn reset_selections(
     // that would call handle_move again.
     src.bypass_change_detection().entity = None;
     dst.bypass_change_detection().entity = None;
+}
+
+pub fn on_move_request(ev: On<RequestMove>, mut commands: Commands, active_game: Res<ActiveGame>) {
+    let src = Tile::from(ev.source.as_str());
+    let dst = Tile::from(ev.destination.as_str());
+    let promotion = ev.promotion;
+    let game_id = active_game.gid;
+
+    commands.trigger(NetworkSend(ClientMessage::Move(
+        game_id,
+        ChessMove {
+            src,
+            dst,
+            special: promotion,
+        },
+    )));
+    commands.trigger(ResetSelection);
 }
 
 pub fn on_resize_board(
