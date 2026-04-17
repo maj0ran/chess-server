@@ -61,47 +61,39 @@ impl NetworkInterface {
 /// resp_tx is the sender to the UI and used for the receiver-client.
 pub async fn network_thread(
     addr: &str,
-    cmd_rx: Receiver<ClientMessage>,
-    resp_tx: Sender<ServerMessage>,
+    rx_from_client: Receiver<ClientMessage>,
+    tx_to_client: Sender<ServerMessage>,
 ) -> NetResult<()> {
     let stream = TcpStream::connect(addr).await?;
     let conn = Connection::new(stream);
 
     log::info!("Network thread started");
 
-    let transmit_conn = conn.clone();
+    let mut transmit_conn = conn.clone();
     std::thread::spawn(move || {
-        smol::block_on(transmit_thread(transmit_conn, cmd_rx));
+        smol::block_on(async move {
+            while let Ok(cmd) = rx_from_client.recv().await {
+                if let Err(e) = transmit_conn.write_out(&cmd.to_bytes()).await {
+                    log::error!("Failed to send command to server: {}", e);
+                }
+            }
+            log::info!("Transmit thread shutting down");
+        });
     });
 
-    let receive_conn = conn;
+    let mut receive_conn = conn;
     std::thread::spawn(move || {
-        smol::block_on(receive_thread(receive_conn, resp_tx));
+        smol::block_on(async move {
+            while let Ok(server_msg) = receive_conn.read_msg::<ServerMessage>().await {
+                if tx_to_client.send(server_msg).await.is_err() {
+                    log::error!("Failed to send event to UI");
+                }
+            }
+            log::info!("Receive thread shutting down");
+        });
     });
 
     Ok(())
-}
-
-/// Receives commands from the UI and transmits them to the server
-/// cmd_rx it the Receiver channel UI -> Client
-pub async fn transmit_thread(mut conn: Connection, cmd_rx: Receiver<ClientMessage>) {
-    while let Ok(cmd) = cmd_rx.recv().await {
-        if let Err(e) = conn.write_out(&cmd.to_bytes()).await {
-            log::error!("Failed to send command to server: {}", e);
-        }
-    }
-    log::info!("Transmit thread shutting down");
-}
-
-/// Receive `ServerMessage` from the server and forward it to the network system (poll_network).
-/// `msg_tx` is the Sender channel to the main thread.
-pub async fn receive_thread(mut conn: Connection, msg_tx: Sender<ServerMessage>) {
-    while let Ok(server_msg) = conn.read_msg::<ServerMessage>().await {
-        if msg_tx.send(server_msg).await.is_err() {
-            log::error!("Failed to send event to UI");
-        }
-    }
-    log::info!("Receive thread shutting down");
 }
 
 /// The network main thread that receives messages from the receive-thread and reacts by sending
