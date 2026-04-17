@@ -6,6 +6,7 @@ use crate::ui::views::menuview::menuroot::MenuTabContainer;
 use bevy::prelude::*;
 use bevy::ui_widgets::{ControlOrientation, CoreScrollbarThumb, Scrollbar};
 use bevy_flair::prelude::*;
+use chess_core::ClientId;
 use chess_core::protocol::messages::ClientMessage;
 
 pub struct MenuPlugin;
@@ -215,34 +216,34 @@ pub fn update_games_list(
 
     // render new game list
     commands.entity(container).with_children(|parent| {
-        for (gid, details) in &lobby.games {
-            let game_info = if let Some(d) = details {
+        for (gid, details) in lobby.get_games().iter() {
+            let game_info = {
                 // from the Client ID, get the name from the internal client list,
                 // otherwise use the ID as a fallback (should not happen tbh).
                 // finally, use "-" if both are missing. (this just means that no player
                 // is connected to a game)
-                let white = d
+                let white = details
                     .white_player
-                    .and_then(|id| lobby.client_names.get(&id))
+                    .and_then(|id| lobby.get_client_info(id))
                     .cloned()
                     .unwrap_or_else(|| {
-                        d.white_player
-                            .map(|id| id.to_string())
+                        details
+                            .white_player
+                            .map(|id: ClientId| id.to_string())
                             .unwrap_or("-".to_string())
                     });
                 // ditto
-                let black = d
+                let black = details
                     .black_player
-                    .and_then(|id| lobby.client_names.get(&id))
+                    .and_then(|id| lobby.get_client_info(id))
                     .cloned()
                     .unwrap_or_else(|| {
-                        d.black_player
-                            .map(|id| id.to_string())
+                        details
+                            .black_player
+                            .map(|id: ClientId| id.to_string())
                             .unwrap_or("-".to_string())
                     });
                 format!("White: {} | Black: {}", white, black)
-            } else {
-                "Loading details...".to_string()
             };
 
             parent.spawn((

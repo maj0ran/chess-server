@@ -4,10 +4,10 @@ use crate::ui::gamelist_menu::UpdateGamesList;
 use crate::client::game::{ActiveGame, BoardUpdate, GameDetails, GameJoinedEvent, GameOverEvent};
 use crate::client::lobby::LobbyState;
 use bevy::prelude::*;
+use chess_core::NetResult;
 use chess_core::net::connection::Connection;
 use chess_core::protocol::messages::{ClientMessage, ServerMessage};
 use chess_core::protocol::parser::NetMessage;
-use chess_core::{GameId, NetResult};
 use smol::channel::{Receiver, Sender};
 use smol::net::TcpStream;
 use std::collections::HashMap;
@@ -110,12 +110,9 @@ pub fn poll_network(
         match server_msg {
             ServerMessage::GamesList(games) => {
                 // After receiving a list of games, we instantly ask for the details of each game.
-                let mut games_map: HashMap<GameId, Option<GameDetails>> = HashMap::new();
                 for &gid in &games {
                     commands.trigger(NetworkSend(ClientMessage::QueryGameDetails(gid)));
-                    games_map.insert(gid, None);
                 }
-                lobby.games = games_map;
             }
             // A new game has been created, we query for a new games list.
             // TODO: could just query the details of the new game and update the internal list.
@@ -170,16 +167,15 @@ pub fn poll_network(
                     _time: time,
                     _time_inc: inc,
                 };
-                if lobby.games.contains_key(&gid) {
-                    lobby.games.insert(gid, Some(game_details));
-                }
+                lobby.update_game_info(gid, game_details);
+
                 if let Some(wid) = white_id {
-                    if !lobby.client_names.contains_key(&wid) {
+                    if !lobby.has_client_info(wid) {
                         commands.trigger(NetworkSend(ClientMessage::QueryClientDetails(wid)));
                     }
                 }
                 if let Some(bid) = black_id {
-                    if !lobby.client_names.contains_key(&bid) {
+                    if !lobby.has_client_info(bid) {
                         commands.trigger(NetworkSend(ClientMessage::QueryClientDetails(bid)));
                     }
                 }
@@ -189,7 +185,7 @@ pub fn poll_network(
 
             // We received information of another client
             ServerMessage::ClientDetails(cid, name) => {
-                lobby.client_names.insert(cid, name);
+                lobby.update_client_info(cid, name);
                 commands.trigger(UpdateGamesList);
             }
 
