@@ -1,4 +1,4 @@
-use crate::backend::network::NetworkSend;
+use crate::client::network::NetworkSend;
 use crate::ui::views::menuview::analysismenu::analysis_menu::{
     cleanup_analysis_menu, setup_analysis_menu,
 };

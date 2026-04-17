@@ -1,5 +1,5 @@
-use crate::backend::client::lobby::LobbyState;
-use crate::backend::network::NetworkSend;
+use crate::client::lobby::LobbyState;
+use crate::client::network::NetworkSend;
 use crate::ui::Overlay;
 use crate::ui::views::menuview::MenuTabComponent;
 use crate::ui::views::menuview::menuroot::MenuTabContainer;

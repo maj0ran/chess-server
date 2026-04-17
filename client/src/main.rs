@@ -1,4 +1,4 @@
-pub mod backend;
+pub mod client;
 pub mod ui;
 
 use bevy::prelude::*;
@@ -9,7 +9,7 @@ use bevy_flair::prelude::*;
 use ui::COLOR_DARK;
 
 use crate::ui::{MenuTab, Overlay, Screen};
-use backend::ClientPlugin;
+use client::ClientPlugin;
 use ui::views::gameview::chessboard::ChessboardPlugin;
 use ui::views::gameview::game_screen::GameScreenPlugin;
 use ui::views::menuview::menuroot::MenuRootPlugin;

@@ -1,4 +1,4 @@
-use crate::backend::client::game::GameOverEvent;
+use crate::client::game::GameOverEvent;
 use crate::ui::{Overlay, Screen};
 use bevy::prelude::*;
 use bevy_flair::prelude::*;

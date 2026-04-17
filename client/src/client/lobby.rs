@@ -1,4 +1,4 @@
-use crate::backend::client::game::GameDetails;
+use crate::client::game::GameDetails;
 use bevy::prelude::Resource;
 use chess_core::GameId;
 use std::collections::HashMap;

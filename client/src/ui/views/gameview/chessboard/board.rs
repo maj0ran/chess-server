@@ -3,11 +3,11 @@ use super::assets::ChessAssets;
 use super::piece::ChessPiece;
 use super::square::ChessSquare;
 use super::*;
-use crate::backend::client::game::{ActiveGame, BoardUpdate};
+use crate::client::game::{ActiveGame, BoardUpdate};
 use crate::ui::{COLOR_LIGHT2, COLOR_MID};
 use std::f32::consts::PI;
 
-use crate::backend::network::NetworkSend;
+use crate::client::network::NetworkSend;
 use crate::ui::views::gameview::game_screen::{
     ChessboardContainer, DESTINATION_COLOR, GameScreenInitialized, SOURCE_COLOR,
 };
@@ -17,7 +17,7 @@ use chess_core::protocol::UserRoleSelection;
 use chess_core::protocol::messages::ClientMessage;
 use chess_core::{ChessMove, Tile};
 
-/// Event from the backend that is triggered when the server has accepted or rejected a move.
+/// Event from the client that is triggered when the server has accepted or rejected a move.
 #[derive(Event)]
 pub struct ResetSelection;
 /// Event for rotating the board if the player is black
@@ -102,7 +102,7 @@ pub fn draw_chessboard(
     commands.trigger(BoardUpdate);
 }
 
-/// Triggered on `BoardUpdate` event which is sent by the backend when it receives an update from the server.
+/// Triggered on `BoardUpdate` event which is sent by the client when it receives an update from the server.
 /// Draws all pieces according to the internal board state.
 pub fn draw_pieces(
     _board_update: On<BoardUpdate>,
@@ -136,8 +136,8 @@ pub fn draw_pieces(
 /// Observer that is connected to each square. It is triggered when the square is clicked.
 /// This adds the clicked square to the global resource for either source or destination selection
 /// and colors the square accordingly. If both, source and destination, is selected after the click,
-/// a `RequestMove` event is triggered that is caught by the backend to send the move to the server.
-/// When the backend receives the answer to the move (accepted or rejected), it will again trigger an event
+/// a `RequestMove` event is triggered that is caught by the client to send the move to the server.
+/// When the client receives the answer to the move (accepted or rejected), it will again trigger an event
 /// that is caught by `reset_selections` (below) to undo the coloring.
 pub fn select_square(
     ev: On<Pointer<Press>>,
@@ -165,7 +165,7 @@ pub fn select_square(
 /// Which happens after the user clicks two squares on the chessboard.
 /// Here we construct the move from the selected squares. There are two cases:
 ///     - A normal move like d4d5, which will trigger the `RequestMove` event to send the move
-/// to the backend.
+/// to the client.
 ///     - A promotion move that happens when a pawn moves on the last rank. This will store the move
 /// in the `PendingMove` resource and sets `Overlay::Promotion`, which will spawn the promotion dialog.
 /// When a promotion button on this dialog is clicked, it will load the `PendingMove` resource. There, we
@@ -202,7 +202,7 @@ pub fn handle_move(
             commands.insert_resource(pending_move);
             next_overlay.set(Overlay::Promotion);
         } else {
-            // ...otherwise, it's a normal move, so we can send the move to the backend directly.
+            // ...otherwise, it's a normal move, so we can send the move to the client directly.
             commands.trigger(RequestMove {
                 source: src_sq.name.clone(),
                 destination: dst_sq.name.clone(),
@@ -215,8 +215,8 @@ pub fn handle_move(
     }
 }
 
-/// Triggered by the backend when it receives a response on a move request.
-/// I.e., the backend sends a move to the server, waits for a response, and on the response,
+/// Triggered by the client when it receives a response on a move request.
+/// I.e., the client sends a move to the server, waits for a response, and on the response,
 /// it sends back an event here to reset the selection.
 pub fn reset_selections(
     _ev: On<ResetSelection>,

@@ -1,10 +1,8 @@
-use crate::backend::client::*;
+use crate::client::session::*;
 use crate::ui::gamelist_menu::UpdateGamesList;
 
-use crate::backend::client::game::{
-    ActiveGame, BoardUpdate, GameDetails, GameJoinedEvent, GameOverEvent,
-};
-use crate::backend::client::lobby::LobbyState;
+use crate::client::game::{ActiveGame, BoardUpdate, GameDetails, GameJoinedEvent, GameOverEvent};
+use crate::client::lobby::LobbyState;
 use bevy::prelude::*;
 use chess_core::net::connection::Connection;
 use chess_core::protocol::messages::{ClientMessage, ServerMessage};
@@ -16,15 +14,15 @@ use std::collections::HashMap;
 
 /// `NetTransport` is the interface to networking.
 /// it holds the tx/rx channels to communicate from the transmit/receive threads to the main/bevy thread.
+/// This is basically the mediator between the client and the network thread. On the one side,
+/// `network_thread()` is using this resource to put messages from the remote server into it and receive
+/// messages from the client from it to send them to the remote server.
+/// On the other side, the client systems are using this resource to send messages to the network thread.
 #[derive(Resource)]
 pub struct NetTransport {
     tx: Sender<ClientMessage>,
     rx: Receiver<ServerMessage>,
 }
-
-/// Event that can be used by all parts of the client to send a message to the network thread.
-#[derive(Event)]
-pub struct NetworkSend(pub ClientMessage);
 
 impl NetTransport {
     pub fn new(server_addr: String) -> Self {
@@ -209,6 +207,10 @@ pub fn poll_network(
         }
     }
 }
+
+/// Event that can be used by all parts of the client to send a message to the network thread.
+#[derive(Event)]
+pub struct NetworkSend(pub ClientMessage);
 
 /// Put a `ClientMessage` on `NetTransport`. The network thread will automatically
 /// forward this message to the external server.

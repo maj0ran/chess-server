@@ -1,12 +1,14 @@
-use super::backend::network::*;
-use crate::backend::client::lobby::LobbyState;
-use crate::backend::config::*;
+use super::client::network::*;
+use crate::client::config::*;
 use bevy::prelude::*;
-use client::ClientSession;
+use lobby::LobbyState;
+use session::ClientSession;
 
-pub mod client;
 pub mod config;
+pub mod game;
+pub mod lobby;
 pub mod network;
+pub mod session;
 
 pub struct ClientPlugin;
 

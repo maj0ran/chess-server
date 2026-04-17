@@ -42,7 +42,7 @@ pub struct PendingMove {
     pub dst: String,
 }
 
-/// Event to send the selected source and destination squares to the backend.
+/// Event to send the selected source and destination squares to the client.
 #[derive(Event)]
 pub struct RequestMove {
     pub source: String,
