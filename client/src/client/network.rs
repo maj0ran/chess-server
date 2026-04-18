@@ -108,9 +108,11 @@ pub fn poll_network(
         log::debug!("Received server message: {:?}", server_msg);
 
         match server_msg {
-            ServerMessage::GamesList(games) => {
+            ServerMessage::GamesList(mut games) => {
+                // clear old games lsit
+                lobby.clear_games();
                 // After receiving a list of games, we instantly ask for the details of each game.
-                for &gid in &games {
+                for &mut gid in &mut games {
                     commands.trigger(NetworkSend(ClientMessage::QueryGameDetails(gid)));
                 }
             }

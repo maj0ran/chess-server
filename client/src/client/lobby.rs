@@ -15,6 +15,10 @@ impl LobbyState {
         &self.games
     }
 
+    pub fn clear_games(&mut self) {
+        self.games.clear();
+    }
+
     pub fn get_game_info(&self, gid: GameId) -> Option<&GameDetails> {
         self.games.get(&gid)
     }
