@@ -11,7 +11,6 @@ pub struct BoardUpdate;
 pub struct GameJoinedEvent {
     pub gid: GameId,
     pub side: UserRoleSelection,
-    pub fen: String,
 }
 
 #[derive(Event)]

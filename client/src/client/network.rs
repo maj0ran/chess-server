@@ -121,7 +121,7 @@ pub fn poll_network(
             }
 
             // We successfully joined a game, update the chessboard of the game
-            ServerMessage::GameJoined(gid, _cid, side, fen) => {
+            ServerMessage::GameJoined(gid, _cid, side) => {
                 // HINT: we only receive this message for our own client, not when someone
                 // else joined. This is a TODO on the server.
                 // once we change the behavior of the server, we also have to add additional
@@ -131,10 +131,10 @@ pub fn poll_network(
                     side,
                     internal_board: HashMap::new(),
                 };
-                game.update_internal_board_from_fen(&fen);
                 commands.insert_resource(game);
+                commands.trigger(GameJoinedEvent { gid, side });
 
-                commands.trigger(GameJoinedEvent { gid, side, fen });
+                commands.trigger(NetworkSend(ClientMessage::QueryBoard(gid)));
             }
 
             // A piece in the current game has been moved.

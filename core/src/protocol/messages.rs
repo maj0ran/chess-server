@@ -60,7 +60,7 @@ impl fmt::Display for ClientMessage {
 pub enum ServerMessage {
     MoveAccepted(u8, String, Vec<(Tile, Option<WoodPiece>)>), // len(SAN), SAN, [updates tiles]
     GameCreated(GameId, ClientId),
-    GameJoined(GameId, ClientId, UserRoleSelection, String),
+    GameJoined(GameId, ClientId, UserRoleSelection),
     GameLeft(GameId, ClientId),
     IllegalMove(ChessError),
     GamesList(Vec<GameId>),
@@ -73,7 +73,7 @@ pub enum ServerMessage {
 
 impl ServerMessage {
     pub const GAME_CREATED: u8 = 0x81;
-    pub const JOIN_GAME: u8 = 0x82;
+    pub const GAME_JOINED: u8 = 0x82;
     pub const GAME_LEFT: u8 = 0x84;
     pub const MOVE_ACCEPTED: u8 = 0x83;
     pub const ILLEGAL_MOVE: u8 = 0x85;
@@ -87,7 +87,7 @@ impl ServerMessage {
     pub fn opcode(&self) -> u8 {
         match self {
             ServerMessage::GameCreated(_, _) => Self::GAME_CREATED,
-            ServerMessage::GameJoined(_, _, _, _) => Self::JOIN_GAME,
+            ServerMessage::GameJoined(_, _, _) => Self::GAME_JOINED,
             ServerMessage::MoveAccepted(_, _, _) => Self::MOVE_ACCEPTED,
             ServerMessage::IllegalMove(_) => Self::ILLEGAL_MOVE,
             ServerMessage::GamesList(_) => Self::GAMES_LIST,

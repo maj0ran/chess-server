@@ -153,13 +153,12 @@ impl GameManager {
                 .games
                 .get_mut(&gid)
                 .ok_or(GameManagerError::GameNotFound(gid))?;
-            game.add_player(cid, side)
-                .map(|side| (side, game.chess.get_fen()))
+            game.add_player(cid, side).map(|side| side)
         })();
 
         match res {
-            Ok((side, fen)) => {
-                let response = ServerMessage::GameJoined(gid, cid, side, fen);
+            Ok(side) => {
+                let response = ServerMessage::GameJoined(gid, cid, side);
                 if let Some(c) = self.clients.get_mut(&cid) {
                     let _ = c.tx.send(response).await;
                     c.in_game = Some(gid);

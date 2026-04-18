@@ -152,12 +152,11 @@ impl NetMessage for ServerMessage {
                 let cid = reader.read_u32_le()? as usize;
                 Ok(ServerMessage::GameCreated(gid, cid))
             }
-            Self::JOIN_GAME => {
+            Self::GAME_JOINED => {
                 let gid = reader.read_u32_le()?;
                 let cid = reader.read_u32_le()? as usize;
                 let side = UserRoleSelection::from_u8(reader.read_u8()?);
-                let fen = String::from_utf8_lossy(reader.remaining()).to_string();
-                Ok(ServerMessage::GameJoined(gid, cid, side, fen))
+                Ok(ServerMessage::GameJoined(gid, cid, side))
             }
             Self::ILLEGAL_MOVE => {
                 let err = ChessError::from_bytes(reader.remaining()).map_err(|e| {
@@ -275,12 +274,11 @@ impl NetMessage for ServerMessage {
                 data.extend_from_slice(&(*cid as u32).to_le_bytes());
                 data
             }
-            ServerMessage::GameJoined(gid, cid, side, fen) => {
-                let mut data = vec![Self::JOIN_GAME];
+            ServerMessage::GameJoined(gid, cid, side) => {
+                let mut data = vec![Self::GAME_JOINED];
                 data.extend_from_slice(&gid.to_le_bytes());
                 data.extend_from_slice(&(*cid as u32).to_le_bytes());
                 data.push(*side as u8);
-                data.extend_from_slice(fen.as_bytes());
                 data
             }
             ServerMessage::GamesList(game_ids) => {

@@ -80,7 +80,7 @@ impl TestClient {
 
         loop {
             match self.conn.read_msg::<ServerMessage>().await {
-                Ok(ServerMessage::GameJoined(_, _, _, _)) => return,
+                Ok(ServerMessage::GameJoined(_, _, _)) => return,
                 Ok(_) => {}
                 Err(e) => panic!("Error joining game: {:?}", e),
             }
