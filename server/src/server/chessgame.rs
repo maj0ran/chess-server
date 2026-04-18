@@ -20,7 +20,7 @@ pub struct ChessGame {
     pub _time: u32,
     pub _time_inc: u32,
 
-    pub move_history: Vec<ChessMove>,
+    pub move_history: Vec<String>,
 }
 
 impl ChessGame {

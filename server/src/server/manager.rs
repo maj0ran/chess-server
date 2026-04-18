@@ -212,7 +212,9 @@ impl GameManager {
                 return;
             }
         };
+
         // convert `ChessMove` to SAN notation to send it back to the client.
+        // we have to make this conversion before make_move() as we need the current board state
         let san = mov.to_san(&game.chess);
         let san_len = san.len() as u8;
 
@@ -220,7 +222,7 @@ impl GameManager {
             // a legal move was made and accepted.
             // Update move history and send the updated squares to all clients in the game.
             Ok(changes) => {
-                game.move_history.push(mov);
+                game.move_history.push(san.clone());
 
                 // convert `Piece` to `WoodPiece`. A `Piece` includes all the server side logic for
                 // movement, which the client should not need to know about. A `WoodPiece` is merely
@@ -329,6 +331,16 @@ impl GameManager {
         }
     }
 
+    /// The client asked for the current board state. (FEN)
+    async fn handle_query_board(&self, cid: ClientId, gid: GameId) {
+        if let Some(game) = self.games.get(&gid) {
+            if let Some(c) = self.clients.get(&cid) {
+                let fen = game.chess.get_fen();
+                let _ = c.tx.send(ServerMessage::BoardState(gid, fen)).await;
+            }
+        }
+    }
+
     /// save a game to disk.
     pub async fn save_game(&self, game: &ChessGame) -> std::io::Result<()> {
         let date = Utc::now().format("%Y-%m-%d_%H-%M-%S").to_string();
@@ -342,21 +354,20 @@ impl GameManager {
 
         let filename = format!("{}-vs-{}_{}.txt", white, black, date);
         let mut file = File::create(filename).await?;
+
+        let mut fullmove = false;
         for mov in game.move_history.iter() {
             file.write_all(mov.to_string().as_bytes()).await?;
-            file.write_all(b"\n").await?;
+            if !fullmove {
+                file.write_all(b" ").await?;
+                fullmove = true;
+            } else {
+                file.write_all(b"\n").await?;
+                fullmove = false;
+            }
         }
         file.sync_all().await?;
 
         Ok(())
-    }
-
-    async fn handle_query_board(&self, cid: ClientId, gid: GameId) {
-        if let Some(game) = self.games.get(&gid) {
-            if let Some(c) = self.clients.get(&cid) {
-                let fen = game.chess.get_fen();
-                let _ = c.tx.send(ServerMessage::BoardState(gid, fen)).await;
-            }
-        }
     }
 }
