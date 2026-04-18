@@ -6,6 +6,9 @@ A chess program as a client-server architecture. The server is responsible for a
 
 Could evolve in either a small-sized online chess or a chess analysis software if I will ever care enough.
 
+![menu](docs/client.png)
+![server](docs/server.png)
+
 ### Done:
 
 - [x] Client-Server Architecture:
