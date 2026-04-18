@@ -4,6 +4,7 @@ use crate::client::lobby::LobbyState;
 use crate::ui::views::gameview::chessboard::board::{ChessBoard, RotateBoardEvent};
 use crate::ui::{Overlay, Screen};
 use bevy::prelude::*;
+use bevy::text::TextBounds;
 use std::f32::consts::PI;
 
 pub const SOURCE_COLOR: Color = Color::srgb_u8(250, 113, 113);
@@ -29,6 +30,7 @@ impl Plugin for GameScreenPlugin {
             )
             .add_observer(on_game_joined)
             .add_observer(on_rotate)
+            .add_observer(update_move_history)
             .add_systems(Update, on_resize.run_if(in_state(Screen::Game)));
     }
 }
@@ -49,9 +51,13 @@ pub struct GameScreenContainer;
 
 #[derive(Component)]
 pub struct WhitePlayerLabel;
-
 #[derive(Component)]
 pub struct BlackPlayerLabel;
+
+#[derive(Component)]
+pub struct MoveHistory;
+#[derive(Event)]
+pub struct MoveHistoryUpdated;
 
 #[derive(Event)]
 pub struct GameScreenInitialized;
@@ -75,6 +81,16 @@ fn setup_gamescreen(mut commands: Commands) {
                 BlackPlayerLabel,
                 Text2d::new("Waiting for Black..."),
                 Transform::from_xyz(0.0, 450.0, 1.0)
+            ),
+            (
+                MoveHistory,
+                Text2d::new(""),
+                TextLayout {
+                    justify: Justify::Justified,
+                    ..default()
+                },
+                TextBounds::new(300.0, 800.0),
+                Transform::from_xyz(600.0, 0.0, 1.0)
             )
         ],
     ));
@@ -138,6 +154,23 @@ fn update_player_names(
         if black_text.0 != name {
             log::debug!("Updating black player name to {}", name);
             black_text.0 = name;
+        }
+    }
+}
+
+fn update_move_history(
+    _ev: On<MoveHistoryUpdated>,
+    mut query_display: Query<&mut Text2d, With<MoveHistory>>,
+    history: ResMut<ActiveGame>,
+) {
+    if let Ok(mut text) = query_display.single_mut() {
+        let last_move = &history.move_history.last().unwrap();
+        text.0.push_str(&format!("{} ", last_move));
+        if &history.move_history.len() % 2 == 0 {
+            text.0.push_str("\n");
+        } else {
+            let spacing = " ".repeat(10 - last_move.len());
+            text.0.push_str(&spacing);
         }
     }
 }

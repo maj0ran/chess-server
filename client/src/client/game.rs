@@ -1,3 +1,4 @@
+use crate::ui::views::gameview::game_screen::MoveHistory;
 use bevy::prelude::{Event, Resource};
 use chess_core::protocol::UserRoleSelection;
 use chess_core::states::GameOverReason;
@@ -32,6 +33,8 @@ pub struct ActiveGame {
     pub side: UserRoleSelection,
     pub internal_board: HashMap<String, char>,
     pub game_info: GameDetails,
+
+    pub move_history: Vec<String>,
 }
 
 impl ActiveGame {

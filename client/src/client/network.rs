@@ -3,6 +3,7 @@ use crate::ui::gamelist_menu::UpdateGamesList;
 
 use crate::client::game::{ActiveGame, BoardUpdate, GameDetails, GameJoinedEvent, GameOverEvent};
 use crate::client::lobby::LobbyState;
+use crate::ui::views::gameview::game_screen::MoveHistoryUpdated;
 use bevy::prelude::*;
 use chess_core::NetResult;
 use chess_core::net::connection::Connection;
@@ -122,30 +123,37 @@ pub fn poll_network(
                 commands.trigger(NetworkSend(ClientMessage::QueryGames));
             }
 
-            // We successfully joined a game, update the chessboard of the game
+            // We successfully joined a game
             ServerMessage::GameJoined(gid, _cid, side) => {
                 // HINT: we only receive this message for our own client, not when someone
                 // else joined. This is a TODO on the server.
                 // once we change the behavior of the server, we also have to add additional
                 // logic here to handle the case when someone else joins.
 
+                // we just joined the game, so we have to refresh the game details to see ourselves.
                 commands.trigger(NetworkSend(ClientMessage::QueryGameDetails(gid)));
+                // copy the game info from the lobby into the active game resource.
                 let game_info = lobby.get_game_info(gid).copied().unwrap();
                 let game = ActiveGame {
                     gid,
                     side,
                     internal_board: HashMap::new(),
                     game_info,
+
+                    move_history: Vec::new(),
                 };
                 commands.insert_resource(game);
+                // send event to the UI to trigger the switch to the game screen
                 commands.trigger(GameJoinedEvent { gid, side });
-
+                // query the board state of the game
                 commands.trigger(NetworkSend(ClientMessage::QueryBoard(gid)));
             }
 
             // A piece in the current game has been moved.
-            ServerMessage::MoveAccepted(_, _san, updates) => {
+            ServerMessage::MoveAccepted(_, san, updates) => {
                 if let Some(game) = active_game.as_mut() {
+                    game.move_history.push(san.clone());
+
                     for (tile, piece) in updates {
                         if let Some(p) = piece {
                             game.internal_board.insert(tile.to_string(), p.as_byte());
@@ -154,6 +162,7 @@ pub fn poll_network(
                         }
                     }
                     commands.trigger(BoardUpdate);
+                    commands.trigger(MoveHistoryUpdated);
                 }
             }
 
