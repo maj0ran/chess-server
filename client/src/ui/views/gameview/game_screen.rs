@@ -1,11 +1,11 @@
 use super::GameScreenComponent;
 use crate::client::game::{ActiveGame, GameJoinedEvent};
-use std::f32::consts::PI;
-
 use crate::client::lobby::LobbyState;
 use crate::ui::views::gameview::chessboard::board::{ChessBoard, RotateBoardEvent};
+use crate::ui::views::gameview::chessboard::{DestinationSelect, SourceSelect};
 use crate::ui::{Overlay, Screen};
 use bevy::prelude::*;
+use std::f32::consts::PI;
 
 pub const SOURCE_COLOR: Color = Color::srgb_u8(250, 113, 113);
 pub const DESTINATION_COLOR: Color = Color::srgb_u8(113, 250, 113);
@@ -85,6 +85,8 @@ fn setup_gamescreen(mut commands: Commands) {
 /// Despawn all entities that are part of the in-game screen.
 /// Obviously happens when we leave a game.
 fn cleanup_gamescreen(mut commands: Commands, query: Query<Entity, With<GameScreenComponent>>) {
+    log::debug!("Cleaning up gamescreen");
+
     for entity in query.iter() {
         commands.entity(entity).despawn();
     }

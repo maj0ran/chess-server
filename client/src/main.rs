@@ -1,6 +1,8 @@
 pub mod client;
 pub mod ui;
 
+use bevy::ecs::error::ErrorContext;
+use bevy::ecs::error::{BevyError, DefaultErrorHandler};
 use bevy::prelude::*;
 use bevy::ui_widgets::ScrollbarPlugin;
 use bevy::window::{WindowResized, WindowResolution};
@@ -31,10 +33,16 @@ fn on_resize_system(
     }
 }
 
+fn error_handler(error: BevyError, ctx: ErrorContext) {
+    error!("error: {}", error);
+    bevy::ecs::error::error(error, ctx);
+}
+
 fn main() {
     env_logger::init();
 
     App::new()
+        .insert_resource(DefaultErrorHandler(error_handler))
         .add_plugins((
             // always needed
             DefaultPlugins.set(WindowPlugin {
