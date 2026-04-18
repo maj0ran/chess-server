@@ -15,6 +15,9 @@ use chess_core::protocol::UserRoleSelection;
 use chess_core::protocol::messages::ClientMessage;
 use chess_core::{ChessMove, Tile};
 
+#[derive(Event)]
+pub struct MoveSquaresSelected;
+
 /// Event from the client that is triggered when the server has accepted or rejected a move.
 #[derive(Event)]
 pub struct ResetSelection;
@@ -26,12 +29,18 @@ pub struct RotateBoardEvent;
 /// The plane alone isn't even chessy - it has no squares. Squares are standalone components
 /// that will be rendered onto the board.
 #[derive(Component)]
-pub struct ChessBoard;
+pub struct ChessBoard {
+    selected_src: Option<Entity>,
+    selected_dst: Option<Entity>,
+}
 
 impl ChessBoard {
     pub fn new() -> (ChessBoard, GameScreenComponent, Sprite, Transform) {
         (
-            ChessBoard,
+            ChessBoard {
+                selected_src: None,
+                selected_dst: None,
+            },
             GameScreenComponent,
             Sprite {
                 color: Color::srgb_u8(150, 50, 150),
@@ -141,21 +150,23 @@ pub fn draw_pieces(
 /// that is caught by `reset_selections` (below) to undo the coloring.
 pub fn select_square(
     ev: On<Pointer<Press>>,
-    mut src: ResMut<SourceSelect>,
-    mut dst: ResMut<DestinationSelect>,
+    mut commands: Commands,
+    mut query_board: Query<&mut ChessBoard>,
     mut query: Query<&mut Sprite, With<ChessSquare>>,
 ) {
     let clicked: Entity = ev.event_target();
+    let mut board = query_board.single_mut().unwrap();
 
-    if src.entity == None {
+    if board.selected_src == None {
         if let Ok(mut sprite) = query.get_mut(clicked) {
-            src.entity = Some(clicked);
+            board.selected_src = Some(clicked);
             sprite.color = SOURCE_COLOR;
         }
-    } else if dst.entity == None {
+    } else if board.selected_dst == None {
         if let Ok(mut sprite) = query.get_mut(clicked) {
-            dst.entity = Some(clicked);
+            board.selected_dst = Some(clicked);
             sprite.color = DESTINATION_COLOR;
+            commands.trigger(MoveSquaresSelected)
         }
     }
 }
@@ -171,18 +182,21 @@ pub fn select_square(
 /// When a promotion button on this dialog is clicked, it will load the `PendingMove` resource. There, we
 /// trigger `RequestMove` together with the promotion information.
 pub fn handle_move(
+    _ev: On<MoveSquaresSelected>,
     mut commands: Commands,
-    src: ResMut<SourceSelect>,
-    dst: ResMut<DestinationSelect>,
     query: Query<(&ChessSquare, Option<&Children>)>,
+    board_query: Query<&ChessBoard>,
     piece_query: Query<&ChessPiece>,
     mut next_overlay: ResMut<NextState<Overlay>>,
 ) -> Result<()> {
-    let src_entity = src.entity.ok_or("Source entity not selected")?;
-    let dst_entity = dst.entity.ok_or("Destination entity not selected")?;
+    let board = board_query.single()?;
+    let src = board.selected_src.ok_or("Source square not selected")?;
+    let dst = board
+        .selected_dst
+        .ok_or("Destination square not selected")?;
 
-    let (src_sq, src_children) = query.get(src_entity)?;
-    let (dst_sq, _) = query.get(dst_entity)?;
+    let (src_sq, src_children) = query.get(src)?;
+    let (dst_sq, _) = query.get(dst)?;
 
     /* Some hassle to get the piece that sits on the square... */
     match src_children {
@@ -228,26 +242,25 @@ pub fn handle_move(
 /// it sends back an event here to reset the selection.
 pub fn reset_selections(
     _ev: On<ResetSelection>,
-    mut src: ResMut<SourceSelect>,
-    mut dst: ResMut<DestinationSelect>,
     mut query: Query<(Entity, &mut ChessSquare, &mut Sprite)>,
+    mut board_query: Query<&mut ChessBoard>,
 ) {
+    let mut board = board_query.single_mut().unwrap();
+
     for square_entity in query.iter_mut() {
         let entity = square_entity.0;
         let square = square_entity.1;
         let mut sprite = square_entity.2;
 
-        if src.entity == Some(entity) {
+        if board.selected_src == Some(entity) {
             sprite.color = square.color;
-        } else if dst.entity == Some(entity) {
+        } else if board.selected_dst == Some(entity) {
             sprite.color = square.color;
         }
     }
 
-    // Resetting the selection resources must not trigger a change detection
-    // that would call handle_move again.
-    src.bypass_change_detection().entity = None;
-    dst.bypass_change_detection().entity = None;
+    board.selected_src = None;
+    board.selected_dst = None;
 }
 
 pub fn on_move_request(ev: On<RequestMove>, mut commands: Commands, active_game: Res<ActiveGame>) {

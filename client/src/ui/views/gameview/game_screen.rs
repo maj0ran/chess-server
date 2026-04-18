@@ -2,7 +2,6 @@ use super::GameScreenComponent;
 use crate::client::game::{ActiveGame, GameJoinedEvent};
 use crate::client::lobby::LobbyState;
 use crate::ui::views::gameview::chessboard::board::{ChessBoard, RotateBoardEvent};
-use crate::ui::views::gameview::chessboard::{DestinationSelect, SourceSelect};
 use crate::ui::{Overlay, Screen};
 use bevy::prelude::*;
 use std::f32::consts::PI;

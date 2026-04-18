@@ -23,18 +23,6 @@ pub mod square;
 pub const BOARD_SIZE: f32 = 800.0;
 pub const SQUARE_SIZE: f32 = BOARD_SIZE / 8.0;
 
-/// Resource to hold the selected source square
-#[derive(Resource)]
-pub struct SourceSelect {
-    pub(crate) entity: Option<Entity>,
-}
-
-/// Resource to hold the selected destination square
-#[derive(Resource)]
-pub struct DestinationSelect {
-    pub(crate) entity: Option<Entity>,
-}
-
 #[derive(Resource)]
 pub struct PendingMove {
     pub src: String,
@@ -53,21 +41,13 @@ pub struct ChessboardPlugin;
 
 impl Plugin for ChessboardPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(SourceSelect { entity: None })
-            .insert_resource(DestinationSelect { entity: None })
-            .init_resource::<ChessAssets>()
+        app.init_resource::<ChessAssets>()
             .add_observer(draw_chessboard)
+            .add_observer(handle_move)
             .add_observer(draw_pieces)
             .add_observer(on_move_request)
             .add_observer(reset_selections)
             .add_observer(on_game_over)
-            .add_systems(
-                Update,
-                handle_move.run_if(
-                    resource_changed::<DestinationSelect>
-                        .and(not(resource_added::<DestinationSelect>)),
-                ),
-            )
             .add_systems(OnEnter(Overlay::Promotion), spawn_promotion_dialog)
             .add_systems(OnExit(Overlay::Promotion), despawn_promotion_dialog)
             .add_systems(
