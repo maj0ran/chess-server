@@ -75,18 +75,34 @@ fn setup_gamescreen(mut commands: Commands, win_query: Query<(Entity, &Window)>)
         GameScreenComponent,
         GameScreenContainer,
         Transform::default(),
-        children![
-            (
-                WhitePlayerLabel,
-                Text2d::new("Waiting for White..."),
-                Transform::from_xyz(0.0, -450.0, 1.0)
-            ),
-            (
-                BlackPlayerLabel,
-                Text2d::new("Waiting for Black..."),
-                Transform::from_xyz(0.0, 450.0, 1.0),
-            ),
-        ],
+    ));
+
+    commands.spawn((
+        GameScreenComponent,
+        WhitePlayerLabel,
+        Node {
+            position_type: PositionType::Absolute,
+            ..default()
+        },
+        Text::new("Waiting for White..."),
+        TextFont {
+            font_size: 24.0,
+            ..default()
+        },
+    ));
+
+    commands.spawn((
+        GameScreenComponent,
+        BlackPlayerLabel,
+        Node {
+            position_type: PositionType::Absolute,
+            ..default()
+        },
+        Text::new("Waiting for Black..."),
+        TextFont {
+            font_size: 24.0,
+            ..default()
+        },
     ));
 
     commands.spawn(((
@@ -151,8 +167,8 @@ fn listen_keyboard_input(
 fn update_player_names(
     game: Res<ActiveGame>,
     lobby: Res<LobbyState>,
-    mut query_white: Query<&mut Text2d, With<WhitePlayerLabel>>,
-    mut query_black: Query<&mut Text2d, (With<BlackPlayerLabel>, Without<WhitePlayerLabel>)>,
+    mut query_white: Query<&mut Text, With<WhitePlayerLabel>>,
+    mut query_black: Query<&mut Text, (With<BlackPlayerLabel>, Without<WhitePlayerLabel>)>,
 ) {
     let game_info = game.game_info;
 
@@ -210,8 +226,40 @@ fn update_move_history(
 pub fn on_resize(
     mut resize_reader: MessageReader<bevy::window::WindowResized>,
     mut container_query: Query<(Entity, &mut Transform), With<GameScreenContainer>>,
-    mut history_query: Query<&mut TextFont, With<MoveHistory>>,
-    mut mh_container: Query<&mut Node, With<MoveHistoryContainer>>,
+    mut history_query: Query<
+        &mut TextFont,
+        (
+            With<MoveHistory>,
+            Without<WhitePlayerLabel>,
+            Without<BlackPlayerLabel>,
+            Without<MoveHistoryContainer>,
+        ),
+    >,
+    mut mh_container: Query<
+        &mut Node,
+        (
+            With<MoveHistoryContainer>,
+            Without<WhitePlayerLabel>,
+            Without<BlackPlayerLabel>,
+        ),
+    >,
+    mut white_label_query: Query<
+        (&mut Node, &mut TextFont),
+        (
+            With<WhitePlayerLabel>,
+            Without<MoveHistoryContainer>,
+            Without<BlackPlayerLabel>,
+        ),
+    >,
+    mut black_label_query: Query<
+        (&mut Node, &mut TextFont),
+        (
+            With<BlackPlayerLabel>,
+            Without<MoveHistoryContainer>,
+            Without<WhitePlayerLabel>,
+        ),
+    >,
+    board_query: Query<&Transform, (With<ChessBoard>, Without<GameScreenContainer>)>,
 ) {
     let mut new_size = None;
     for e in resize_reader.read() {
@@ -249,11 +297,10 @@ pub fn on_resize(
         scale = (available_right_space_px / total_right_offset_base) * 0.95;
     }
 
-    // Apply the final scale to the game container (board and player labels).
+    // Apply the final scale to the game container (board).
     container.1.scale = Vec3::splat(scale);
 
     // Position and size the Move History UI Node.
-    // The UI coordinate system usually starts at top-left for Nodes.
     let board_px = RESOLUTION * scale;
     let padding_px = history_padding * scale;
     let history_px = history_base_width * scale;
@@ -266,36 +313,77 @@ pub fn on_resize(
     mh.width = Val::Px(history_px);
     mh.height = Val::Px(board_px);
 
-    // 5. Scale the font size to match the UI scaling.
-    let mut font = history_query.single_mut().unwrap();
-    font.font_size = 24.0 * scale;
+    // Scale the font sizes
+    let mut history_font = history_query.single_mut().unwrap();
+    history_font.font_size = 24.0 * scale;
+
+    let (mut white_node, mut white_font) = white_label_query.single_mut().unwrap();
+    let (mut black_node, mut black_font) = black_label_query.single_mut().unwrap();
+
+    white_font.font_size = 32.0 * scale;
+    black_font.font_size = 32.0 * scale;
+
+    // Position player labels relative to the board
+    // They should be centered horizontally and slightly above/below the board
+    let label_offset = 20.0 * scale;
+    let board_top = (win_size.y - board_px) / 2.0;
+    let board_bottom = (win_size.y + board_px) / 2.0;
+    let board_center_x = win_size.x / 2.0;
+
+    // Determine which label goes where based on board rotation
+    let is_rotated = if let Ok(bt) = board_query.single() {
+        bt.rotation.z.abs() > 0.1 // PI rotation check
+    } else {
+        false
+    };
+
+    if !is_rotated {
+        // White is bottom, Black is top
+        white_node.top = Val::Px(board_bottom + label_offset);
+        white_node.bottom = Val::Auto;
+        black_node.bottom = Val::Px(win_size.y - board_top + label_offset);
+        black_node.top = Val::Auto;
+    } else {
+        // White is top, Black is bottom
+        white_node.bottom = Val::Px(win_size.y - board_top + label_offset);
+        white_node.top = Val::Auto;
+        black_node.top = Val::Px(board_bottom + label_offset);
+        black_node.bottom = Val::Auto;
+    }
+
+    // Center labels horizontally (using left with a trick or just absolute pos)
+    // To center an absolute node, we can't easily use justify_self if parent is not a node.
+    // But they are at the root. So we use left: 50% and transform: translateX(-50%) if possible,
+    // but here we can just calculate left: (win_size.x / 2.0) and hope they are small or we use a container.
+    // Actually, we should probably give them a width and set left.
+    let label_width = 400.0 * scale;
+    white_node.width = Val::Px(label_width);
+    black_node.width = Val::Px(label_width);
+    white_node.left = Val::Px(board_center_x - label_width / 2.0);
+    black_node.left = Val::Px(board_center_x - label_width / 2.0);
+    white_node.justify_content = JustifyContent::Center;
+    black_node.justify_content = JustifyContent::Center;
 }
 pub fn on_rotate(
     _ev: On<RotateBoardEvent>,
-    mut query: ParamSet<(
-        Query<&mut Transform, With<ChessBoard>>,
-        Query<&mut Transform, With<WhitePlayerLabel>>,
-        Query<&mut Transform, With<BlackPlayerLabel>>,
-    )>,
+    mut query: Query<&mut Transform, With<ChessBoard>>,
+    mut commands: Commands,
+    win_query: Query<(Entity, &Window)>,
 ) {
     log::debug!("Rotating game view");
 
     // rotate the board 180'
-    {
-        let mut board_query = query.p0();
-        let mut board = board_query.single_mut().unwrap();
+    for mut board in query.iter_mut() {
         board.rotate_z(PI);
     }
 
-    // switch player label positions
-    {
-        let mut query_white = query.p1();
-        let mut white_label = query_white.single_mut().unwrap();
-        white_label.translation.y = -white_label.translation.y;
-    }
-    {
-        let mut query_black = query.p2();
-        let mut black_label = query_black.single_mut().unwrap();
-        black_label.translation.y = -black_label.translation.y;
+    // Trigger a resize to update UI node positions
+    if let Ok((entity, window)) = win_query.single() {
+        let win_size = window.size();
+        commands.write_message(bevy::window::WindowResized {
+            window: entity,
+            width: win_size.x,
+            height: win_size.y,
+        });
     }
 }
