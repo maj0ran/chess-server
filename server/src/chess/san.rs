@@ -80,6 +80,10 @@ impl San for ChessMove {
                     san.push(self.src.rank);
                 }
             }
+
+            if board.peek(self.dst).is_some() {
+                san.push('x');
+            }
             // ... else Pawn
         } else {
             // Pawn capture: src file + 'x'
@@ -407,6 +411,15 @@ mod tests {
         let game = Chess::load_fen("rnbqkbnr/ppppp1pp/8/5p2/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2");
         let mv = ChessMove::from_str("d1h5").unwrap();
         assert_eq!(mv.to_san(&game), "Qh5+");
+    }
+
+    #[test]
+    fn test_san_from_move_piece_capture() {
+        let game =
+            Chess::load_fen("rnbqkbnr/ppp1pppp/8/3p4/2B1P3/8/PPPP1PPP/RNBQK1NR w KQkq - 0 2");
+        // Bishop at c4 captures d5
+        let mv = ChessMove::from_str("c4d5").unwrap();
+        assert_eq!(mv.to_san(&game), "Bxd5");
     }
 
     #[test]
