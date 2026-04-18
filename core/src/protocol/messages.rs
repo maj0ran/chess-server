@@ -18,6 +18,7 @@ pub enum ClientMessage {
     QueryGames,
     QueryGameDetails(GameId),
     QueryClientDetails(ClientId),
+    QueryBoard(GameId),
     LeaveGame,
 }
 
@@ -30,6 +31,7 @@ impl ClientMessage {
     pub const LEAVE_GAME: u8 = 0x0F;
     pub const SET_NICKNAME: u8 = 0x10;
     pub const QUERY_CLIENT_DETAILS: u8 = 0x11;
+    pub const QUERY_BOARD: u8 = 0x12;
 }
 
 impl fmt::Display for ClientMessage {
@@ -44,6 +46,7 @@ impl fmt::Display for ClientMessage {
             ClientMessage::QueryClientDetails(_) => "Query Client Details",
             ClientMessage::LeaveGame => "Leave Game",
             ClientMessage::SetNickname(_) => "Set Nickname",
+            ClientMessage::QueryBoard(_) => "Query Board",
         };
         write!(f, "{}", s)
     }
@@ -65,6 +68,7 @@ pub enum ServerMessage {
     ClientDetails(ClientId, String),
     GameOver(GameId, GameOverReason),
     LoginAccepted(ClientId),
+    BoardState(GameId, String),
 }
 
 impl ServerMessage {
@@ -77,6 +81,7 @@ impl ServerMessage {
     pub const GAME_OVER: u8 = 0x87;
     pub const GAME_DETAILS: u8 = 0x8D;
     pub const CLIENT_DETAILS: u8 = 0x8E;
+    pub const BOARD_STATE: u8 = 0x8F;
     pub const LOGIN_ACCEPTED: u8 = 0xF0;
 
     pub fn opcode(&self) -> u8 {
@@ -91,6 +96,7 @@ impl ServerMessage {
             ServerMessage::ClientDetails(_, _) => Self::CLIENT_DETAILS,
             ServerMessage::LoginAccepted(_) => Self::LOGIN_ACCEPTED,
             ServerMessage::GameLeft(_, _) => Self::GAME_LEFT,
+            ServerMessage::BoardState(_, _) => Self::BOARD_STATE,
         }
     }
 }

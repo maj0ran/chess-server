@@ -66,6 +66,10 @@ impl NetMessage for ClientMessage {
                     .map_err(|_| NetError::Protocol("Failed to parse nickname".to_string()))?;
                 Ok(ClientMessage::SetNickname(nickname))
             }
+            Self::QUERY_BOARD => {
+                let gid = reader.read_u32_le()?;
+                Ok(ClientMessage::QueryBoard(gid))
+            }
             _ => Err(NetError::Protocol(format!(
                 "parse: invalid command 0x{:02X}",
                 opcode
@@ -109,6 +113,11 @@ impl NetMessage for ClientMessage {
             ClientMessage::SetNickname(name) => {
                 let mut data = vec![Self::SET_NICKNAME];
                 data.extend_from_slice(name.to_string().as_bytes());
+                data
+            }
+            ClientMessage::QueryBoard(gid) => {
+                let mut data = vec![Self::QUERY_BOARD];
+                data.extend_from_slice(&gid.to_le_bytes());
                 data
             }
         }
@@ -222,6 +231,11 @@ impl NetMessage for ServerMessage {
                 let cid = reader.read_u32_le()? as usize;
                 Ok(ServerMessage::GameLeft(gid, cid))
             }
+            Self::BOARD_STATE => {
+                let gid = reader.read_u32_le()?;
+                let fen = String::from_utf8_lossy(reader.remaining()).to_string();
+                Ok(ServerMessage::BoardState(gid, fen))
+            }
             Self::LOGIN_ACCEPTED => {
                 let cid = reader.read_u32_le()? as usize;
                 Ok(ServerMessage::LoginAccepted(cid))
@@ -314,6 +328,12 @@ impl NetMessage for ServerMessage {
                 let mut data = vec![Self::GAME_LEFT];
                 data.extend_from_slice(&gid.to_le_bytes());
                 data.extend_from_slice(&cid.to_le_bytes());
+                data
+            }
+            ServerMessage::BoardState(gid, fen) => {
+                let mut data = vec![Self::BOARD_STATE];
+                data.extend_from_slice(&gid.to_le_bytes());
+                data.extend_from_slice(fen.as_bytes());
                 data
             }
         }

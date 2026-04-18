@@ -118,6 +118,9 @@ impl GameManager {
                             log::info!("Set nickname for client {} to {}", cid, name);
                             self.handle_set_nickname(cid, name).await;
                         }
+                        ClientMessage::QueryBoard(gid) => {
+                            self.handle_query_board(cid, gid).await;
+                        }
                     }
                 }
                 Err(_) => {
@@ -347,5 +350,14 @@ impl GameManager {
         file.sync_all().await?;
 
         Ok(())
+    }
+
+    async fn handle_query_board(&self, cid: ClientId, gid: GameId) {
+        if let Some(game) = self.games.get(&gid) {
+            if let Some(c) = self.clients.get(&cid) {
+                let fen = game.chess.get_fen();
+                let _ = c.tx.send(ServerMessage::BoardState(gid, fen)).await;
+            }
+        }
     }
 }

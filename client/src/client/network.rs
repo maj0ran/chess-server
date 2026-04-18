@@ -200,6 +200,14 @@ pub fn poll_network(
             ServerMessage::GameLeft(_gid, _cid) => {
                 commands.remove_resource::<ActiveGame>();
             }
+            ServerMessage::BoardState(gid, fen) => {
+                if let Some(game) = active_game.as_mut() {
+                    if game.gid == gid {
+                        game.update_internal_board_from_fen(&fen);
+                        commands.trigger(BoardUpdate);
+                    }
+                }
+            }
         }
     }
 }
