@@ -30,6 +30,8 @@ Could evolve in either a small-sized online chess or a chess analysis software i
 
 - [x] Nicknames
 
+- [x] Move history
+
 ### Short/Mid-Term TODO:
 
 - [ ] Better Client with better GUI
@@ -39,8 +41,6 @@ Could evolve in either a small-sized online chess or a chess analysis software i
 - [ ] Offer Draw
 
 - [ ] Resigning
-
-- [ ] Move history
 
 - [ ] Time control management
 
