@@ -2,6 +2,7 @@ use super::GameScreenComponent;
 use crate::client::game::{ActiveGame, GameJoinedEvent};
 use crate::client::lobby::LobbyState;
 use crate::ui::views::gameview::chessboard::board::{ChessBoard, RotateBoardEvent};
+use crate::ui::views::gameview::historypanel::movehistory::{MoveHistory, update_move_history};
 use crate::ui::{Overlay, Screen};
 use bevy::prelude::*;
 use std::f32::consts::PI;
@@ -48,12 +49,6 @@ pub struct WhitePlayerLabel;
 #[derive(Component)]
 pub struct BlackPlayerLabel;
 
-#[derive(Component)]
-pub struct MoveHistory;
-
-#[derive(Event)]
-pub struct MoveHistoryUpdated;
-
 #[derive(Event)]
 pub struct GameScreenInitialized;
 
@@ -94,28 +89,7 @@ fn setup_gamescreen(mut commands: Commands, win_query: Query<(Entity, &Window)>)
         },
     ));
 
-    commands.spawn((
-        GameScreenComponent,
-        MoveHistory,
-        Node {
-            position_type: PositionType::Absolute,
-            height: Val::Percent(100.0),
-            width: Val::Px(250.0),
-            top: Val::Px(100.0),
-            justify_items: JustifyItems::Start,
-            ..default()
-        },
-        BackgroundColor(Color::srgb(1.0, 0.0, 0.0)),
-        Text::new(""),
-        TextFont {
-            font_size: 12.0,
-            ..default()
-        },
-        TextLayout {
-            justify: Justify::Justified,
-            ..default()
-        },
-    ));
+    commands.spawn(MoveHistory::new());
 
     // We trigger a WindowResized event manually so the board and other items scale
     // themselves properly at startup.
@@ -187,24 +161,6 @@ fn update_player_names(
         if black_text.0 != name {
             log::debug!("Updating black player name to {}", name);
             black_text.0 = name;
-        }
-    }
-}
-
-fn update_move_history(
-    _ev: On<MoveHistoryUpdated>,
-    mut query_display: Query<&mut Text, With<MoveHistory>>,
-    history: ResMut<ActiveGame>,
-) {
-    if let Ok(mut text) = query_display.single_mut() {
-        log::debug!("Updating move history");
-        let last_move = &history.move_history.last().unwrap();
-        text.0.push_str(&format!("{} ", last_move));
-        if &history.move_history.len() % 2 == 0 {
-            text.0.push_str("\n");
-        } else {
-            let spacing = " ".repeat(10 - last_move.len());
-            text.0.push_str(&spacing);
         }
     }
 }

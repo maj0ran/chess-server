@@ -3,7 +3,7 @@ use crate::ui::gamelist_menu::UpdateGamesList;
 
 use crate::client::game::{ActiveGame, BoardUpdate, GameDetails, GameJoinedEvent, GameOverEvent};
 use crate::client::lobby::LobbyState;
-use crate::ui::views::gameview::game_screen::MoveHistoryUpdated;
+use crate::ui::views::gameview::historypanel::movehistory::MoveHistoryUpdated;
 use bevy::prelude::*;
 use chess_core::NetResult;
 use chess_core::net::connection::Connection;
