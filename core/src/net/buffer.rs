@@ -12,7 +12,7 @@ pub struct Buffer {
 }
 
 impl Buffer {
-    pub const BUF_LEN: usize = 256;
+    pub const BUF_LEN: usize = 4096;
 
     pub fn new() -> Buffer {
         Buffer {

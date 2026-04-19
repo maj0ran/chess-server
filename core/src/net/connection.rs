@@ -30,9 +30,9 @@ impl Connection {
     pub async fn read_msg<T: NetMessage>(&mut self) -> NetResult<T> {
         // read the first byte which indicates the length.
         // this value will be discarded and not be part of the read buffer
-        let mut len = [0u8; 1];
+        let mut len = [0u8; 2];
         self.stream.read_exact(&mut len).await?;
-        let length = len[0];
+        let length = u16::from_le_bytes(len);
         if length == 0 {
             return Err(NetError::Protocol("received zero-length frame".to_string()));
         }
@@ -57,13 +57,16 @@ impl Connection {
     /// The message is serialized into a byte stream and written to the stream.
     /// Returns `Ok(())` if the message was successfully written, or a `NetError` otherwise.
     pub async fn write_out(&mut self, data: &[u8]) -> NetResult<()> {
-        if data.len() > 255 {
+        if data.len() > Buffer::BUF_LEN {
             return Err(NetError::Protocol(format!(
                 "message too long for protocol: {} bytes",
                 data.len()
             )));
         }
-        let mut buf = vec![data.len() as u8];
+
+        let len = data.len() as u16;
+        let mut buf = vec![];
+        buf.extend_from_slice(len.to_le_bytes().as_slice());
         buf.extend_from_slice(data);
 
         self.stream.write_all(&buf).await?;
