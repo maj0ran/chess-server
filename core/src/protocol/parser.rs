@@ -70,6 +70,10 @@ impl NetMessage for ClientMessage {
                 let gid = reader.read_u32_le()?;
                 Ok(ClientMessage::QueryBoard(gid))
             }
+            Self::QUERY_MOVE_HISTORY => {
+                let gid = reader.read_u32_le()?;
+                Ok(ClientMessage::QueryMoveHistory(gid))
+            }
             _ => Err(NetError::Protocol(format!(
                 "parse: invalid command 0x{:02X}",
                 opcode
@@ -117,6 +121,11 @@ impl NetMessage for ClientMessage {
             }
             ClientMessage::QueryBoard(gid) => {
                 let mut data = vec![Self::QUERY_BOARD];
+                data.extend_from_slice(&gid.to_le_bytes());
+                data
+            }
+            ClientMessage::QueryMoveHistory(gid) => {
+                let mut data = vec![Self::QUERY_MOVE_HISTORY];
                 data.extend_from_slice(&gid.to_le_bytes());
                 data
             }
@@ -235,6 +244,18 @@ impl NetMessage for ServerMessage {
                 let fen = String::from_utf8_lossy(reader.remaining()).to_string();
                 Ok(ServerMessage::BoardState(gid, fen))
             }
+            Self::MOVE_HISTORY => {
+                let gid = reader.read_u32_le()?;
+                let mut history = Vec::new();
+                let history_str = String::from_utf8(reader.remaining().to_vec())
+                    .map_err(|_| NetError::Protocol("Failed to parse move history".to_string()))?;
+                if !history_str.is_empty() {
+                    history_str.split(' ').for_each(|mov| {
+                        history.push(mov.to_string());
+                    });
+                }
+                Ok(ServerMessage::MoveHistory(gid, history))
+            }
             Self::LOGIN_ACCEPTED => {
                 let cid = reader.read_u32_le()? as usize;
                 Ok(ServerMessage::LoginAccepted(cid))
@@ -332,6 +353,18 @@ impl NetMessage for ServerMessage {
                 let mut data = vec![Self::BOARD_STATE];
                 data.extend_from_slice(&gid.to_le_bytes());
                 data.extend_from_slice(fen.as_bytes());
+                data
+            }
+            ServerMessage::MoveHistory(gid, history) => {
+                let mut data = vec![Self::MOVE_HISTORY];
+                data.extend_from_slice(&gid.to_le_bytes());
+                for mov in history {
+                    data.extend_from_slice(mov.to_string().as_bytes());
+                    data.push(' ' as u8);
+                }
+                if history.len() > 0 {
+                    data.pop(); // remove last ' ' if we have a history
+                }
                 data
             }
         }

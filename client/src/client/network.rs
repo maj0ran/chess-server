@@ -3,7 +3,9 @@ use crate::ui::gamelist_menu::UpdateGamesList;
 
 use crate::client::game::{ActiveGame, BoardUpdate, GameDetails, GameJoinedEvent, GameOverEvent};
 use crate::client::lobby::LobbyState;
-use crate::ui::views::gameview::historypanel::movehistory::MoveHistoryUpdated;
+use crate::ui::views::gameview::historypanel::movehistory::{
+    MoveHistoryFullRefresh, MoveHistoryUpdated,
+};
 use bevy::prelude::*;
 use chess_core::NetResult;
 use chess_core::net::connection::Connection;
@@ -147,6 +149,7 @@ pub fn poll_network(
                 commands.trigger(GameJoinedEvent { gid, side });
                 // query the board state of the game
                 commands.trigger(NetworkSend(ClientMessage::QueryBoard(gid)));
+                commands.trigger(NetworkSend(ClientMessage::QueryMoveHistory(gid)));
             }
 
             // A piece in the current game has been moved.
@@ -226,6 +229,14 @@ pub fn poll_network(
                     if game.gid == gid {
                         game.update_internal_board_from_fen(&fen);
                         commands.trigger(BoardUpdate);
+                    }
+                }
+            }
+            ServerMessage::MoveHistory(gid, history) => {
+                if let Some(game) = active_game.as_mut() {
+                    if game.gid == gid {
+                        game.move_history = history;
+                        commands.trigger(MoveHistoryFullRefresh);
                     }
                 }
             }

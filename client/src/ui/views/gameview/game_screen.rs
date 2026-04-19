@@ -2,7 +2,9 @@ use super::GameScreenComponent;
 use crate::client::game::{ActiveGame, GameJoinedEvent};
 use crate::client::lobby::LobbyState;
 use crate::ui::views::gameview::chessboard::board::{ChessBoard, RotateBoardEvent};
-use crate::ui::views::gameview::historypanel::movehistory::{MoveHistory, update_move_history};
+use crate::ui::views::gameview::historypanel::movehistory::{
+    MoveHistory, refresh_move_history, update_move_history,
+};
 use crate::ui::{Overlay, Screen};
 use bevy::prelude::*;
 use std::f32::consts::PI;
@@ -31,6 +33,7 @@ impl Plugin for GameScreenPlugin {
             .add_observer(on_game_joined)
             .add_observer(on_rotate)
             .add_observer(update_move_history)
+            .add_observer(refresh_move_history)
             .add_systems(Update, on_resize.run_if(in_state(Screen::Game)));
     }
 }

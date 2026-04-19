@@ -121,6 +121,9 @@ impl GameManager {
                         ClientMessage::QueryBoard(gid) => {
                             self.handle_query_board(cid, gid).await;
                         }
+                        ClientMessage::QueryMoveHistory(gid) => {
+                            self.handle_query_move_history(cid, gid).await;
+                        }
                     }
                 }
                 Err(_) => {
@@ -337,6 +340,17 @@ impl GameManager {
             if let Some(c) = self.clients.get(&cid) {
                 let fen = game.chess.get_fen();
                 let _ = c.tx.send(ServerMessage::BoardState(gid, fen)).await;
+            }
+        }
+    }
+
+    /// The client asked for the current full move history of a game.
+    async fn handle_query_move_history(&self, cid: ClientId, gid: GameId) {
+        if let Some(game) = self.games.get(&gid) {
+            if let Some(c) = self.clients.get(&cid) {
+                let _ =
+                    c.tx.send(ServerMessage::MoveHistory(gid, game.move_history.clone()))
+                        .await;
             }
         }
     }
