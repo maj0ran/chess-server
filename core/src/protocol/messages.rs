@@ -20,7 +20,7 @@ pub enum ClientMessage {
     QueryClientDetails(ClientId),
     QueryBoard(GameId),
     QueryMoveHistory(GameId),
-    LeaveGame,
+    LeaveGame(GameId),
 }
 
 impl ClientMessage {
@@ -46,7 +46,7 @@ impl fmt::Display for ClientMessage {
             ClientMessage::Register(_) => "Register Client",
             ClientMessage::QueryGameDetails(_) => "Query Game Details",
             ClientMessage::QueryClientDetails(_) => "Query Client Details",
-            ClientMessage::LeaveGame => "Leave Game",
+            ClientMessage::LeaveGame(_) => "Leave Game",
             ClientMessage::SetNickname(_) => "Set Nickname",
             ClientMessage::QueryBoard(_) => "Query Board",
             ClientMessage::QueryMoveHistory(_) => "Query Move History",

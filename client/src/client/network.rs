@@ -104,7 +104,7 @@ pub fn poll_network(
     network: Res<NetTransport>,
     mut lobby: ResMut<LobbyState>,
     active_game: Option<ResMut<ActiveGame>>,
-    client_config: Res<ClientSession>,
+    mut session: ResMut<ClientSession>,
 ) {
     let mut active_game = active_game;
     while let Ok(server_msg) = network.rx.try_recv() {
@@ -126,30 +126,27 @@ pub fn poll_network(
             }
 
             // We successfully joined a game
-            ServerMessage::GameJoined(gid, _cid, side) => {
-                // HINT: we only receive this message for our own client, not when someone
-                // else joined. This is a TODO on the server.
-                // once we change the behavior of the server, we also have to add additional
-                // logic here to handle the case when someone else joins.
-
-                // we just joined the game, so we have to refresh the game details to see ourselves.
+            ServerMessage::GameJoined(gid, cid, side) => {
+                // someone (or we) just joined the game, so we have to refresh the game details.
                 commands.trigger(NetworkSend(ClientMessage::QueryGameDetails(gid)));
-                // copy the game info from the lobby into the active game resource.
-                let game_info = lobby.get_game_info(gid).copied().unwrap();
-                let game = ActiveGame {
-                    gid,
-                    side,
-                    internal_board: HashMap::new(),
-                    game_info,
 
-                    move_history: Vec::new(),
-                };
-                commands.insert_resource(game);
-                // send event to the UI to trigger the switch to the game screen
-                commands.trigger(GameJoinedEvent { gid, side });
-                // query the board state of the game
-                commands.trigger(NetworkSend(ClientMessage::QueryBoard(gid)));
-                commands.trigger(NetworkSend(ClientMessage::QueryMoveHistory(gid)));
+                if session.id == Some(cid) {
+                    // copy the game info from the lobby into the active game resource.
+                    let game_info = lobby.get_game_info(gid).copied().unwrap();
+                    let game = ActiveGame {
+                        gid,
+                        side,
+                        internal_board: HashMap::new(),
+                        game_info,
+
+                        move_history: Vec::new(),
+                    };
+                    commands.insert_resource(game);
+                    // send event to the UI to trigger the switch to the game screen
+                    commands.trigger(GameJoinedEvent { gid, side });
+                    commands.trigger(NetworkSend(ClientMessage::QueryBoard(gid)));
+                    commands.trigger(NetworkSend(ClientMessage::QueryMoveHistory(gid)));
+                }
             }
 
             // A piece in the current game has been moved.
@@ -214,15 +211,21 @@ pub fn poll_network(
             }
 
             // Our Login has been accepted. Send the server our nickname.
-            ServerMessage::LoginAccepted(_) => {
-                let name = client_config.name.clone();
+            ServerMessage::LoginAccepted(cid) => {
+                session.id = Some(cid);
+                let name = session.name.clone();
+
+                log::info!("Assigned session id: {}", cid);
+
                 commands.trigger(NetworkSend(ClientMessage::SetNickname(name)));
             }
 
             // We have left the game.
             // TODO: Here and in the server, this should not be only for us but for all clients in a game.
-            ServerMessage::GameLeft(_gid, _cid) => {
-                commands.remove_resource::<ActiveGame>();
+            ServerMessage::GameLeft(_gid, cid) => {
+                if Some(cid) == session.id {
+                    commands.remove_resource::<ActiveGame>();
+                }
             }
             ServerMessage::BoardState(gid, fen) => {
                 if let Some(game) = active_game.as_mut() {

@@ -60,7 +60,10 @@ impl NetMessage for ClientMessage {
                 let cid = reader.read_u32_le()? as usize;
                 Ok(ClientMessage::QueryClientDetails(cid))
             }
-            Self::LEAVE_GAME => Ok(ClientMessage::LeaveGame),
+            Self::LEAVE_GAME => {
+                let gid = reader.read_u32_le()?;
+                Ok(ClientMessage::LeaveGame(gid))
+            }
             Self::SET_NICKNAME => {
                 let nickname = String::from_utf8(reader.remaining().to_vec())
                     .map_err(|_| NetError::Protocol("Failed to parse nickname".to_string()))?;
@@ -113,7 +116,11 @@ impl NetMessage for ClientMessage {
             ClientMessage::Register(_) => {
                 vec![]
             }
-            ClientMessage::LeaveGame => vec![Self::LEAVE_GAME],
+            ClientMessage::LeaveGame(gid) => {
+                let mut data = vec![Self::LEAVE_GAME];
+                data.extend_from_slice(&gid.to_le_bytes());
+                data
+            }
             ClientMessage::SetNickname(name) => {
                 let mut data = vec![Self::SET_NICKNAME];
                 data.extend_from_slice(name.to_string().as_bytes());

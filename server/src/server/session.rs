@@ -132,10 +132,7 @@ impl ClientSession {
                         match e {
                             NetError::Io(_) => {}
                             NetError::Protocol(_) => {}
-                            NetError::Disconnected => {
-                                let msg = ClientMessage::LeaveGame;
-                                srv_tx.send((id, msg)).await.unwrap();
-                            }
+                            NetError::Disconnected => {}
                         }
                         log::warn!("failed to read message from client #{}: {}", id, e);
                         break;

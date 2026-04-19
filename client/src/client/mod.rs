@@ -17,7 +17,10 @@ impl Plugin for ClientPlugin {
         let config = Config::read("settings.cfg");
         let addr = config.server;
         app.insert_resource(NetTransport::new(addr));
-        app.insert_resource(ClientSession { name: config.name });
+        app.insert_resource(ClientSession {
+            name: config.name,
+            id: None,
+        });
         app.init_resource::<LobbyState>();
         app.add_systems(FixedUpdate, poll_network);
         app.insert_resource(Time::<Fixed>::from_hz(30.0)); // FixedUpdate tick-rate

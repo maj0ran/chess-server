@@ -21,7 +21,6 @@ use std::collections::HashMap;
 pub struct ClientEndpoint {
     pub tx: Sender<ServerMessage>,
     pub name: String,
-    pub in_game: Option<GameId>,
 }
 
 impl ClientEndpoint {
@@ -29,7 +28,6 @@ impl ClientEndpoint {
         ClientEndpoint {
             tx,
             name: String::from(""),
-            in_game: None,
         }
     }
 }
@@ -111,8 +109,8 @@ impl GameManager {
                         ClientMessage::QueryClientDetails(cid_query) => {
                             self.handle_query_client_details(cid, cid_query).await;
                         }
-                        ClientMessage::LeaveGame => {
-                            self.handle_leave_game(cid).await;
+                        ClientMessage::LeaveGame(gid) => {
+                            self.handle_leave_game(cid, gid).await;
                         }
                         ClientMessage::SetNickname(name) => {
                             log::info!("Set nickname for client {} to {}", cid, name);
@@ -149,24 +147,25 @@ impl GameManager {
         let gid = join_params.game_id;
         let side = join_params.side;
 
-        // we want the information which side the player joined and the FEN of the joined game
-        // and send those back to the client.
-        let res = (|| {
-            let game = self
-                .games
-                .get_mut(&gid)
-                .ok_or(GameManagerError::GameNotFound(gid))?;
-            game.add_player(cid, side).map(|side| side)
-        })();
+        // get the game and add the player
+        let game = if let Some(game) = self.games.get_mut(&gid) {
+            game
+        } else {
+            log::warn!("JoinGame failed for client {} in game {}", cid, gid);
+            return;
+        };
 
-        match res {
+        match game.add_player(cid, side).map(|side| side) {
             Ok(side) => {
-                let response = ServerMessage::GameJoined(gid, cid, side);
-                if let Some(c) = self.clients.get_mut(&cid) {
-                    let _ = c.tx.send(response).await;
-                    c.in_game = Some(gid);
+                let clients = game.get_participants();
+                for c in &clients {
+                    let msg = ServerMessage::GameJoined(gid, cid, side);
+                    if let Some(handler) = self.clients.get(&c) {
+                        let _ = handler.tx.send(msg).await;
+                    }
                 }
             }
+
             Err(_e) => {
                 // TODO: Joining game failed; currently we do not propagate a specific event to client here.
                 log::warn!("JoinGame failed for client {} in game {}", cid, gid);
@@ -174,20 +173,16 @@ impl GameManager {
         }
     }
 
-    // TODO: This informs only the player who left the game.
-    async fn handle_leave_game(&mut self, cid: ClientId) {
-        if let Some(c) = self.clients.get_mut(&cid) {
-            if let Some(gid) = c.in_game {
-                c.in_game = None;
-                if let Some(game) = self.games.get_mut(&gid) {
-                    if let Some(_side) = game.remove_player(cid) {
-                        let response = ServerMessage::GameLeft(gid, cid);
-                        if let Some(c) = self.clients.get(&cid) {
-                            let _ = c.tx.send(response).await;
-                        }
-                    }
+    async fn handle_leave_game(&mut self, cid: ClientId, gid: GameId) {
+        if let Some(game) = self.games.get_mut(&gid) {
+            let clients = game.get_participants();
+            for c in &clients {
+                let response = ServerMessage::GameLeft(gid, cid);
+                if let Some(c) = self.clients.get(&c) {
+                    let _ = c.tx.send(response).await;
                 }
             }
+            let _ = game.remove_player(cid);
         }
     }
 

@@ -1,3 +1,4 @@
+use crate::client::game::ActiveGame;
 use crate::client::network::NetworkSend;
 use crate::ui::{Overlay, Screen};
 use bevy::prelude::*;
@@ -69,13 +70,14 @@ pub fn quit_game_dialog_action_system(
     >,
     mut next_overlay: ResMut<NextState<Overlay>>,
     mut next_screen: ResMut<NextState<Screen>>,
+    game: Res<ActiveGame>,
     mut commands: Commands,
 ) {
     for (interaction, action) in interaction_query.iter_mut() {
         if *interaction == Interaction::Pressed {
             match action {
                 QuitGameAction::Confirm => {
-                    commands.trigger(NetworkSend(ClientMessage::LeaveGame));
+                    commands.trigger(NetworkSend(ClientMessage::LeaveGame(game.gid)));
                     next_screen.set(Screen::Menu);
                     next_overlay.set(Overlay::None);
                 }
