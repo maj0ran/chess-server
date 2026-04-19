@@ -12,6 +12,8 @@ pub struct MoveHistoryFullRefresh;
 
 #[derive(Component)]
 pub struct MoveHistory;
+#[derive(Component)]
+pub struct MoveHistoryEntry;
 
 /// UI scrolling event.
 #[derive(EntityEvent, Debug)]
@@ -23,6 +25,8 @@ pub struct Scroll {
 }
 
 const LINE_HEIGHT: f32 = 24.0;
+const MOVE_HISTORY_FONT_SIZE: f32 = 18.0;
+
 /// Injects scroll events into the UI hierarchy.
 pub fn send_scroll_events(
     mut mouse_wheel_reader: MessageReader<MouseWheel>,
@@ -145,9 +149,10 @@ pub fn refresh_move_history(
                 let text_to_spawn = current_full_move_text.clone();
                 commands.entity(entity).with_children(|parent| {
                     parent.spawn((
+                        MoveHistoryEntry,
                         Text::new(text_to_spawn),
                         TextFont {
-                            font_size: 12.0,
+                            font_size: MOVE_HISTORY_FONT_SIZE,
                             ..default()
                         },
                     ));
@@ -158,9 +163,10 @@ pub fn refresh_move_history(
             let text_to_spawn = current_full_move_text.clone();
             commands.entity(entity).with_children(|parent| {
                 parent.spawn((
+                    MoveHistoryEntry,
                     Text::new(text_to_spawn),
                     TextFont {
-                        font_size: 12.0,
+                        font_size: MOVE_HISTORY_FONT_SIZE,
                         ..default()
                     },
                 ));
@@ -196,9 +202,10 @@ pub fn update_move_history(
         );
         commands.entity(entity).with_children(|parent| {
             parent.spawn((
+                MoveHistoryEntry,
                 Text::new(text),
                 TextFont {
-                    font_size: 12.0,
+                    font_size: MOVE_HISTORY_FONT_SIZE,
                     ..default()
                 },
             ));

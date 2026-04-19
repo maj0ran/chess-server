@@ -238,6 +238,11 @@ pub fn on_resize(
     // Move History //
     //////////////////
     {
+        // TODO: In a perfect world, we would also like to scale the font size of the move history entries.
+        // TODO: But it turns out, that this could get quite complicated, as we are dynamically
+        // TODO: creating new Text-Entries after each full move, and those start with a default font size.
+        // TODO: So even if we scale all existing entries, a new entry after a move will not have the
+        // TODO: same size.
         let mut mh_node = queries.p1().into_inner();
         // Center of window + half board width + padding
         mh_node.left = Val::Px(win_size.x / 2.0 + board_px / 2.0 + padding_px);
