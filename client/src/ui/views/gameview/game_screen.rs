@@ -192,7 +192,7 @@ pub fn on_resize(
     let mut scale = (min_dim / RESOLUTION) * 0.75;
 
     // Layout constants for the Move History panel.
-    let history_base_width = 250.0; // Width of history panel at scale 1.0
+    let history_base_width = 400.0; // Width of history panel at scale 1.0
     let history_padding = 20.0; // Gap between board and history panel
 
     // Ensure the Move History panel fits within the window.
