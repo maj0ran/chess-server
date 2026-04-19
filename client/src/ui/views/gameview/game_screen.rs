@@ -3,8 +3,7 @@ use crate::client::game::{ActiveGame, GameJoinedEvent};
 use crate::client::lobby::LobbyState;
 use crate::ui::views::gameview::chessboard::board::{ChessBoard, RotateBoardEvent};
 use crate::ui::views::gameview::historypanel::movehistory::{
-    MoveHistory, Scroll, on_scroll_handler, refresh_move_history, send_scroll_events,
-    update_move_history,
+    MoveHistory, on_scroll_handler, refresh_move_history, send_scroll_events, update_move_history,
 };
 use crate::ui::{Overlay, Screen};
 use bevy::prelude::*;
@@ -113,12 +112,18 @@ fn setup_gamescreen(mut commands: Commands, win_query: Query<(Entity, &Window)>)
 
 /// Despawn all entities that are part of the in-game screen.
 /// Obviously happens when we leave a game.
-fn cleanup_gamescreen(mut commands: Commands, query: Query<Entity, With<GameScreenComponent>>) {
+fn cleanup_gamescreen(
+    mut commands: Commands,
+    query: Query<Entity, With<GameScreenComponent>>,
+    mut ui_scale: ResMut<UiScale>,
+) {
     log::debug!("Cleaning up gamescreen");
 
     for entity in query.iter() {
         commands.entity(entity).despawn();
     }
+    // rest scaling so the main menu isn't affected
+    ui_scale.0 = 1.0;
 }
 
 fn listen_keyboard_input(
@@ -183,119 +188,110 @@ pub fn on_resize(
         Single<(&mut Node, &mut TextFont), With<WhitePlayerLabel>>,
         Single<(&mut Node, &mut TextFont), With<BlackPlayerLabel>>,
     )>,
+    mut ui_scale: ResMut<UiScale>,
 ) {
-    // Get the new window size
-    let mut new_size = None;
+    // Collect the latest window size.
+    let mut last_size = None;
     for e in resize_reader.read() {
-        new_size = Some(Vec2::new(e.width, e.height));
+        last_size = Some(Vec2::new(e.width, e.height));
     }
-    let Some(win_size) = new_size else {
+    let Some(win_size) = last_size else {
         return;
     };
 
-    // Initial scale calculation based on the smallest window dimension.
-    // We want the board to take up about 75% of the screen height or width initially.
+    // 1. Calculate the Scaling Factor
+    // -------------------------------------------------------------------------
+    // The board's intrinsic size is RESOLUTION (800x800).
+    // Initially, we want the board to occupy 75% of the shortest window dimension.
     let min_dim = win_size.x.min(win_size.y);
     let mut scale = (min_dim / RESOLUTION) * 0.75;
 
-    // Layout constants for the Move History panel.
-    let history_base_width = 400.0; // Width of history panel at scale 1.0
-    let history_padding = 20.0; // Gap between board and history panel
-
-    // Ensure the Move History panel fits within the window.
-    // The board is centered at (win_size.x / 2.0).
-    // Its right edge is at: (win_size.x / 2.0) + (RESOLUTION * scale / 2.0).
-    // We need additional space for padding and the history panel width.
+    // Layout constants for unscaled UI (as if resolution was 1:1)
     let half_res = RESOLUTION / 2.0;
-    let total_right_offset_base = half_res + history_padding + history_base_width;
+    let history_width = 400.0;
+    let padding = 20.0;
 
-    let current_right_edge_px = total_right_offset_base * scale;
+    // Check if Move History fits on the right side.
+    // The board is centered at win_size.x / 2.0.
+    // Total space needed to the right of the center: (BoardHalf + Padding + HistoryWidth) * scale.
+    let required_right_space_base = half_res + padding + history_width;
     let available_right_space_px = win_size.x / 2.0;
 
-    // If the history panel goes off-screen, we downscale everything to fit.
-    if current_right_edge_px > available_right_space_px {
-        // We add a small 0.95 factor to keep it away from the very edge of the window.
-        scale = (available_right_space_px / total_right_offset_base) * 0.95;
+    if (required_right_space_base * scale) > available_right_space_px {
+        // Not enough space! Scale down to fit the history panel with a small safety margin (0.95).
+        scale = (available_right_space_px / required_right_space_base) * 0.95;
     }
 
-    /////////////////
-    // Board scale //
-    /////////////////
+    // 2. Apply Scale to the chess board
+    // -------------------------------------------------------------------------
+    // The board is not an UI element, so it's NOT affected by UiScale.
+    // We scale it manually.
     let is_rotated = {
         let mut board_transform = queries.p0();
-
         board_transform.scale = Vec3::splat(scale);
-        // we need the orientation later for the player labels
-        let is_rotated = board_transform.rotation.z.abs() > 0.1; // PI rotation check
-        is_rotated
+        board_transform.rotation.z.abs() > 0.1 // Rotation check for labels
     };
 
-    let board_px = RESOLUTION * scale;
-    let padding_px = history_padding * scale;
-    let history_px = history_base_width * scale;
+    // 3. UI Positioning using "Unscaled" Pixels
+    // -------------------------------------------------------------------------
+    // Since we use Bevy's UiScale, all Val::Px(x) values will be MULTIPLIED by `scale`.
+    // To place a UI element at an ABSOLUTE screen position (P), we must set its
+    // Val::Px value to (P / scale).
+    // Elements defined relative to the board (which uses `scale`) use base constants.
 
-    //////////////////
-    // Move History //
-    //////////////////
+    // Center of the window in "UI-scaled" coordinate space.
+    let ui_center_x = (win_size.x / 2.0) / scale;
+    let ui_center_y = (win_size.y / 2.0) / scale;
+
+    // Board bounds in "UI-scaled" space (matching the board's visual size).
+    let board_top = ui_center_y - half_res;
+    let board_bottom = ui_center_y + half_res;
+
+    // Update Move History
     {
-        // TODO: In a perfect world, we would also like to scale the font size of the move history entries.
-        // TODO: But it turns out, that this could get quite complicated, as we are dynamically
-        // TODO: creating new Text-Entries after each full move, and those start with a default font size.
-        // TODO: So even if we scale all existing entries, a new entry after a move will not have the
-        // TODO: same size.
         let mut mh_node = queries.p1().into_inner();
-        // Center of window + half board width + padding
-        mh_node.left = Val::Px(win_size.x / 2.0 + board_px / 2.0 + padding_px);
-        // Align top of history with top of the board (board is centered vertically)
-        mh_node.top = Val::Px((win_size.y - board_px) / 2.0);
-
-        mh_node.width = Val::Px(history_px);
-        mh_node.height = Val::Px(board_px);
+        // Positioned to the right of the board.
+        mh_node.left = Val::Px(ui_center_x + half_res + padding);
+        mh_node.top = Val::Px(board_top);
+        mh_node.width = Val::Px(history_width);
+        mh_node.height = Val::Px(RESOLUTION);
     }
 
-    // Player Labels - Compute separately because we can borrow only one part from the query.
-    let board_top = (win_size.y - board_px) / 2.0;
-    let board_bottom = (win_size.y + board_px) / 2.0;
-    let board_center_x = win_size.x / 2.0;
-    let label_width = RESOLUTION * scale;
+    // Update Player Labels
     let label_size = 32.0;
+    let label_width = RESOLUTION;
 
-    ////////////////////////
-    // White Player Label //
-    ////////////////////////
+    // Helper to position a label either above or below the board.
+    let set_label = |node: &mut Node, font: &mut TextFont, is_top: bool| {
+        font.font_size = label_size;
+        node.width = Val::Px(label_width);
+        node.left = Val::Px(ui_center_x - label_width / 2.0);
+        node.justify_content = JustifyContent::Center;
+
+        if is_top {
+            // "Unscaled" distance from top to place it above the board.
+            node.bottom = Val::Px((win_size.y / scale) - board_top + padding);
+            node.top = Val::Auto;
+        } else {
+            // "Unscaled" distance from top to place it below the board.
+            node.top = Val::Px(board_bottom + padding);
+            node.bottom = Val::Auto;
+        }
+    };
+
+    // White is normally at the bottom, Black at the top.
+    // Swap if the board is rotated.
     {
         let (mut white_node, mut white_font) = queries.p2().into_inner();
-
-        white_font.font_size = label_size * scale;
-        if !is_rotated {
-            white_node.top = Val::Px(board_bottom + padding_px);
-            white_node.bottom = Val::Auto;
-        } else {
-            white_node.bottom = Val::Px(win_size.y - board_top + padding_px);
-            white_node.top = Val::Auto;
-        }
-        white_node.width = Val::Px(label_width);
-        white_node.left = Val::Px(board_center_x - label_width / 2.0);
-        white_node.justify_content = JustifyContent::Center;
+        set_label(&mut white_node, &mut white_font, is_rotated);
     }
-    ////////////////////////
-    // Black Player Label //
-    ////////////////////////
     {
         let (mut black_node, mut black_font) = queries.p3().into_inner();
-
-        black_font.font_size = label_size * scale;
-        if !is_rotated {
-            black_node.bottom = Val::Px(win_size.y - board_top + padding_px);
-            black_node.top = Val::Auto;
-        } else {
-            black_node.top = Val::Px(board_bottom + padding_px);
-            black_node.bottom = Val::Auto;
-        }
-        black_node.width = Val::Px(label_width);
-        black_node.left = Val::Px(board_center_x - label_width / 2.0);
-        black_node.justify_content = JustifyContent::Center;
+        set_label(&mut black_node, &mut black_font, !is_rotated);
     }
+
+    // Finally, update the global UI scale.
+    ui_scale.0 = scale;
 }
 pub fn on_rotate(
     _ev: On<RotateBoardEvent>,

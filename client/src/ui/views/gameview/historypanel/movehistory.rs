@@ -1,6 +1,5 @@
 use crate::client::game::ActiveGame;
 use crate::ui::views::gameview::GameScreenComponent;
-use bevy::color::Color;
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::picking::hover::HoverMap;
 use bevy::prelude::*;
@@ -25,7 +24,7 @@ pub struct Scroll {
 }
 
 const LINE_HEIGHT: f32 = 24.0;
-const MOVE_HISTORY_FONT_SIZE: f32 = 18.0;
+const MOVE_HISTORY_FONT_SIZE: f32 = 24.0;
 
 /// Injects scroll events into the UI hierarchy.
 pub fn send_scroll_events(
@@ -33,6 +32,7 @@ pub fn send_scroll_events(
     hover_map: Res<HoverMap>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut commands: Commands,
+    ui_scale: Res<UiScale>,
 ) {
     for mouse_wheel in mouse_wheel_reader.read() {
         let mut delta = -Vec2::new(mouse_wheel.x, mouse_wheel.y);
@@ -40,6 +40,9 @@ pub fn send_scroll_events(
         if mouse_wheel.unit == MouseScrollUnit::Line {
             delta *= LINE_HEIGHT;
         }
+
+        // Adjust for UI scale
+        delta /= ui_scale.0;
 
         if keyboard_input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]) {
             std::mem::swap(&mut delta.x, &mut delta.y);
@@ -109,7 +112,7 @@ impl MoveHistory {
                 flex_direction: FlexDirection::Column,
                 height: Val::Percent(100.0),
                 width: Val::Px(400.0),
-                top: Val::Px(100.0),
+                top: Val::Px(0.0),
                 overflow: Overflow::scroll_y(),
                 ..default()
             },
