@@ -75,7 +75,6 @@ fn setup_gamescreen(mut commands: Commands, win_query: Query<(Entity, &Window)>)
             position_type: PositionType::Absolute,
             ..default()
         },
-        BackgroundColor(Color::srgb(1.0, 0.0, 0.0)),
         Text::new("Waiting for White..."),
         TextFont {
             font_size: 24.0,
@@ -90,7 +89,6 @@ fn setup_gamescreen(mut commands: Commands, win_query: Query<(Entity, &Window)>)
             position_type: PositionType::Absolute,
             ..default()
         },
-        BackgroundColor(Color::srgb(1.0, 0.0, 0.0)),
         Text::new("Waiting for Black..."),
         TextFont {
             font_size: 24.0,

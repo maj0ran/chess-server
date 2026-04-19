@@ -96,7 +96,7 @@ pub fn on_scroll_handler(
 }
 
 impl MoveHistory {
-    pub fn new() -> (GameScreenComponent, MoveHistory, Node, BackgroundColor) {
+    pub fn new() -> (GameScreenComponent, MoveHistory, Node) {
         (
             GameScreenComponent,
             MoveHistory,
@@ -109,7 +109,6 @@ impl MoveHistory {
                 overflow: Overflow::scroll_y(),
                 ..default()
             },
-            BackgroundColor(Color::srgb(1.0, 0.0, 0.0)),
         )
     }
 }
