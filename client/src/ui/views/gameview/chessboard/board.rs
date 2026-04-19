@@ -6,7 +6,7 @@ use super::*;
 use crate::client::game::{ActiveGame, BoardUpdate};
 use crate::client::network::NetworkSend;
 use crate::ui::views::gameview::game_screen::{
-    DESTINATION_COLOR, GameScreenContainer, GameScreenInitialized, SOURCE_COLOR,
+    DESTINATION_COLOR, GameScreenInitialized, SOURCE_COLOR,
 };
 use crate::ui::{COLOR_LIGHT2, COLOR_MID};
 use bevy::color::Color;
@@ -35,13 +35,13 @@ pub struct ChessBoard {
 }
 
 impl ChessBoard {
-    pub fn new() -> (ChessBoard, GameScreenComponent, Sprite, Transform) {
+    pub fn new() -> (GameScreenComponent, ChessBoard, Sprite, Transform) {
         (
+            GameScreenComponent,
             ChessBoard {
                 selected_src: None,
                 selected_dst: None,
             },
-            GameScreenComponent,
             Sprite {
                 color: Color::srgb_u8(150, 50, 150),
                 custom_size: Some(Vec2::splat(BOARD_SIZE)),
@@ -60,49 +60,40 @@ pub fn draw_chessboard(
     _ev: On<GameScreenInitialized>,
     mut commands: Commands,
     active_game: Res<ActiveGame>,
-    query: Query<Entity, With<GameScreenContainer>>,
+    query: Query<Entity, With<ChessBoard>>,
 ) {
-    let container = query.single().expect("ChessboardContainer not found");
+    let board_entity = query.single().expect("ChessBoard not found");
 
-    let board = commands
-        .spawn(ChessBoard::new())
-        .with_children(|parent| {
-            let mut file = 'a';
-            let mut rank = '1';
-            for r in 0..8 {
-                for f in 0..8 {
-                    let color = if (f + r) % 2 == 0 {
-                        COLOR_LIGHT2
-                    } else {
-                        COLOR_MID
-                    };
-                    let name = format!("{file}{rank}");
-                    parent
-                        .spawn(ChessSquare::new(
-                            name,
-                            Vec2::new(
-                                (-BOARD_SIZE / 2.0)
-                                    + (SQUARE_SIZE / 2.0)
-                                    + (f as f32 * SQUARE_SIZE),
-                                (-BOARD_SIZE / 2.0)
-                                    + (SQUARE_SIZE / 2.0)
-                                    + (r as f32 * SQUARE_SIZE),
-                            ),
-                            color,
-                        ))
-                        .observe(select_square);
+    commands.entity(board_entity).with_children(|parent| {
+        let mut file = 'a';
+        let mut rank = '1';
+        for r in 0..8 {
+            for f in 0..8 {
+                let color = if (f + r) % 2 == 0 {
+                    COLOR_LIGHT2
+                } else {
+                    COLOR_MID
+                };
+                let name = format!("{file}{rank}");
+                parent
+                    .spawn(ChessSquare::new(
+                        name,
+                        Vec2::new(
+                            (-BOARD_SIZE / 2.0) + (SQUARE_SIZE / 2.0) + (f as f32 * SQUARE_SIZE),
+                            (-BOARD_SIZE / 2.0) + (SQUARE_SIZE / 2.0) + (r as f32 * SQUARE_SIZE),
+                        ),
+                        color,
+                    ))
+                    .observe(select_square);
 
-                    file = ((file as u8) + 1) as char;
-                    if file > 'h' {
-                        file = 'a';
-                        rank = ((rank as u8) + 1) as char;
-                    }
+                file = ((file as u8) + 1) as char;
+                if file > 'h' {
+                    file = 'a';
+                    rank = ((rank as u8) + 1) as char;
                 }
             }
-        })
-        .id();
-
-    commands.entity(container).add_child(board);
+        }
+    });
 
     if active_game.side == UserRoleSelection::Black {
         commands.trigger(RotateBoardEvent);

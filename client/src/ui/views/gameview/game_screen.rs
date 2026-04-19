@@ -1,12 +1,9 @@
 use super::GameScreenComponent;
-use crate::ClassList;
 use crate::client::game::{ActiveGame, GameJoinedEvent};
 use crate::client::lobby::LobbyState;
 use crate::ui::views::gameview::chessboard::board::{ChessBoard, RotateBoardEvent};
 use crate::ui::{Overlay, Screen};
 use bevy::prelude::*;
-use bevy::text::TextBounds;
-use bevy::ui::AlignItems::Center;
 use std::f32::consts::PI;
 
 pub const SOURCE_COLOR: Color = Color::srgb_u8(250, 113, 113);
@@ -46,11 +43,6 @@ pub fn on_game_joined(
     next_overlay.set(Overlay::None);
 }
 
-/// Container for all game-screen elements. The board, player names, move history...
-/// We use this container to scale all elements when resizing the window.
-#[derive(Component)]
-pub struct GameScreenContainer;
-
 #[derive(Component)]
 pub struct WhitePlayerLabel;
 #[derive(Component)]
@@ -58,8 +50,7 @@ pub struct BlackPlayerLabel;
 
 #[derive(Component)]
 pub struct MoveHistory;
-#[derive(Component)]
-pub struct MoveHistoryContainer;
+
 #[derive(Event)]
 pub struct MoveHistoryUpdated;
 
@@ -71,11 +62,7 @@ pub struct GameScreenInitialized;
 fn setup_gamescreen(mut commands: Commands, win_query: Query<(Entity, &Window)>) {
     log::info!("Setting up gamescreen");
 
-    commands.spawn((
-        GameScreenComponent,
-        GameScreenContainer,
-        Transform::default(),
-    ));
+    commands.spawn(ChessBoard::new());
 
     commands.spawn((
         GameScreenComponent,
@@ -105,9 +92,9 @@ fn setup_gamescreen(mut commands: Commands, win_query: Query<(Entity, &Window)>)
         },
     ));
 
-    commands.spawn(((
+    commands.spawn((
         GameScreenComponent,
-        MoveHistoryContainer,
+        MoveHistory,
         Node {
             position_type: PositionType::Absolute,
             height: Val::Percent(100.0),
@@ -117,19 +104,16 @@ fn setup_gamescreen(mut commands: Commands, win_query: Query<(Entity, &Window)>)
             ..default()
         },
         BackgroundColor(Color::srgb(1.0, 0.0, 0.0)),
-        children![(
-            MoveHistory,
-            Text::new(""),
-            TextFont {
-                font_size: 12.0,
-                ..default()
-            },
-            TextLayout {
-                justify: Justify::Justified,
-                ..default()
-            },
-        )],
-    ),));
+        Text::new(""),
+        TextFont {
+            font_size: 12.0,
+            ..default()
+        },
+        TextLayout {
+            justify: Justify::Justified,
+            ..default()
+        },
+    ));
 
     // We trigger a WindowResized event manually so the board and other items scale
     // themselves properly at startup.
@@ -225,41 +209,20 @@ fn update_move_history(
 
 pub fn on_resize(
     mut resize_reader: MessageReader<bevy::window::WindowResized>,
-    mut container_query: Query<(Entity, &mut Transform), With<GameScreenContainer>>,
-    mut history_query: Query<
-        &mut TextFont,
-        (
-            With<MoveHistory>,
-            Without<WhitePlayerLabel>,
-            Without<BlackPlayerLabel>,
-            Without<MoveHistoryContainer>,
-        ),
-    >,
-    mut mh_container: Query<
-        &mut Node,
-        (
-            With<MoveHistoryContainer>,
-            Without<WhitePlayerLabel>,
-            Without<BlackPlayerLabel>,
-        ),
-    >,
+    mut board_query: Query<&mut Transform, With<ChessBoard>>,
+    mut history_query: Query<(&mut Node, &mut TextFont), With<MoveHistory>>,
     mut white_label_query: Query<
         (&mut Node, &mut TextFont),
-        (
-            With<WhitePlayerLabel>,
-            Without<MoveHistoryContainer>,
-            Without<BlackPlayerLabel>,
-        ),
+        (With<WhitePlayerLabel>, Without<MoveHistory>),
     >,
     mut black_label_query: Query<
         (&mut Node, &mut TextFont),
         (
             With<BlackPlayerLabel>,
-            Without<MoveHistoryContainer>,
+            Without<MoveHistory>,
             Without<WhitePlayerLabel>,
         ),
     >,
-    board_query: Query<&Transform, (With<ChessBoard>, Without<GameScreenContainer>)>,
 ) {
     let mut new_size = None;
     for e in resize_reader.read() {
@@ -269,8 +232,8 @@ pub fn on_resize(
         return;
     };
 
-    let mut container = container_query.single_mut().unwrap();
-    let mut mh = mh_container.single_mut().unwrap();
+    let mut board_transform = board_query.single_mut().unwrap();
+    let (mut mh_node, mut mh_font) = history_query.single_mut().unwrap();
 
     // Initial scale calculation based on the smallest window dimension.
     // We want the board to take up about 75% of the screen height or width initially.
@@ -297,8 +260,8 @@ pub fn on_resize(
         scale = (available_right_space_px / total_right_offset_base) * 0.95;
     }
 
-    // Apply the final scale to the game container (board).
-    container.1.scale = Vec3::splat(scale);
+    // Apply the final scale to the board.
+    board_transform.scale = Vec3::splat(scale);
 
     // Position and size the Move History UI Node.
     let board_px = RESOLUTION * scale;
@@ -306,16 +269,15 @@ pub fn on_resize(
     let history_px = history_base_width * scale;
 
     // Center of window + half board width + padding
-    mh.left = Val::Px(win_size.x / 2.0 + board_px / 2.0 + padding_px);
+    mh_node.left = Val::Px(win_size.x / 2.0 + board_px / 2.0 + padding_px);
     // Align top of history with top of the board (board is centered vertically)
-    mh.top = Val::Px((win_size.y - board_px) / 2.0);
+    mh_node.top = Val::Px((win_size.y - board_px) / 2.0);
 
-    mh.width = Val::Px(history_px);
-    mh.height = Val::Px(board_px);
+    mh_node.width = Val::Px(history_px);
+    mh_node.height = Val::Px(board_px);
 
     // Scale the font sizes
-    let mut history_font = history_query.single_mut().unwrap();
-    history_font.font_size = 24.0 * scale;
+    mh_font.font_size = 24.0 * scale;
 
     let (mut white_node, mut white_font) = white_label_query.single_mut().unwrap();
     let (mut black_node, mut black_font) = black_label_query.single_mut().unwrap();
@@ -331,11 +293,7 @@ pub fn on_resize(
     let board_center_x = win_size.x / 2.0;
 
     // Determine which label goes where based on board rotation
-    let is_rotated = if let Ok(bt) = board_query.single() {
-        bt.rotation.z.abs() > 0.1 // PI rotation check
-    } else {
-        false
-    };
+    let is_rotated = board_transform.rotation.z.abs() > 0.1; // PI rotation check
 
     if !is_rotated {
         // White is bottom, Black is top
@@ -351,11 +309,7 @@ pub fn on_resize(
         black_node.bottom = Val::Auto;
     }
 
-    // Center labels horizontally (using left with a trick or just absolute pos)
-    // To center an absolute node, we can't easily use justify_self if parent is not a node.
-    // But they are at the root. So we use left: 50% and transform: translateX(-50%) if possible,
-    // but here we can just calculate left: (win_size.x / 2.0) and hope they are small or we use a container.
-    // Actually, we should probably give them a width and set left.
+    // Center labels horizontally
     let label_width = 400.0 * scale;
     white_node.width = Val::Px(label_width);
     black_node.width = Val::Px(label_width);

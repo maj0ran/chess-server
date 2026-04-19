@@ -1,4 +1,3 @@
-use crate::ui::views::gameview::game_screen::MoveHistory;
 use bevy::prelude::{Event, Resource};
 use chess_core::protocol::UserRoleSelection;
 use chess_core::states::GameOverReason;
