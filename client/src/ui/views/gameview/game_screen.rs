@@ -3,7 +3,8 @@ use crate::client::game::{ActiveGame, GameJoinedEvent};
 use crate::client::lobby::LobbyState;
 use crate::ui::views::gameview::chessboard::board::{ChessBoard, RotateBoardEvent};
 use crate::ui::views::gameview::historypanel::movehistory::{
-    MoveHistory, refresh_move_history, update_move_history,
+    MoveHistory, Scroll, on_scroll_handler, refresh_move_history, send_scroll_events,
+    update_move_history,
 };
 use crate::ui::{Overlay, Screen};
 use bevy::prelude::*;
@@ -23,17 +24,22 @@ impl Plugin for GameScreenPlugin {
             .add_systems(Update, listen_keyboard_input.run_if(in_state(Screen::Game)))
             .add_systems(
                 Update,
-                update_player_names.run_if(in_state(Screen::Game)).run_if(
-                    resource_exists::<ActiveGame>.and(
-                        resource_exists_and_changed::<LobbyState>
-                            .or(resource_exists_and_changed::<ActiveGame>),
+                (
+                    update_player_names.run_if(
+                        resource_exists::<ActiveGame>.and(
+                            resource_exists_and_changed::<LobbyState>
+                                .or(resource_exists_and_changed::<ActiveGame>),
+                        ),
                     ),
-                ),
+                    send_scroll_events,
+                )
+                    .run_if(in_state(Screen::Game)),
             )
             .add_observer(on_game_joined)
             .add_observer(on_rotate)
             .add_observer(update_move_history)
             .add_observer(refresh_move_history)
+            .add_observer(on_scroll_handler)
             .add_systems(Update, on_resize.run_if(in_state(Screen::Game)));
     }
 }
@@ -175,7 +181,7 @@ pub fn on_resize(
     mut resize_reader: MessageReader<bevy::window::WindowResized>,
     mut queries: ParamSet<(
         Single<&mut Transform, With<ChessBoard>>,
-        Single<(&mut Node, &mut TextFont), With<MoveHistory>>,
+        Single<&mut Node, With<MoveHistory>>,
         Single<(&mut Node, &mut TextFont), With<WhitePlayerLabel>>,
         Single<(&mut Node, &mut TextFont), With<BlackPlayerLabel>>,
     )>,
@@ -234,7 +240,7 @@ pub fn on_resize(
     // Move History //
     //////////////////
     {
-        let (mut mh_node, mut mh_font) = queries.p1().into_inner();
+        let mut mh_node = queries.p1().into_inner();
         // Center of window + half board width + padding
         mh_node.left = Val::Px(win_size.x / 2.0 + board_px / 2.0 + padding_px);
         // Align top of history with top of the board (board is centered vertically)
@@ -242,9 +248,6 @@ pub fn on_resize(
 
         mh_node.width = Val::Px(history_px);
         mh_node.height = Val::Px(board_px);
-
-        // Scale the font sizes
-        mh_font.font_size = 24.0 * scale;
     }
 
     // Player Labels - Compute separately because we can borrow only one part from the query.
