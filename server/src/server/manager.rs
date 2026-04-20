@@ -239,10 +239,14 @@ impl GameManager {
         let san_len = san.len() as u8;
 
         match game.make_move(mov, cid) {
-            // a legal move was made and accepted.
-            // Update move history and send the updated squares to all clients in the game.
+            // a legal move was made and accepted:
+            // Update move history, clear any draw offers
+            // and send the updated squares to all clients in the game.
             Ok(changes) => {
                 game.move_history.push(san.clone());
+
+                game.draw_offer_white = false;
+                game.draw_offer_black = false;
 
                 // convert `Piece` to `WoodPiece`. A `Piece` includes all the server side logic for
                 // movement, which the client should not need to know about. A `WoodPiece` is merely
