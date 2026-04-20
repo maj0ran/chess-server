@@ -112,6 +112,7 @@ impl MoveHistory {
                 flex_direction: FlexDirection::Column,
                 height: Val::Percent(100.0),
                 width: Val::Px(400.0),
+                right: Val::Px(0.0),
                 top: Val::Px(0.0),
                 overflow: Overflow::scroll_y(),
                 ..default()

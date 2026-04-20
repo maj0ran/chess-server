@@ -232,7 +232,6 @@ pub fn on_resize(
     mut resize_reader: MessageReader<bevy::window::WindowResized>,
     mut queries: ParamSet<(
         Single<&mut Transform, With<ChessBoard>>,
-        Single<&mut Node, With<MoveHistory>>,
         Single<(&mut Node, &mut TextFont), With<WhitePlayerLabel>>,
         Single<(&mut Node, &mut TextFont), With<BlackPlayerLabel>>,
     )>,
@@ -256,18 +255,16 @@ pub fn on_resize(
 
     // Layout constants for unscaled UI (as if resolution was 1:1)
     let half_res = RESOLUTION / 2.0;
-    let history_width = 400.0;
     let padding = 20.0;
+    let history_width = 400.0;
 
-    // Check if Move History fits on the right side.
-    // The board is centered at win_size.x / 2.0.
-    // Total space needed to the right of the center: (BoardHalf + Padding + HistoryWidth) * scale.
-    let required_right_space_base = half_res + padding + history_width;
-    let available_right_space_px = win_size.x / 2.0;
+    // Ensure board + history fits horizontally without overlap.
+    // Board is centered, so we need space on the right for half the board + history.
+    let right_side_needed = half_res + padding + history_width;
+    let available_right_space = win_size.x / 2.0;
 
-    if (required_right_space_base * scale) > available_right_space_px {
-        // Not enough space! Scale down to fit the history panel with a small safety margin (0.95).
-        scale = (available_right_space_px / required_right_space_base) * 0.95;
+    if (right_side_needed * scale) > available_right_space {
+        scale = available_right_space / right_side_needed;
     }
 
     // 2. Apply Scale to the chess board
@@ -296,14 +293,7 @@ pub fn on_resize(
     let board_bottom = ui_center_y + half_res;
 
     // Update Move History
-    {
-        let mut mh_node = queries.p1().into_inner();
-        // Positioned to the right of the board.
-        mh_node.left = Val::Px(ui_center_x + half_res + padding);
-        mh_node.top = Val::Px(board_top);
-        mh_node.width = Val::Px(history_width);
-        mh_node.height = Val::Px(RESOLUTION);
-    }
+    // It's anchored on the right in MoveHistory::new() and scales with UiScale.
 
     // Update Player Labels
     let label_size = 32.0;
@@ -330,11 +320,11 @@ pub fn on_resize(
     // White is normally at the bottom, Black at the top.
     // Swap if the board is rotated.
     {
-        let (mut white_node, mut white_font) = queries.p2().into_inner();
+        let (mut white_node, mut white_font) = queries.p1().into_inner();
         set_label(&mut white_node, &mut white_font, is_rotated);
     }
     {
-        let (mut black_node, mut black_font) = queries.p3().into_inner();
+        let (mut black_node, mut black_font) = queries.p2().into_inner();
         set_label(&mut black_node, &mut black_font, !is_rotated);
     }
 
