@@ -250,22 +250,17 @@ pub fn on_resize(
     // -------------------------------------------------------------------------
     // The board's intrinsic size is RESOLUTION (800x800).
     // Initially, we want the board to occupy 75% of the shortest window dimension.
-    let min_dim = win_size.x.min(win_size.y);
-    let mut scale = (min_dim / RESOLUTION) * 0.75;
-
-    // Layout constants for unscaled UI (as if resolution was 1:1)
-    let half_res = RESOLUTION / 2.0;
+    // We also must ensure that the board (centered) doesn't overlap with the
+    // MoveHistory (anchored on the right, 400px wide).
     let padding = 20.0;
     let history_width = 400.0;
+    let half_res = RESOLUTION / 2.0;
 
-    // Ensure board + history fits horizontally without overlap.
-    // Board is centered, so we need space on the right for half the board + history.
-    let right_side_needed = half_res + padding + history_width;
-    let available_right_space = win_size.x / 2.0;
-
-    if (right_side_needed * scale) > available_right_space {
-        scale = available_right_space / right_side_needed;
-    }
+    // Available space for the board is constrained by:
+    // 1. Window Height (board must fit vertically)
+    // 2. Window Width - 2 * (history + padding) (to keep it centered and not overlap history)
+    let max_board_dim = win_size.y.min(win_size.x - (history_width));
+    let scale = (max_board_dim / RESOLUTION).max(0.0) * 0.75;
 
     // 2. Apply Scale to the chess board
     // -------------------------------------------------------------------------
@@ -289,8 +284,7 @@ pub fn on_resize(
     let ui_center_y = (win_size.y / 2.0) / scale;
 
     // Board bounds in "UI-scaled" space (matching the board's visual size).
-    let board_top = ui_center_y - half_res;
-    let board_bottom = ui_center_y + half_res;
+    let label_offset = ui_center_y + half_res + padding;
 
     // Update Move History
     // It's anchored on the right in MoveHistory::new() and scales with UiScale.
@@ -307,12 +301,10 @@ pub fn on_resize(
         node.justify_content = JustifyContent::Center;
 
         if is_top {
-            // "Unscaled" distance from top to place it above the board.
-            node.bottom = Val::Px((win_size.y / scale) - board_top + padding);
+            node.bottom = Val::Px(label_offset);
             node.top = Val::Auto;
         } else {
-            // "Unscaled" distance from top to place it below the board.
-            node.top = Val::Px(board_bottom + padding);
+            node.top = Val::Px(label_offset);
             node.bottom = Val::Auto;
         }
     };

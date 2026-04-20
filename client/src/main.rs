@@ -49,11 +49,6 @@ fn main() {
                 primary_window: Some(Window {
                     title: "Chess Client".to_string(),
                     resolution: WindowResolution::new(1280, 800),
-                    resize_constraints: WindowResizeConstraints {
-                        min_width: 1024.0,
-                        min_height: 768.0,
-                        ..default()
-                    },
                     ..default()
                 }),
                 ..default()
