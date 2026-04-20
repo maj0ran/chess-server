@@ -143,7 +143,7 @@ fn setup_gamescreen(
         ],
     ));
 
-    commands.spawn(MoveHistory::new());
+    commands.spawn(MoveHistory::new(&asset_server));
 
     // We trigger a WindowResized event manually so the board and other items scale
     // themselves properly at startup.

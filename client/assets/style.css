@@ -1,9 +1,8 @@
 :root {
     display: flex;
-
     /* font-size and color are inherited */
     font-size: 35px;
-    color: #dddc9b; /* COLOR_LIGHT */
+    color: #dddc9b;
 }
 
 .menu-root {
@@ -200,4 +199,26 @@ button text {
 
 .label-large {
     font-size: 40px;
+}
+
+.move-history-container {
+    display: flex;
+    flex-direction: column;
+    background-color: #2a2a2a;
+    border-left: 2px solid #534841;
+}
+
+.move-history-entry {
+    display: flex;
+    flex-direction: row;
+    padding-left: 10px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #3a322d;
+    align-items: center;
+}
+
+.move-history-entry text {
+    font-size: 20px;
+    color: #dddc9b;
 }

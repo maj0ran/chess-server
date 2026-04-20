@@ -3,6 +3,7 @@ use crate::ui::views::gameview::GameScreenComponent;
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::picking::hover::HoverMap;
 use bevy::prelude::*;
+use bevy_flair::prelude::*;
 
 #[derive(Event)]
 pub struct MoveHistoryUpdated;
@@ -103,10 +104,20 @@ pub fn on_scroll_handler(
 }
 
 impl MoveHistory {
-    pub fn new() -> (GameScreenComponent, MoveHistory, Node) {
+    pub fn new(
+        asset_server: &Res<AssetServer>,
+    ) -> (
+        GameScreenComponent,
+        MoveHistory,
+        NodeStyleSheet,
+        ClassList,
+        Node,
+    ) {
         (
             GameScreenComponent,
             MoveHistory,
+            NodeStyleSheet::new(asset_server.load("style.css")),
+            ClassList::new("move-history-container"),
             Node {
                 position_type: PositionType::Absolute,
                 flex_direction: FlexDirection::Column,
@@ -154,11 +165,9 @@ pub fn refresh_move_history(
                 commands.entity(entity).with_children(|parent| {
                     parent.spawn((
                         MoveHistoryEntry,
-                        Text::new(text_to_spawn),
-                        TextFont {
-                            font_size: MOVE_HISTORY_FONT_SIZE,
-                            ..default()
-                        },
+                        Node { ..default() },
+                        ClassList::new("move-history-entry"),
+                        children![Text::new(text_to_spawn)],
                     ));
                 });
             }
@@ -168,11 +177,9 @@ pub fn refresh_move_history(
             commands.entity(entity).with_children(|parent| {
                 parent.spawn((
                     MoveHistoryEntry,
-                    Text::new(text_to_spawn),
-                    TextFont {
-                        font_size: MOVE_HISTORY_FONT_SIZE,
-                        ..default()
-                    },
+                    Node { ..default() },
+                    ClassList::new("move-history-entry"),
+                    children![Text::new(text_to_spawn)],
                 ));
             });
             current_full_move_text.clear();
@@ -185,6 +192,7 @@ pub fn update_move_history(
     query_display: Single<(Entity, Option<&Children>), With<MoveHistory>>,
     history: ResMut<ActiveGame>,
     mut query_text: Query<&mut Text>,
+    query_children: Query<&Children>,
     mut commands: Commands,
 ) {
     let history = &history.move_history;
@@ -207,20 +215,18 @@ pub fn update_move_history(
         commands.entity(entity).with_children(|parent| {
             parent.spawn((
                 MoveHistoryEntry,
-                Text::new(text),
-                TextFont {
-                    font_size: MOVE_HISTORY_FONT_SIZE,
-                    ..default()
-                },
+                Node { ..default() },
+                ClassList::new("move-history-entry"),
+                children![Text::new(text)],
             ));
         });
-    } else {
-        if let Some(children) = children {
-            if let Some(&last_child) = children.last() {
-                if let Ok(mut text) = query_text.get_mut(last_child) {
-                    text.0.push_str(last_move);
-                }
-            }
+    } else if let Some(text_entity) = children
+        .and_then(|c| c.last())
+        .and_then(|&lc| query_children.get(lc).ok())
+        .and_then(|c| c.first())
+    {
+        if let Ok(mut text) = query_text.get_mut(*text_entity) {
+            text.0.push_str(last_move);
         }
     }
 }
