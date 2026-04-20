@@ -78,9 +78,20 @@ button text {
     color: #202020; /* COLOR_DARK */
 }
 
+.game-button-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    row-gap: 10px;
+    background-color: #2a2a2a;
+    border-right: 3px solid #3a322d;
+}
+
 .game-button {
     width: 80px;
     height: 80px;
+    border: 3px solid #726044;
 }
 
 .dialog-overlay {
@@ -205,7 +216,7 @@ button text {
     display: flex;
     flex-direction: column;
     background-color: #2a2a2a;
-    border-left: 2px solid #534841;
+    border-left: 3px solid #534841;
 }
 
 .move-history-entry {

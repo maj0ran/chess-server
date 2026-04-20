@@ -113,14 +113,14 @@ fn setup_gamescreen(
         NodeStyleSheet::new(asset_server.load("style.css")),
         Node {
             position_type: PositionType::Absolute,
-            left: Val::Px(20.0),
             height: Val::Percent(100.0),
             width: Val::Auto,
+            left: Val::Px(0.0),
             justify_items: JustifyItems::Center,
             align_items: AlignItems::Center,
             ..default()
         },
-        ClassList::new("column-align"),
+        ClassList::new("game-button-panel"),
         children![
             (
                 Button,
