@@ -112,23 +112,35 @@ fn setup_gamescreen(
 
     commands.spawn((
         GameScreenComponent,
-        ResignButton,
         NodeStyleSheet::new(asset_server.load("style.css")),
         Node {
             position_type: PositionType::Absolute,
-            left: Val::Px(10.0),
-            top: Val::Percent(50.0),
-            width: Val::Px(100.0),
-            height: Val::Px(100.0),
+            left: Val::Px(20.0),
+            height: Val::Percent(100.0),
+            width: Val::Auto,
+            justify_content: JustifyContent::Center,
+            justify_items: JustifyItems::Center,
+            align_items: AlignItems::Center,
+            justify_self: JustifySelf::Center,
             ..default()
         },
-        (
-            Button,
-            Interaction::default(),
-            ClassList::new("promotion-button"),
-            GameAction::Resign,
-            children![Text::new("R"), TextFont { ..default() }],
-        ),
+        ClassList::new("column-align"),
+        children![
+            (
+                Button,
+                Interaction::default(),
+                GameAction::Resign,
+                children![Text::new("R"), TextFont { ..default() }],
+                ClassList::new("game-button"),
+            ),
+            (
+                Button,
+                Interaction::default(),
+                GameAction::OfferDraw,
+                children![Text::new("D"), TextFont { ..default() }],
+                ClassList::new("game-button"),
+            ),
+        ],
     ));
 
     commands.spawn(MoveHistory::new());

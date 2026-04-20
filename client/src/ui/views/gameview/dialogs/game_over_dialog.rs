@@ -26,6 +26,7 @@ pub fn on_game_over(
     commands.spawn((
         Node::default(),
         NodeStyleSheet::new(asset_server.load("style.css")),
+        ClassList::new("dialog-overlay"),
         GameOverDialogComponent,
         children![(
             Node::default(),

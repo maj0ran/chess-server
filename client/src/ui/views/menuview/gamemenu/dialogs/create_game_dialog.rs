@@ -12,6 +12,7 @@ pub fn setup_create_dialog(mut commands: Commands, asset_server: Res<AssetServer
     commands.spawn((
         Node::default(),
         NodeStyleSheet::new(asset_server.load("style.css")),
+        ClassList::new("dialog-overlay"),
         CreateDialogComponent,
         children![(
             Node::default(),
