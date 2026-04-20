@@ -55,7 +55,7 @@ impl GameManager {
             games: HashMap::new(),
             clients: HashMap::new(),
             rx: recv,
-            next_game_id: 0,
+            next_game_id: 1,
         }
     }
 
@@ -177,6 +177,20 @@ impl GameManager {
     }
 
     async fn handle_leave_game(&mut self, cid: ClientId, gid: GameId) {
+        if gid == 0 {
+            for game in self.games.values_mut() {
+                if game.get_participants().contains(&cid) {
+                    game.remove_player(cid);
+                }
+                let clients = game.get_participants();
+                for c in &clients {
+                    let response = ServerMessage::GameLeft(game.id, cid);
+                    if let Some(c) = self.clients.get(&c) {
+                        let _ = c.tx.send(response).await;
+                    }
+                }
+            }
+        }
         if let Some(game) = self.games.get_mut(&gid) {
             let clients = game.get_participants();
             for c in &clients {

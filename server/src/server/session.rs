@@ -117,7 +117,6 @@ impl ClientSession {
         // channel connections for game manager communication.
         let srv_tx = &self.srv.tx;
         let srv_rx = &self.srv.rx;
-
         // receiving messages from the remote client and forwarding them to the GameManager
         let listen_on_client = async move {
             loop {
@@ -132,7 +131,11 @@ impl ClientSession {
                         match e {
                             NetError::Io(_) => {}
                             NetError::Protocol(_) => {}
-                            NetError::Disconnected => {}
+                            NetError::Disconnected => {
+                                let msg = ClientMessage::LeaveGame(0); // 0 = All Games
+                                let _ = srv_tx.send((id, msg)).await.unwrap();
+                                break;
+                            }
                         }
                         log::warn!("failed to read message from client #{}: {}", id, e);
                         break;
