@@ -1,12 +1,17 @@
 use super::GameScreenComponent;
 use crate::client::game::{ActiveGame, GameJoinedEvent};
 use crate::client::lobby::LobbyState;
+use crate::client::network::NetworkSend;
 use crate::ui::views::gameview::chessboard::board::{ChessBoard, RotateBoardEvent};
 use crate::ui::views::gameview::historypanel::movehistory::{
     MoveHistory, on_scroll_handler, refresh_move_history, send_scroll_events, update_move_history,
 };
+use crate::ui::views::menuview::gamemenu::dialogs::create_game_dialog::CreateAction;
 use crate::ui::{Overlay, Screen};
 use bevy::prelude::*;
+use bevy_flair::prelude::{ClassList, NodeStyleSheet};
+use chess_core::protocol::NewGameParams;
+use chess_core::protocol::messages::ClientMessage;
 use std::f32::consts::PI;
 
 pub const SOURCE_COLOR: Color = Color::srgb_u8(250, 113, 113);
@@ -39,6 +44,10 @@ impl Plugin for GameScreenPlugin {
             .add_observer(update_move_history)
             .add_observer(refresh_move_history)
             .add_observer(on_scroll_handler)
+            .add_systems(
+                Update,
+                gamescreen_button_system.run_if(in_state(Screen::Game)),
+            )
             .add_systems(Update, on_resize.run_if(in_state(Screen::Game)));
     }
 }
@@ -56,13 +65,19 @@ pub fn on_game_joined(
 pub struct WhitePlayerLabel;
 #[derive(Component)]
 pub struct BlackPlayerLabel;
+#[derive(Component)]
+pub struct ResignButton;
 
 #[derive(Event)]
 pub struct GameScreenInitialized;
 
 /// Sets up the in-game screen.
 /// Draws the chessboard and triggers a `BoardUpdate` event to trigger piece position retrievement.
-fn setup_gamescreen(mut commands: Commands, win_query: Query<(Entity, &Window)>) {
+fn setup_gamescreen(
+    mut commands: Commands,
+    win_query: Query<(Entity, &Window)>,
+    asset_server: Res<AssetServer>,
+) {
     log::info!("Setting up gamescreen");
 
     commands.spawn(ChessBoard::new());
@@ -93,6 +108,27 @@ fn setup_gamescreen(mut commands: Commands, win_query: Query<(Entity, &Window)>)
             font_size: 24.0,
             ..default()
         },
+    ));
+
+    commands.spawn((
+        GameScreenComponent,
+        ResignButton,
+        NodeStyleSheet::new(asset_server.load("style.css")),
+        Node {
+            position_type: PositionType::Absolute,
+            left: Val::Px(10.0),
+            top: Val::Percent(50.0),
+            width: Val::Px(100.0),
+            height: Val::Px(100.0),
+            ..default()
+        },
+        (
+            Button,
+            Interaction::default(),
+            ClassList::new("promotion-button"),
+            GameAction::Resign,
+            children![Text::new("R"), TextFont { ..default() }],
+        ),
     ));
 
     commands.spawn(MoveHistory::new());
@@ -314,5 +350,28 @@ pub fn on_rotate(
             width: win_size.x,
             height: win_size.y,
         });
+    }
+}
+
+#[derive(Component)]
+pub enum GameAction {
+    Resign,
+    OfferDraw,
+}
+
+pub fn gamescreen_button_system(
+    mut interaction_query: Query<(&Interaction, &GameAction), (Changed<Interaction>, With<Button>)>,
+    mut commands: Commands,
+    game: ResMut<ActiveGame>,
+) {
+    for (interaction, action) in interaction_query.iter_mut() {
+        if *interaction == Interaction::Pressed {
+            match action {
+                GameAction::Resign => {
+                    commands.trigger(NetworkSend(ClientMessage::Resign(game.gid)));
+                }
+                GameAction::OfferDraw => {}
+            }
+        }
     }
 }

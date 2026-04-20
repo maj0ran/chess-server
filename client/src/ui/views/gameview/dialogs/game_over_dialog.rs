@@ -12,6 +12,7 @@ pub fn on_game_over(
     asset_server: Res<AssetServer>,
     mut next_overlay: ResMut<NextState<Overlay>>,
 ) {
+    log::info!("Game over!");
     let reason = Some(ev.reason);
     let winner = ev.reason.get_winner();
 
