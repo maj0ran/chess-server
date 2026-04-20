@@ -1,6 +1,7 @@
 use crate::chess::chess::Chess;
 use crate::chess::san::San;
 use crate::server::chessgame::ChessGame;
+use crate::server::server::Server;
 use chess_core::protocol::messages::{ClientMessage, ServerMessage};
 use chess_core::protocol::{JoinGameParams, NewGameParams};
 use chess_core::states::{ChessGameState, GameOverReason};
@@ -75,6 +76,7 @@ impl GameManager {
             spectators: vec![],
             _time: game_params.time,
             _time_inc: game_params.time_inc,
+            draw_offer_pending: false,
             move_history: vec![],
         }
     }
@@ -124,6 +126,9 @@ impl GameManager {
                         }
                         ClientMessage::Resign(gid) => {
                             self.handle_resign(cid, gid).await;
+                        }
+                        ClientMessage::OfferDraw(gid) => {
+                            self.handle_offer_draw(cid, gid).await;
                         }
                     }
                 }
@@ -392,6 +397,53 @@ impl GameManager {
                     GameOverReason::Resignation(!side),
                 ))
                 .await;
+        }
+    }
+
+    pub async fn handle_offer_draw(&mut self, cid: ClientId, gid: GameId) {
+        let mut game = if let Some(game) = self.games.get_mut(&gid) {
+            game
+        } else {
+            return;
+        };
+
+        let white = if let Some(white) = game.white_player {
+            white
+        } else {
+            return;
+        };
+        let black = if let Some(black) = game.black_player {
+            black
+        } else {
+            return;
+        };
+
+        if cid == white || cid == black {
+            let opp = game.get_opponent(cid);
+            if let Some(opp) = opp {
+                if game.draw_offer_pending {
+                    for c in game.get_participants() {
+                        let _ = self
+                            .clients
+                            .get(&c)
+                            .unwrap()
+                            .tx
+                            .send(ServerMessage::GameOver(gid, GameOverReason::DrawAgreement))
+                            .await;
+                    }
+                    let game = self.games.remove(&gid).unwrap();
+                    let _ = self.save_game(&game).await;
+                } else {
+                    let _ = self
+                        .clients
+                        .get(&opp)
+                        .unwrap()
+                        .tx
+                        .send(ServerMessage::DrawOffered(gid))
+                        .await;
+                    game.draw_offer_pending = true;
+                }
+            }
         }
     }
 

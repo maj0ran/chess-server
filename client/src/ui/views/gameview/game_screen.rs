@@ -382,7 +382,9 @@ pub fn gamescreen_button_system(
                 GameAction::Resign => {
                     commands.trigger(NetworkSend(ClientMessage::Resign(game.gid)));
                 }
-                GameAction::OfferDraw => {}
+                GameAction::OfferDraw => {
+                    commands.trigger(NetworkSend(ClientMessage::OfferDraw(game.gid)))
+                }
             }
         }
     }

@@ -10,6 +10,7 @@ pub enum GameOverReason {
     ThreefoldRepetition,
     InsufficientMaterial,
     FiftyMovesRule,
+    DrawAgreement,
 }
 
 impl GameOverReason {
@@ -22,6 +23,7 @@ impl GameOverReason {
             GameOverReason::ThreefoldRepetition => 5,
             GameOverReason::InsufficientMaterial => 6,
             GameOverReason::FiftyMovesRule => 7,
+            GameOverReason::DrawAgreement => 8,
         }
     }
 
@@ -45,6 +47,7 @@ impl Display for GameOverReason {
             GameOverReason::ThreefoldRepetition => "3-Fold-Repetition",
             GameOverReason::InsufficientMaterial => "Insufficient Material",
             GameOverReason::FiftyMovesRule => "50-Moves-Rule",
+            GameOverReason::DrawAgreement => "Agreement",
         };
         write!(f, "{}", text)
     }

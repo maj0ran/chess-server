@@ -81,6 +81,10 @@ impl NetMessage for ClientMessage {
                 let gid = reader.read_u32_le()?;
                 Ok(ClientMessage::Resign(gid))
             }
+            Self::OFFER_DRAW => {
+                let gid = reader.read_u32_le()?;
+                Ok(ClientMessage::OfferDraw(gid))
+            }
             _ => Err(NetError::Protocol(format!(
                 "parse: invalid command 0x{:02X}",
                 opcode
@@ -142,6 +146,11 @@ impl NetMessage for ClientMessage {
             }
             ClientMessage::Resign(gid) => {
                 let mut data = vec![Self::RESIGN];
+                data.extend_from_slice(&gid.to_le_bytes());
+                data
+            }
+            ClientMessage::OfferDraw(gid) => {
+                let mut data = vec![Self::OFFER_DRAW];
                 data.extend_from_slice(&gid.to_le_bytes());
                 data
             }
@@ -215,6 +224,7 @@ impl NetMessage for ServerMessage {
                     5 => GameOverReason::ThreefoldRepetition,
                     6 => GameOverReason::InsufficientMaterial,
                     7 => GameOverReason::FiftyMovesRule,
+                    8 => GameOverReason::DrawAgreement,
                     _ => panic!("Invalid game over reason"),
                 };
                 Ok(ServerMessage::GameOver(gid, reason))
@@ -275,6 +285,10 @@ impl NetMessage for ServerMessage {
             Self::LOGIN_ACCEPTED => {
                 let cid = reader.read_u32_le()? as usize;
                 Ok(ServerMessage::LoginAccepted(cid))
+            }
+            Self::DRAW_OFFERED => {
+                let gid = reader.read_u32_le()?;
+                Ok(ServerMessage::DrawOffered(gid))
             }
             _ => Err(NetError::Protocol(format!(
                 "Unknown opcode: {}",
@@ -381,6 +395,11 @@ impl NetMessage for ServerMessage {
                 if history.len() > 0 {
                     data.pop(); // remove last ' ' if we have a history
                 }
+                data
+            }
+            ServerMessage::DrawOffered(gid) => {
+                let mut data = vec![Self::DRAW_OFFERED];
+                data.extend_from_slice(&gid.to_le_bytes());
                 data
             }
         }

@@ -20,6 +20,8 @@ pub struct ChessGame {
     pub _time: u32,
     pub _time_inc: u32,
 
+    pub draw_offer_pending: bool,
+
     pub move_history: Vec<String>,
 }
 
@@ -162,6 +164,24 @@ impl ChessGame {
             }
         }
         participants
+    }
+
+    pub fn get_white(&self) -> Option<ClientId> {
+        self.white_player
+    }
+
+    pub fn get_black(&self) -> Option<ClientId> {
+        self.black_player
+    }
+
+    pub fn get_opponent(&self, cid: ClientId) -> Option<ClientId> {
+        if self.white_player == Some(cid) {
+            self.black_player
+        } else if self.black_player == Some(cid) {
+            self.white_player
+        } else {
+            None
+        }
     }
 
     pub fn make_move(

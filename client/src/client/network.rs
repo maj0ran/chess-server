@@ -243,6 +243,7 @@ pub fn poll_network(
                     }
                 }
             }
+            ServerMessage::DrawOffered(gid) => {}
         }
     }
 }
