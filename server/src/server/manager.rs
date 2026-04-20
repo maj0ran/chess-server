@@ -3,7 +3,7 @@ use crate::chess::san::San;
 use crate::server::chessgame::ChessGame;
 use chess_core::protocol::messages::{ClientMessage, ServerMessage};
 use chess_core::protocol::{JoinGameParams, NewGameParams};
-use chess_core::states::ChessGameState;
+use chess_core::states::{ChessGameState, GameOverReason};
 use chess_core::*;
 use chrono::prelude::*;
 use smol::channel::{Receiver, Sender};
@@ -121,6 +121,9 @@ impl GameManager {
                         }
                         ClientMessage::QueryMoveHistory(gid) => {
                             self.handle_query_move_history(cid, gid).await;
+                        }
+                        ClientMessage::Resign(gid) => {
+                            self.handle_resign(cid, gid).await;
                         }
                     }
                 }
@@ -347,6 +350,34 @@ impl GameManager {
                     c.tx.send(ServerMessage::MoveHistory(gid, game.move_history.clone()))
                         .await;
             }
+        }
+    }
+
+    pub async fn handle_resign(&mut self, cid: ClientId, gid: GameId) {
+        let game = if let Some(game) = self.games.remove(&gid) {
+            let _ = self.save_game(&game).await;
+            game
+        } else {
+            return;
+        };
+
+        let side = if let Some(s) = game.get_side(cid) {
+            s
+        } else {
+            return;
+        };
+
+        for c in game.get_participants() {
+            let _ = self
+                .clients
+                .get(&c)
+                .unwrap()
+                .tx
+                .send(ServerMessage::GameOver(
+                    gid,
+                    GameOverReason::Resignation(!side),
+                ))
+                .await;
         }
     }
 

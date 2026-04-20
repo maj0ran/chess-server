@@ -21,6 +21,7 @@ pub enum ClientMessage {
     QueryBoard(GameId),
     QueryMoveHistory(GameId),
     LeaveGame(GameId),
+    Resign(GameId),
 }
 
 impl ClientMessage {
@@ -34,6 +35,7 @@ impl ClientMessage {
     pub const QUERY_CLIENT_DETAILS: u8 = 0x11;
     pub const QUERY_BOARD: u8 = 0x12;
     pub const QUERY_MOVE_HISTORY: u8 = 0x13;
+    pub const RESIGN: u8 = 0x14;
 }
 
 impl fmt::Display for ClientMessage {
@@ -50,6 +52,7 @@ impl fmt::Display for ClientMessage {
             ClientMessage::SetNickname(_) => "Set Nickname",
             ClientMessage::QueryBoard(_) => "Query Board",
             ClientMessage::QueryMoveHistory(_) => "Query Move History",
+            ClientMessage::Resign(_) => "Resign",
         };
         write!(f, "{}", s)
     }

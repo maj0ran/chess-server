@@ -200,4 +200,15 @@ impl ChessGame {
 
         ChessGameState::Running
     }
+
+    pub fn get_side(&self, client_id: ClientId) -> Option<ChessColor> {
+        if self.white_player == Some(client_id) {
+            Some(ChessColor::White)
+        } else if self.black_player == Some(client_id) {
+            Some(ChessColor::Black)
+        } else {
+            log::warn!("Client is not part of the game");
+            None
+        }
+    }
 }

@@ -77,6 +77,10 @@ impl NetMessage for ClientMessage {
                 let gid = reader.read_u32_le()?;
                 Ok(ClientMessage::QueryMoveHistory(gid))
             }
+            Self::RESIGN => {
+                let gid = reader.read_u32_le()?;
+                Ok(ClientMessage::Resign(gid))
+            }
             _ => Err(NetError::Protocol(format!(
                 "parse: invalid command 0x{:02X}",
                 opcode
@@ -133,6 +137,11 @@ impl NetMessage for ClientMessage {
             }
             ClientMessage::QueryMoveHistory(gid) => {
                 let mut data = vec![Self::QUERY_MOVE_HISTORY];
+                data.extend_from_slice(&gid.to_le_bytes());
+                data
+            }
+            ClientMessage::Resign(gid) => {
+                let mut data = vec![Self::RESIGN];
                 data.extend_from_slice(&gid.to_le_bytes());
                 data
             }
