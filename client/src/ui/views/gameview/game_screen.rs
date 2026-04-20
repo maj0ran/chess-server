@@ -85,29 +85,27 @@ fn setup_gamescreen(
     commands.spawn((
         GameScreenComponent,
         WhitePlayerLabel,
+        NodeStyleSheet::new(asset_server.load("style.css")),
+        ClassList::new("player-label"),
         Node {
-            position_type: PositionType::Absolute,
+            bottom: Val::Px(50.0),
+            left: Val::Px(0.0),
             ..default()
         },
-        Text::new("Waiting for White..."),
-        TextFont {
-            font_size: 24.0,
-            ..default()
-        },
+        children![Text::new("Waiting for White...")],
     ));
 
     commands.spawn((
         GameScreenComponent,
         BlackPlayerLabel,
+        NodeStyleSheet::new(asset_server.load("style.css")),
+        ClassList::new("player-label"),
         Node {
-            position_type: PositionType::Absolute,
+            top: Val::Px(50.0),
+            left: Val::Px(0.0),
             ..default()
         },
-        Text::new("Waiting for Black..."),
-        TextFont {
-            font_size: 24.0,
-            ..default()
-        },
+        children![Text::new("Waiting for Black...")],
     ));
 
     commands.spawn((
@@ -118,10 +116,8 @@ fn setup_gamescreen(
             left: Val::Px(20.0),
             height: Val::Percent(100.0),
             width: Val::Auto,
-            justify_content: JustifyContent::Center,
             justify_items: JustifyItems::Center,
             align_items: AlignItems::Center,
-            justify_self: JustifySelf::Center,
             ..default()
         },
         ClassList::new("column-align"),
@@ -187,40 +183,45 @@ fn listen_keyboard_input(
 fn update_player_names(
     game: Res<ActiveGame>,
     lobby: Res<LobbyState>,
-    mut query_white: Query<&mut Text, With<WhitePlayerLabel>>,
-    mut query_black: Query<&mut Text, (With<BlackPlayerLabel>, Without<WhitePlayerLabel>)>,
+    query_white: Single<&Children, With<WhitePlayerLabel>>,
+    query_black: Single<&Children, (With<BlackPlayerLabel>, Without<WhitePlayerLabel>)>,
+    mut query_text: Query<&mut Text>,
 ) {
     let game_info = game.game_info;
 
-    if let Ok(mut white_text) = query_white.single_mut() {
-        let name = if let Some(wid) = game_info.white_player {
-            lobby
-                .get_client_info(wid)
-                .cloned()
-                .unwrap_or_else(|| format!("Player {}", wid))
-        } else {
-            "Waiting for White...".to_string()
-        };
+    if let Some(&text_entity) = query_white.first() {
+        if let Ok(mut white_text) = query_text.get_mut(text_entity) {
+            let name = if let Some(wid) = game_info.white_player {
+                lobby
+                    .get_client_info(wid)
+                    .cloned()
+                    .unwrap_or_else(|| format!("Player {}", wid))
+            } else {
+                "Waiting for White...".to_string()
+            };
 
-        if white_text.0 != name {
-            log::debug!("Updating white player name to {}", name);
-            white_text.0 = name;
+            if white_text.0 != name {
+                log::debug!("Updating white player name to {}", name);
+                white_text.0 = name;
+            }
         }
     }
 
-    if let Ok(mut black_text) = query_black.single_mut() {
-        let name = if let Some(bid) = game_info.black_player {
-            lobby
-                .get_client_info(bid)
-                .cloned()
-                .unwrap_or_else(|| format!("Player {}", bid))
-        } else {
-            "Waiting for Black...".to_string()
-        };
+    if let Some(&text_entity) = query_black.first() {
+        if let Ok(mut black_text) = query_text.get_mut(text_entity) {
+            let name = if let Some(bid) = game_info.black_player {
+                lobby
+                    .get_client_info(bid)
+                    .cloned()
+                    .unwrap_or_else(|| format!("Player {}", bid))
+            } else {
+                "Waiting for Black...".to_string()
+            };
 
-        if black_text.0 != name {
-            log::debug!("Updating black player name to {}", name);
-            black_text.0 = name;
+            if black_text.0 != name {
+                log::debug!("Updating black player name to {}", name);
+                black_text.0 = name;
+            }
         }
     }
 }
@@ -230,11 +231,7 @@ fn update_player_names(
 /// window size and available screen space.
 pub fn on_resize(
     mut resize_reader: MessageReader<bevy::window::WindowResized>,
-    mut queries: ParamSet<(
-        Single<&mut Transform, With<ChessBoard>>,
-        Single<(&mut Node, &mut TextFont), With<WhitePlayerLabel>>,
-        Single<(&mut Node, &mut TextFont), With<BlackPlayerLabel>>,
-    )>,
+    mut queries: ParamSet<(Single<&mut Transform, With<ChessBoard>>,)>,
     mut ui_scale: ResMut<UiScale>,
 ) {
     // Collect the latest window size.
@@ -246,78 +243,20 @@ pub fn on_resize(
         return;
     };
 
-    // 1. Calculate the Scaling Factor
-    // -------------------------------------------------------------------------
-    // The board's intrinsic size is RESOLUTION (800x800).
-    // Initially, we want the board to occupy 75% of the shortest window dimension.
-    // We also must ensure that the board (centered) doesn't overlap with the
-    // MoveHistory (anchored on the right, 400px wide).
-    let padding = 20.0;
     let history_width = 400.0;
-    let half_res = RESOLUTION / 2.0;
+    let padding = 10.0;
 
     // Available space for the board is constrained by:
-    // 1. Window Height (board must fit vertically)
-    // 2. Window Width - 2 * (history + padding) (to keep it centered and not overlap history)
-    let max_board_dim = win_size.y.min(win_size.x - (history_width));
-    let scale = (max_board_dim / RESOLUTION).max(0.0) * 0.75;
+    // 1. window_height (board must fit vertically)
+    // 2. window_width - history_width (to keep it centered and not overlap history)
+    let max_board_dim = win_size.y.min(win_size.x - (history_width + padding));
+    let scale = (max_board_dim / RESOLUTION) * 0.75;
 
-    // 2. Apply Scale to the chess board
-    // -------------------------------------------------------------------------
-    // The board is not an UI element, so it's NOT affected by UiScale.
+    // The board is not a UI element, so it's NOT affected by UiScale.
     // We scale it manually.
-    let is_rotated = {
+    {
         let mut board_transform = queries.p0();
         board_transform.scale = Vec3::splat(scale);
-        board_transform.rotation.z.abs() > 0.1 // Rotation check for labels
-    };
-
-    // 3. UI Positioning using "Unscaled" Pixels
-    // -------------------------------------------------------------------------
-    // Since we use Bevy's UiScale, all Val::Px(x) values will be MULTIPLIED by `scale`.
-    // To place a UI element at an ABSOLUTE screen position (P), we must set its
-    // Val::Px value to (P / scale).
-    // Elements defined relative to the board (which uses `scale`) use base constants.
-
-    // Center of the window in "UI-scaled" coordinate space.
-    let ui_center_x = (win_size.x / 2.0) / scale;
-    let ui_center_y = (win_size.y / 2.0) / scale;
-
-    // Board bounds in "UI-scaled" space (matching the board's visual size).
-    let label_offset = ui_center_y + half_res + padding;
-
-    // Update Move History
-    // It's anchored on the right in MoveHistory::new() and scales with UiScale.
-
-    // Update Player Labels
-    let label_size = 32.0;
-    let label_width = RESOLUTION;
-
-    // Helper to position a label either above or below the board.
-    let set_label = |node: &mut Node, font: &mut TextFont, is_top: bool| {
-        font.font_size = label_size;
-        node.width = Val::Px(label_width);
-        node.left = Val::Px(ui_center_x - label_width / 2.0);
-        node.justify_content = JustifyContent::Center;
-
-        if is_top {
-            node.bottom = Val::Px(label_offset);
-            node.top = Val::Auto;
-        } else {
-            node.top = Val::Px(label_offset);
-            node.bottom = Val::Auto;
-        }
-    };
-
-    // White is normally at the bottom, Black at the top.
-    // Swap if the board is rotated.
-    {
-        let (mut white_node, mut white_font) = queries.p1().into_inner();
-        set_label(&mut white_node, &mut white_font, is_rotated);
-    }
-    {
-        let (mut black_node, mut black_font) = queries.p2().into_inner();
-        set_label(&mut black_node, &mut black_font, !is_rotated);
     }
 
     // Finally, update the global UI scale.
@@ -325,15 +264,47 @@ pub fn on_resize(
 }
 pub fn on_rotate(
     _ev: On<RotateBoardEvent>,
-    mut query: Query<&mut Transform, With<ChessBoard>>,
+    mut queries: ParamSet<(
+        Query<&mut Transform, With<ChessBoard>>,
+        Single<&mut Node, With<WhitePlayerLabel>>,
+        Single<&mut Node, (With<BlackPlayerLabel>, Without<WhitePlayerLabel>)>,
+    )>,
     mut commands: Commands,
     win_query: Query<(Entity, &Window)>,
 ) {
     log::debug!("Rotating game view");
 
     // rotate the board 180'
-    for mut board in query.iter_mut() {
-        board.rotate_z(PI);
+    let is_rotated = {
+        let mut board_query = queries.p0();
+        let mut rotated = false;
+        for mut board in board_query.iter_mut() {
+            board.rotate_z(PI);
+            rotated = board.rotation.z.abs() > 0.1;
+        }
+        rotated
+    };
+
+    // Update Player Labels
+    let set_label = |node: &mut Node, is_top: bool| {
+        if is_top {
+            node.top = Val::Px(50.0);
+            node.bottom = Val::Auto;
+        } else {
+            node.bottom = Val::Px(50.0);
+            node.top = Val::Auto;
+        }
+    };
+
+    // White is normally at the bottom, Black at the top.
+    // Swap if the board is rotated.
+    {
+        let mut white_node = queries.p1();
+        set_label(&mut white_node, is_rotated);
+    }
+    {
+        let mut black_node = queries.p2();
+        set_label(&mut black_node, !is_rotated);
     }
 
     // Trigger a resize to update UI node positions

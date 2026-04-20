@@ -222,3 +222,15 @@ button text {
     font-size: 20px;
     color: #dddc9b;
 }
+
+.player-label {
+    position: absolute;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.player-label text {
+    font-size: 32px;
+}
