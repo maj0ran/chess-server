@@ -208,7 +208,7 @@ impl ChessGame {
         }
     }
 
-    pub fn get_game_state(&mut self) -> ChessGameState {
+    pub fn get_game_state(&self) -> ChessGameState {
         if self.chess.is_checkmate() {
             return ChessGameState::Finished(GameOverReason::Checkmate(!self.chess.active_player));
         }
