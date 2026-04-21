@@ -149,7 +149,7 @@ impl ChessGame {
     }
 
     /// Returns all players and spectators of a chess game.
-    pub fn get_participants(&self) -> Vec<ClientId> {
+    pub fn get_all_participants(&self) -> Vec<ClientId> {
         let mut participants = Vec::new();
         if let Some(id) = self.white_player {
             participants.push(id);
@@ -165,6 +165,18 @@ impl ChessGame {
             }
         }
         participants
+    }
+
+    /// Return the players of the game (without spectators)
+    pub fn get_players(&self) -> Vec<ClientId> {
+        let mut players = Vec::new();
+        if let Some(id) = self.white_player {
+            players.push(id);
+        }
+        if let Some(id) = self.black_player {
+            players.push(id);
+        }
+        players
     }
 
     pub fn get_opponent(&self, cid: ClientId) -> Option<ClientId> {

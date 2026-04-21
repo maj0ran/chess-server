@@ -165,7 +165,7 @@ impl GameManager {
 
         match game.add_player(cid, side).map(|side| side) {
             Ok(side) => {
-                let clients = game.get_participants();
+                let clients = game.get_all_participants();
                 for c in &clients {
                     let msg = ServerMessage::GameJoined(gid, cid, side);
                     if let Some(handler) = self.clients.get(&c) {
@@ -184,10 +184,10 @@ impl GameManager {
     async fn handle_leave_game(&mut self, cid: ClientId, gid: GameId) {
         if gid == 0 {
             for game in self.games.values_mut() {
-                if game.get_participants().contains(&cid) {
+                if game.get_all_participants().contains(&cid) {
                     game.remove_player(cid);
                 }
-                let clients = game.get_participants();
+                let clients = game.get_all_participants();
                 for c in &clients {
                     let response = ServerMessage::GameLeft(game.id, cid);
                     if let Some(c) = self.clients.get(&c) {
@@ -197,7 +197,7 @@ impl GameManager {
             }
         }
         if let Some(game) = self.games.get_mut(&gid) {
-            let clients = game.get_participants();
+            let clients = game.get_all_participants();
             for c in &clients {
                 let response = ServerMessage::GameLeft(gid, cid);
                 if let Some(c) = self.clients.get(&c) {
@@ -256,7 +256,7 @@ impl GameManager {
                     .map(|(t, p)| (*t, p.map(|piece| piece.piece)))
                     .collect();
 
-                let clients = game.get_participants();
+                let clients = game.get_all_participants();
                 for c in &clients {
                     let msg = ServerMessage::MoveAccepted(san_len, san.clone(), changes.clone());
                     if let Some(handler) = self.clients.get(&c) {
@@ -390,7 +390,7 @@ impl GameManager {
             return;
         };
 
-        for c in game.get_participants() {
+        for c in game.get_all_participants() {
             let _ = self
                 .clients
                 .get(&c)
@@ -411,6 +411,11 @@ impl GameManager {
             return;
         };
 
+        // can only offer draw if both players are in the game
+        if game.get_players().len() != 2 {
+            return;
+        }
+
         if game.white_player == Some(cid) {
             game.draw_offer_white = true;
         }
@@ -418,12 +423,14 @@ impl GameManager {
             game.draw_offer_black = true;
         }
 
-        // one of the two players offered a draw; sent offer to other
+        // one of the two players offered a draw.
+        // we want both players, the opponent, but also the offerer to receive the event
+        // that the offer happened successfully.
         if game.draw_offer_white ^ game.draw_offer_black {
-            if let Some(opponent) = game.get_opponent(cid) {
+            for p in game.get_players() {
                 let _ = self
                     .clients
-                    .get(&opponent)
+                    .get(&p)
                     .unwrap()
                     .tx
                     .send(ServerMessage::DrawOffered(gid))
@@ -433,7 +440,7 @@ impl GameManager {
 
         // both players offered a draw; game is over
         if game.draw_offer_white && game.draw_offer_black {
-            for c in game.get_participants() {
+            for c in game.get_all_participants() {
                 let _ = self
                     .clients
                     .get(&c)
