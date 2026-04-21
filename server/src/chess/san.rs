@@ -12,6 +12,10 @@ impl San for ChessMove {
     /// This is only used to send the client the SAN representation of a move, so it
     /// can be displayed to the user. Internally, the server only works with `ChessMove`s.
     fn to_san(&self, board: &Chess) -> String {
+        // Check if the move is legal at all
+        if !board.is_pseudo_legal_move(self) {
+            return String::new();
+        }
         // First, we need the piece that has been moved
         let piece = match board.peek(self.src) {
             Some(p) => p,
@@ -37,7 +41,7 @@ impl San for ChessMove {
                 ChessPiece::Rook => 'R',
                 ChessPiece::Queen => 'Q',
                 ChessPiece::King => 'K',
-                _ => unreachable!(), // pawn
+                ChessPiece::Pawn => unreachable!(),
             });
 
             // Disambiguation for pieces (not pawns)

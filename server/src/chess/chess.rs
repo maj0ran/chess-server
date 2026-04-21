@@ -94,7 +94,7 @@ impl Chess {
     /// get the position of the king of the given player.
     pub fn get_king_pos(&self, color: ChessColor) -> Tile {
         for t in Tile::all() {
-            if let Some(p) = self[t] {
+            if let Some(p) = &self[t] {
                 if p.typ == ChessPiece::King && p.color == color {
                     return t;
                 }
@@ -486,43 +486,62 @@ impl Chess {
         }
     }
 
-    /// Execute a move on the board.
-    /// Returns a vector of tiles that have been changed.
-    /// This approach is helpful for en passant and castling, where more tiles
-    /// than the src and dest tiles are affected.
-    pub fn make_move(&mut self, mov: ChessMove) -> ChessResult<Vec<(Tile, Option<Piece>)>> {
-        // 1. Check movement rules
+    pub fn is_pseudo_legal_move(&self, mov: &ChessMove) -> bool {
         let src = mov.src;
         let dst = mov.dst;
-        let p = self.peek(src).ok_or(ChessError::IllegalMove(mov))?;
+        let p = if let Some(p) = self.peek(src) {
+            p
+        } else {
+            return false;
+        };
 
         if p.color != self.active_player {
-            return Err(ChessError::IllegalMove(mov));
+            return false;
         }
 
         let tiles = self.get_moves(src);
         if !tiles.contains(&dst) {
-            return Err(ChessError::IllegalMove(mov));
+            return false;
         }
 
         if p.typ == ChessPiece::Pawn && (dst.rank == '8' || dst.rank == '1') {
             if mov.special.is_none() {
-                return Err(ChessError::IllegalMove(mov));
+                return false;
             }
         }
 
-        // 2. Simulate the move on a cloned board
+        true
+    }
+
+    /// Execute a move on the board.
+    /// Returns a vector of tiles that have been changed. This approach is helpful for
+    /// en passant and castling, where more tiles  than the src and dest tiles are affected.
+    ///
+    ///
+    pub fn make_move(&mut self, mov: ChessMove) -> ChessResult<Vec<(Tile, Option<Piece>)>> {
+        // First we check with the piece movement rules the pseudo-legal move, i.e., if the piece
+        // can move by its own rules to the destination square. We only test for validity and
+        // no test for _check_ is performed yet.
+        if !self.is_pseudo_legal_move(&mov) {
+            return Err(ChessError::IllegalMove(mov));
+        }
+        // After the pseudo-legal test, we now clone the board to create a simulation.
+        // We execute the pseudo-legal move on the simulation board. The pieces are now at their
+        // new positions on the simulation.
         let mut simulation = self.clone();
+        simulation.make_move_unchecked(mov)?;
 
-        // 3. Call make_move_unchecked on simulation. This handles all the movement rules.
-        let _ = simulation.make_move_unchecked(mov)?;
-
-        // 4. Call is_valid_position on simulation to check if the move is legal regarding checks.
+        // Now we test for checks on the simulation. If a player moved a piece but now his king
+        // is in check, the move is illegal and will not be executed on the real board.
         if simulation.is_in_check(simulation.active_player) {
             return Err(ChessError::IllegalMove(mov));
         }
 
-        // 5. Special check for castling through check
+        let src = mov.src;
+        let dst = mov.dst;
+        let p = self[src].unwrap(); // already covered by is_pseudo_legal_move()
+
+        // Special check for castling through check;
         // A bit awkward to make the test here, but it's yet again such a special chess rule;
         // castling is the only move we can't do to leave a check + we can't castle through check.
         if p.typ == ChessPiece::King && (mov.dst.file as i8 - mov.src.file as i8).abs() == 2 {
@@ -586,11 +605,6 @@ impl Chess {
         let dst = chessmove.dst;
 
         let mut piece = self.take(src).ok_or(ChessError::IllegalMove(chessmove))?;
-
-        if piece.color != self.active_player {
-            self[src] = Some(piece); // restore piece
-            return Err(ChessError::IllegalMove(chessmove));
-        }
 
         let mut updated_tiles = vec![(src, Some(piece), None)];
         // handle special cases. note that en_passant and castling need to update different tiles
@@ -724,6 +738,14 @@ impl fmt::Display for Chess {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn king_move_bug() {
+        let _ = env_logger::builder().is_test(true).try_init();
+        let mut game = Chess::new();
+
+        game.make_move("e1e8".parse().unwrap());
+    }
     #[test]
     fn test_tile_index_alignment() {
         let board = Chess::new();
