@@ -44,6 +44,7 @@ impl Plugin for GameScreenPlugin {
             .add_observer(update_move_history)
             .add_observer(refresh_move_history)
             .add_observer(on_scroll_handler)
+            .add_observer(on_draw_offered)
             .add_systems(
                 Update,
                 gamescreen_button_system.run_if(in_state(Screen::Game)),
@@ -67,9 +68,13 @@ pub struct WhitePlayerLabel;
 pub struct BlackPlayerLabel;
 #[derive(Component)]
 pub struct ResignButton;
+#[derive(Component)]
+pub struct DrawButton;
 
 #[derive(Event)]
 pub struct GameScreenInitialized;
+#[derive(Event)]
+pub struct DrawOffered(pub bool);
 
 /// Sets up the in-game screen.
 /// Draws the chessboard and triggers a `BoardUpdate` event to trigger piece position retrievement.
@@ -124,6 +129,7 @@ fn setup_gamescreen(
         children![
             (
                 Button,
+                ResignButton,
                 Interaction::default(),
                 GameAction::Resign,
                 children![Text::new("R"), TextFont { ..default() }],
@@ -131,6 +137,7 @@ fn setup_gamescreen(
             ),
             (
                 Button,
+                DrawButton,
                 Interaction::default(),
                 GameAction::OfferDraw,
                 children![Text::new("D"), TextFont { ..default() }],
@@ -340,5 +347,14 @@ pub fn gamescreen_button_system(
                 }
             }
         }
+    }
+}
+
+pub fn on_draw_offered(ev: On<DrawOffered>, query: Single<&mut ClassList, With<DrawButton>>) {
+    let mut btn = query.into_inner();
+    if ev.0 {
+        btn.add("game-button-draw-pending");
+    } else {
+        btn.remove("game-button-draw-pending");
     }
 }

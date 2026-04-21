@@ -3,6 +3,7 @@ use crate::ui::gamelist_menu::UpdateGamesList;
 
 use crate::client::game::{ActiveGame, BoardUpdate, GameDetails, GameJoinedEvent, GameOverEvent};
 use crate::client::lobby::LobbyState;
+use crate::ui::views::gameview::game_screen::DrawOffered;
 use crate::ui::views::gameview::historypanel::movehistory::{
     MoveHistoryFullRefresh, MoveHistoryUpdated,
 };
@@ -163,6 +164,7 @@ pub fn poll_network(
                     }
                     commands.trigger(BoardUpdate);
                     commands.trigger(MoveHistoryUpdated);
+                    commands.trigger(DrawOffered(false)); // Reset any draw offer
                 }
             }
 
@@ -243,7 +245,13 @@ pub fn poll_network(
                     }
                 }
             }
-            ServerMessage::DrawOffered(gid) => {}
+            ServerMessage::DrawOffered(gid) => {
+                if let Some(game) = &active_game {
+                    if gid == game.gid {
+                        commands.trigger(DrawOffered(true));
+                    }
+                }
+            }
         }
     }
 }

@@ -94,6 +94,14 @@ button text {
     border: 3px solid #726044;
 }
 
+.game-button-draw-pending {
+    width: 80px;
+    height: 80px;
+    border: 3px solid #dddc9b;
+    background-color: rgb(20%, 70%, 20%);
+
+}
+
 .dialog-overlay {
     background-color: rgba(0, 0, 0, 0.5);
     z-index: 10;
