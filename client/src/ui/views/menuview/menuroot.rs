@@ -99,28 +99,28 @@ pub fn setup_menu_root(
                 TabBar,
                 ClassList::new("tab-bar"),
                 children![
-                    (
-                        Button,
-                        Interaction::default(),
-                        ClassList::new("tab-button"),
-                        TabAction::GamesTab,
-                        children![Text::new("Play")],
-                    ),
-                    (
-                        Button,
-                        Interaction::default(),
-                        ClassList::new("tab-button"),
-                        TabAction::AnalysisTab,
-                        children![Text::new("Analysis")],
-                    ),
-                    (
-                        Button,
-                        Interaction::default(),
-                        ClassList::new("tab-button"),
-                        TabAction::PuzzleTab,
-                        children![Text::new("Puzzles")],
-                    )
-                ],
+                //     (
+                //         Button,
+                //         Interaction::default(),
+                //         ClassList::new("tab-button"),
+                //         TabAction::GamesTab,
+                //         children![Text::new("Play")],
+                //     ),
+                //     (
+                //         Button,
+                //         Interaction::default(),
+                //         ClassList::new("tab-button"),
+                //         TabAction::AnalysisTab,
+                //         children![Text::new("Analysis")],
+                //     ),
+                //     (
+                //         Button,
+                //         Interaction::default(),
+                //         ClassList::new("tab-button"),
+                //         TabAction::PuzzleTab,
+                //         children![Text::new("Puzzles")],
+                //     )
+                 ],
             ),
             // container where the tab content is rendered into. (Play-tab, Analysis-tab)
             (
