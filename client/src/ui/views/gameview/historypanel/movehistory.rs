@@ -25,7 +25,6 @@ pub struct Scroll {
 }
 
 const LINE_HEIGHT: f32 = 24.0;
-const MOVE_HISTORY_FONT_SIZE: f32 = 24.0;
 
 /// Injects scroll events into the UI hierarchy.
 pub fn send_scroll_events(

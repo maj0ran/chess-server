@@ -6,11 +6,9 @@ use crate::ui::views::gameview::chessboard::board::{ChessBoard, RotateBoardEvent
 use crate::ui::views::gameview::historypanel::movehistory::{
     MoveHistory, on_scroll_handler, refresh_move_history, send_scroll_events, update_move_history,
 };
-use crate::ui::views::menuview::gamemenu::dialogs::create_game_dialog::CreateAction;
 use crate::ui::{Overlay, Screen};
 use bevy::prelude::*;
 use bevy_flair::prelude::{ClassList, NodeStyleSheet};
-use chess_core::protocol::NewGameParams;
 use chess_core::protocol::messages::ClientMessage;
 use std::f32::consts::PI;
 
