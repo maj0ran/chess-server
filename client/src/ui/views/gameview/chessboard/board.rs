@@ -178,6 +178,7 @@ pub fn handle_move(
     query: Query<(&ChessSquare, Option<&Children>)>,
     board_query: Query<&ChessBoard>,
     piece_query: Query<&ChessPiece>,
+    game: Res<ActiveGame>,
     mut next_overlay: ResMut<NextState<Overlay>>,
 ) -> Result<()> {
     let board = board_query.single()?;
@@ -202,9 +203,15 @@ pub fn handle_move(
                 .ok_or("got children but no actual entity on source square?")?;
             let piece = piece_query.get(*chess_piece)?;
 
+            let side = game.side;
+
             // is it a promotion move?...
-            let is_pawn = piece.id == 'P' || piece.id == 'p';
-            let is_last_rank = dst_sq.name.ends_with('8') || dst_sq.name.ends_with('1');
+            let (is_pawn, is_last_rank) = match side {
+                UserRoleSelection::White => (piece.id == 'P', dst_sq.name.ends_with('8')),
+                UserRoleSelection::Black => (piece.id == 'p', dst_sq.name.ends_with('1')),
+                _ => return Err("Invalid side".into()),
+            };
+
             if is_pawn && is_last_rank {
                 let pending_move = PendingMove {
                     src: src_sq.name.clone(),
