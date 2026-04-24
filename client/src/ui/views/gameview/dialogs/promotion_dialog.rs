@@ -80,7 +80,7 @@ pub fn spawn_promotion_dialog(
                             row.spawn((
                                 Button,
                                 Interaction::default(),
-                                ClassList::new("button-red"),
+                                ClassList::new("promotion-button button-red"),
                                 PromotionAction::Cancel,
                             ))
                             .with_children(|btn| {

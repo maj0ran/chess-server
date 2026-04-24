@@ -8,10 +8,10 @@ use crate::ui::views::gameview::historypanel::movehistory::{
     MoveHistoryFullRefresh, MoveHistoryUpdated,
 };
 use bevy::prelude::*;
-use chess_core::NetResult;
 use chess_core::net::connection::Connection;
 use chess_core::protocol::messages::{ClientMessage, ServerMessage};
 use chess_core::protocol::parser::NetMessage;
+use chess_core::{GameId, NetResult};
 use smol::channel::{Receiver, Sender};
 use smol::net::TcpStream;
 use std::collections::HashMap;
@@ -112,71 +112,16 @@ pub fn poll_network(
         log::debug!("Received server message: {:?}", server_msg);
 
         match server_msg {
+            /* Receive a list of all available games. */
             ServerMessage::GamesList(mut games) => {
-                // clear old games lsit
                 lobby.clear_games();
                 // After receiving a list of games, we instantly ask for the details of each game.
                 for &mut gid in &mut games {
                     commands.trigger(NetworkSend(ClientMessage::QueryGameDetails(gid)));
                 }
             }
-            // A new game has been created, we query for a new games list.
-            // TODO: could just query the details of the new game and update the internal list.
-            ServerMessage::GameCreated(_gid, _cid) => {
-                commands.trigger(NetworkSend(ClientMessage::QueryGames));
-            }
 
-            // We successfully joined a game
-            ServerMessage::GameJoined(gid, cid, side) => {
-                // someone (or we) just joined the game, so we have to refresh the game details.
-                commands.trigger(NetworkSend(ClientMessage::QueryGameDetails(gid)));
-
-                if session.id == Some(cid) {
-                    // copy the game info from the lobby into the active game resource.
-                    let game_info = lobby.get_game_info(gid).copied().unwrap();
-                    let game = ActiveGame {
-                        gid,
-                        side,
-                        internal_board: HashMap::new(),
-                        game_info,
-
-                        move_history: Vec::new(),
-                    };
-                    commands.insert_resource(game);
-                    // send event to the UI to trigger the switch to the game screen
-                    commands.trigger(GameJoinedEvent { gid, side });
-                    commands.trigger(NetworkSend(ClientMessage::QueryBoard(gid)));
-                    commands.trigger(NetworkSend(ClientMessage::QueryMoveHistory(gid)));
-                }
-            }
-
-            // A piece in the current game has been moved.
-            ServerMessage::MoveAccepted(_, san, updates) => {
-                if let Some(game) = active_game.as_mut() {
-                    game.move_history.push(san.clone());
-
-                    for (tile, piece) in updates {
-                        if let Some(p) = piece {
-                            game.internal_board.insert(tile.to_string(), p.as_byte());
-                        } else {
-                            game.internal_board.remove(&tile.to_string());
-                        }
-                    }
-                    commands.trigger(BoardUpdate);
-                    commands.trigger(MoveHistoryUpdated);
-                    commands.trigger(DrawOffered(false)); // Reset any draw offer
-                }
-            }
-
-            // Our last move was illegal.
-            ServerMessage::IllegalMove(_) => {}
-
-            // We received a game over message.
-            ServerMessage::GameOver(_gid, reason) => {
-                commands.trigger(GameOverEvent { reason });
-            }
-
-            // We received the lobby details of a specific game.
+            /* We received the lobby details of a specific game. */
             ServerMessage::GameDetails(gid, white_id, black_id, time, inc) => {
                 let game_details = GameDetails {
                     white_player: white_id,
@@ -202,17 +147,72 @@ pub fn poll_network(
                         commands.trigger(NetworkSend(ClientMessage::QueryClientDetails(bid)));
                     }
                 }
-
                 commands.trigger(UpdateGamesList);
             }
 
-            // We received information of another client
+            /* We received information of another client */
             ServerMessage::ClientDetails(cid, name) => {
                 lobby.update_client_info(cid, name);
                 commands.trigger(UpdateGamesList);
             }
 
-            // Our Login has been accepted. Send the server our nickname.
+            /* A new game has been created, we query for a new games list. */
+            // TODO: could just query the details of the new game and update the internal list.
+            ServerMessage::GameCreated(_gid, _cid) => {
+                commands.trigger(NetworkSend(ClientMessage::QueryGames));
+            }
+
+            /* Someone (or we) successfully joined a game. */
+            ServerMessage::GameJoined(gid, cid, side) => {
+                // the join changed the game details, refresh it
+                commands.trigger(NetworkSend(ClientMessage::QueryGameDetails(gid)));
+
+                // it is us, so set the active game
+                if session.id == Some(cid) {
+                    let game_info = lobby.get_game_info(gid).copied().unwrap();
+                    let game = ActiveGame {
+                        gid,
+                        side,
+                        internal_board: HashMap::new(),
+                        game_info,
+
+                        move_history: Vec::new(),
+                    };
+                    commands.insert_resource(game);
+                    // send event to the UI to trigger the switch to the game screen, query game info
+                    commands.trigger(GameJoinedEvent { gid, side });
+                    commands.trigger(NetworkSend(ClientMessage::QueryBoard(gid)));
+                    commands.trigger(NetworkSend(ClientMessage::QueryMoveHistory(gid)));
+                }
+            }
+
+            /* A piece in the current game has been moved. */
+            ServerMessage::MoveAccepted(_, san, updates) => {
+                if let Some(game) = active_game.as_mut() {
+                    game.move_history.push(san.clone());
+
+                    for (tile, piece) in updates {
+                        if let Some(p) = piece {
+                            game.internal_board.insert(tile.to_string(), p.as_byte());
+                        } else {
+                            game.internal_board.remove(&tile.to_string());
+                        }
+                    }
+                    commands.trigger(BoardUpdate);
+                    commands.trigger(MoveHistoryUpdated);
+                    commands.trigger(DrawOffered(false)); // Reset any draw offer
+                }
+            }
+
+            /* Our last move was illegal. */
+            ServerMessage::IllegalMove(_) => {}
+
+            /* We received a game over message. */
+            ServerMessage::GameOver(_gid, reason) => {
+                commands.trigger(GameOverEvent { reason });
+            }
+
+            /* Our Login has been accepted. Send the server our nickname. */
             ServerMessage::LoginAccepted(cid) => {
                 session.id = Some(cid);
                 let name = session.name.clone();
@@ -222,13 +222,16 @@ pub fn poll_network(
                 commands.trigger(NetworkSend(ClientMessage::SetNickname(name)));
             }
 
-            // We have left the game.
-            // TODO: Here and in the server, this should not be only for us but for all clients in a game.
-            ServerMessage::GameLeft(_gid, cid) => {
+            /* Someone (or we) left the game. */
+            ServerMessage::GameLeft(gid, cid) => {
                 if Some(cid) == session.id {
                     commands.remove_resource::<ActiveGame>();
+                } else {
+                    commands.trigger(NetworkSend(ClientMessage::QueryGameDetails(gid)));
                 }
             }
+
+            /* We received the board state (FEN). */
             ServerMessage::BoardState(gid, fen) => {
                 if let Some(game) = active_game.as_mut() {
                     if game.gid == gid {
@@ -237,6 +240,8 @@ pub fn poll_network(
                     }
                 }
             }
+
+            /* We received the move history of a game */
             ServerMessage::MoveHistory(gid, history) => {
                 if let Some(game) = active_game.as_mut() {
                     if game.gid == gid {
@@ -245,6 +250,8 @@ pub fn poll_network(
                     }
                 }
             }
+
+            /* We received a draw offer from a player */
             ServerMessage::DrawOffered(gid) => {
                 if let Some(game) = &active_game {
                     if gid == game.gid {

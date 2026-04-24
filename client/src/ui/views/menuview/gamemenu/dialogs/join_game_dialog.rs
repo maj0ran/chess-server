@@ -41,13 +41,13 @@ pub fn setup_join_dialog(mut commands: Commands, asset_server: Res<AssetServer>)
                     JoinAction::Select(UserRoleSelection::Random),
                     children![Text::new("Random")],
                 ),
-                (
-                    Button,
-                    Interaction::default(),
-                    ClassList::new(""),
-                    JoinAction::Select(UserRoleSelection::Both),
-                    children![Text::new("Both")],
-                ),
+                //  (
+                //      Button,
+                //      Interaction::default(),
+                //      ClassList::new(""),
+                //      JoinAction::Select(UserRoleSelection::Both),
+                //      children![Text::new("Both")],
+                //  ),
                 (
                     Button,
                     Interaction::default(),
