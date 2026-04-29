@@ -1,4 +1,5 @@
 pub mod client;
+pub mod net;
 pub mod ui;
 
 use bevy::ecs::error::ErrorContext;

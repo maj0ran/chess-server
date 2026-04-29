@@ -1,8 +1,8 @@
-use chess_core::error::*;
-use chess_core::net::*;
+use crate::net::tls::TlsStream;
+use chess_core::net::Connection;
 use chess_core::protocol::messages::{ClientMessage, ServerMessage};
 use chess_core::protocol::parser::NetMessage;
-use chess_core::ClientId;
+use chess_core::{ClientId, NetError, NetResult};
 use smol::channel::{unbounded, Receiver, Sender};
 use smol::future;
 use smol::net::TcpStream;
@@ -25,8 +25,8 @@ pub struct ServerInterface {
 /// is only responsible for accepting incoming connections.
 pub struct ClientSession {
     id: ClientId,
-    pub conn: Connection,     // connection to the outside client
-    pub srv: ServerInterface, // connection to the internal server
+    pub conn: Connection<TlsStream<TcpStream>>, // connection to the outside client
+    pub srv: ServerInterface,                   // connection to the internal server
 }
 
 impl ClientSession {
@@ -38,7 +38,7 @@ impl ClientSession {
     ///     This is set up by the `Server` and used to communicate with the `GameManager`.
     pub async fn new(
         id: ClientId,
-        socket: TcpStream,
+        stream: TlsStream<TcpStream>,
         tx: Sender<(ClientId, ClientMessage)>,
     ) -> Self {
         // From the parameter we already got the transmitter to the Game Manager, which is constructed by the server.
@@ -55,7 +55,7 @@ impl ClientSession {
 
         let mut client = ClientSession {
             id,
-            conn: Connection::new(socket),
+            conn: Connection::new(stream),
             srv: ServerInterface { tx, rx },
         };
 
@@ -91,8 +91,8 @@ impl ClientSession {
 
     /// takes a message that has been received from the internal `GameManager`
     /// and sends it to the remote client.
-    pub async fn handle_outgoing_message(
-        conn: &mut Connection,
+    pub async fn handle_outgoing_message<S: smol::io::AsyncWrite + Unpin>(
+        conn: &mut Connection<S>,
         msg: ServerMessage,
     ) -> NetResult<()> {
         log::debug!("sending message to client: {:?}", msg);
@@ -103,20 +103,17 @@ impl ClientSession {
     /// Here, we listen periodically for messages from both sides: The remote client and the
     /// internal `GameManager`. `GameManager` messages will be forwarded to the remote client,
     /// and client messages will be forwarded to the `GameManager`.
-    pub async fn run(&mut self) {
+    pub async fn run(self) {
         let id = self.id;
+        let srv_tx = self.srv.tx;
+        let srv_rx = self.srv.rx;
 
         // network connections for sending and receiving to/from the remote client.
         // we split the connection we have into a read and write half. This way,
         // we can move each half into their own task, effectively using them
         // concurrently.
-        // Using 'clone()' on rust TcpStreams is fine as those are only handles and
-        // safety is ensured by the TcpStream implementation.
-        let mut conn_in = self.conn.clone();
-        let mut conn_out = &mut self.conn;
+        let (mut conn_in, mut conn_out) = self.conn.split();
         // channel connections for game manager communication.
-        let srv_tx = &self.srv.tx;
-        let srv_rx = &self.srv.rx;
         // receiving messages from the remote client and forwarding them to the GameManager
         let listen_on_client = async move {
             loop {

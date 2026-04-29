@@ -8,6 +8,9 @@ chess-core = { path = "../core" }
 smol = "2.0.2"
 smol-macros = "0.1.1"
 log = "0.4.20"
+rustls = { version = "0.23" }
+rustls-pemfile = "2.2.0"
+futures-rustls = "0.26"
 env_logger = "0.10.0"
 chrono = "0.4.44"
 rand = "0.10.1"
