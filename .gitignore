@@ -8,3 +8,5 @@ client/Cargo.lock
 cert/*.key
 cert/*.crt
 cert/*.srl
+client/src/cert/
+/build/
