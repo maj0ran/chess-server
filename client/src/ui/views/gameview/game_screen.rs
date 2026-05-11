@@ -1,7 +1,7 @@
 use super::GameScreenComponent;
 use crate::client::game::{ActiveGame, GameJoinedEvent};
 use crate::client::lobby::LobbyState;
-use crate::client::network::NetworkSend;
+use crate::net::network::NetworkSend;
 use crate::ui::views::gameview::chessboard::board::{ChessBoard, RotateBoardEvent};
 use crate::ui::views::gameview::historypanel::movehistory::{
     MoveHistory, on_scroll_handler, refresh_move_history, send_scroll_events, update_move_history,

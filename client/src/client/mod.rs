@@ -1,4 +1,4 @@
-use super::client::network::*;
+use crate::net::network::*;
 use crate::client::config::*;
 use bevy::prelude::*;
 use lobby::LobbyState;
@@ -7,7 +7,6 @@ use session::ClientSession;
 pub mod config;
 pub mod game;
 pub mod lobby;
-pub mod network;
 pub mod session;
 
 pub struct ClientPlugin;
