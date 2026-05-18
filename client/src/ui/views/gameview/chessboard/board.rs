@@ -203,13 +203,17 @@ pub fn handle_move(
                 .ok_or("got children but no actual entity on source square?")?;
             let piece = piece_query.get(*chess_piece)?;
 
-            let side = game.side;
-
-            // is it a promotion move?...
-            let (is_pawn, is_last_rank) = match side {
+            let (is_pawn, is_last_rank) = match game.side {
                 UserRoleSelection::White => (piece.id == 'P', dst_sq.name.ends_with('8')),
                 UserRoleSelection::Black => (piece.id == 'p', dst_sq.name.ends_with('1')),
-                _ => return Err("Invalid side".into()),
+                UserRoleSelection::Both => (
+                    matches!(piece.id, 'P' | 'p'),
+                    (piece.id == 'P' && dst_sq.name.ends_with('8'))
+                        || (piece.id == 'p' && dst_sq.name.ends_with('1')),
+                ),
+                UserRoleSelection::Random | UserRoleSelection::Spectator => {
+                    return Err("Invalid side for moving pieces".into());
+                }
             };
 
             if is_pawn && is_last_rank {
@@ -228,8 +232,6 @@ pub fn handle_move(
                     promotion: None,
                 });
             }
-            commands.trigger(ResetSelection);
-
             Ok(())
         }
     }
@@ -275,5 +277,4 @@ pub fn on_move_request(ev: On<RequestMove>, mut commands: Commands, active_game:
             special: promotion,
         },
     )));
-    commands.trigger(ResetSelection);
 }

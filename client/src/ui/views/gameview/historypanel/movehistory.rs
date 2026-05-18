@@ -1,19 +1,21 @@
 use crate::client::game::ActiveGame;
+use crate::ui::theme::{RIGHT_PANEL_RATIO, WOOD_BORDER, WOOD_SURFACE};
 use crate::ui::views::gameview::GameScreenComponent;
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::picking::hover::HoverMap;
 use bevy::prelude::*;
-use bevy_flair::prelude::*;
 
 #[derive(Event)]
 pub struct MoveHistoryUpdated;
 #[derive(Event)]
 pub struct MoveHistoryFullRefresh;
 
-#[derive(Component)]
+#[derive(Component, Clone, Copy, Default)]
 pub struct MoveHistory;
 #[derive(Component)]
 pub struct MoveHistoryEntry;
+#[derive(Component, Clone, Copy, Default)]
+pub struct MoveHistoryText;
 
 /// UI scrolling event.
 #[derive(EntityEvent, Debug)]
@@ -32,7 +34,6 @@ pub fn send_scroll_events(
     hover_map: Res<HoverMap>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut commands: Commands,
-    ui_scale: Res<UiScale>,
 ) {
     for mouse_wheel in mouse_wheel_reader.read() {
         let mut delta = -Vec2::new(mouse_wheel.x, mouse_wheel.y);
@@ -40,9 +41,6 @@ pub fn send_scroll_events(
         if mouse_wheel.unit == MouseScrollUnit::Line {
             delta *= LINE_HEIGHT;
         }
-
-        // Adjust for UI scale
-        delta /= ui_scale.0;
 
         if keyboard_input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]) {
             std::mem::swap(&mut delta.x, &mut delta.y);
@@ -102,39 +100,31 @@ pub fn on_scroll_handler(
     }
 }
 
-impl MoveHistory {
-    pub fn new(
-        asset_server: &Res<AssetServer>,
-    ) -> (
-        GameScreenComponent,
-        MoveHistory,
-        NodeStyleSheet,
-        ClassList,
-        Node,
-    ) {
-        (
-            GameScreenComponent,
-            MoveHistory,
-            NodeStyleSheet::new(asset_server.load("style.css")),
-            ClassList::new("move-history-container"),
-            Node {
-                position_type: PositionType::Absolute,
-                flex_direction: FlexDirection::Column,
-                height: Val::Percent(100.0),
-                width: Val::Px(400.0),
-                right: Val::Px(0.0),
-                top: Val::Px(0.0),
-                overflow: Overflow::scroll_y(),
-                ..default()
-            },
-        )
+pub fn move_history_scene() -> impl Scene {
+    bsn! {
+        GameScreenComponent
+        MoveHistory
+        Node {
+            position_type: PositionType::Absolute,
+            flex_direction: FlexDirection::Column,
+            height: percent(100),
+            width: percent(RIGHT_PANEL_RATIO * 100.0),
+            right: px(0),
+            top: px(0),
+            padding: UiRect::all(px(12)),
+            border: UiRect::left(px(2)),
+            border_radius: BorderRadius::all(px(6)),
+            overflow: Overflow::scroll_y(),
+        }
+        BackgroundColor(WOOD_SURFACE)
+        BorderColor::all(WOOD_BORDER)
+        BoxShadow::new(Color::srgba(0.0, 0.0, 0.0, 0.45), px(0), px(4), px(1), px(7))
     }
 }
 
-pub fn refresh_move_history(
-    _ev: On<MoveHistoryFullRefresh>,
+fn rebuild_move_history(
     query_display: Single<(Entity, Option<&Children>), With<MoveHistory>>,
-    history: ResMut<ActiveGame>,
+    history: Res<ActiveGame>,
     mut commands: Commands,
 ) {
     let (entity, children) = *query_display;
@@ -144,88 +134,84 @@ pub fn refresh_move_history(
         }
     }
 
-    let history = &history.move_history;
+    for (move_number, moves) in history.move_history.chunks(2).enumerate() {
+        let white_move = &moves[0];
+        let black_move = moves.get(1).map(String::as_str);
 
-    let mut current_full_move_text = String::new();
-    for (i, move_str) in history.iter().enumerate() {
-        let half_move_num = i + 1;
-        if half_move_num % 2 == 1 {
-            let move_num = half_move_num / 2 + 1;
-            let move_num_spacing = " ".repeat(4 - move_num.to_string().len());
-            let half_move_spacing = " ".repeat(10 - move_str.len());
-            current_full_move_text = format!(
-                "{}.{}{}{}",
-                move_num, move_num_spacing, move_str, &half_move_spacing
-            );
-
-            // If it's the last move, we should spawn it now.
-            if i == history.len() - 1 {
-                let text_to_spawn = current_full_move_text.clone();
-                commands.entity(entity).with_children(|parent| {
-                    parent.spawn((
-                        MoveHistoryEntry,
-                        Node { ..default() },
-                        ClassList::new("move-history-entry"),
-                        children![Text::new(text_to_spawn)],
-                    ));
-                });
-            }
-        } else {
-            current_full_move_text.push_str(move_str);
-            let text_to_spawn = current_full_move_text.clone();
-            commands.entity(entity).with_children(|parent| {
-                parent.spawn((
-                    MoveHistoryEntry,
-                    Node { ..default() },
-                    ClassList::new("move-history-entry"),
-                    children![Text::new(text_to_spawn)],
-                ));
-            });
-            current_full_move_text.clear();
-        }
+        commands.entity(entity).with_children(|parent| {
+            spawn_move_history_row(parent, move_number + 1, white_move, black_move);
+        });
     }
+}
+
+fn spawn_move_history_row(
+    parent: &mut ChildSpawnerCommands,
+    move_number: usize,
+    white_move: &str,
+    black_move: Option<&str>,
+) {
+    parent
+        .spawn((
+            MoveHistoryEntry,
+            Node {
+                width: percent(100),
+                min_width: px(0),
+                height: px(LINE_HEIGHT),
+                flex_direction: FlexDirection::Row,
+                align_items: AlignItems::Center,
+                overflow: Overflow::clip(),
+                ..default()
+            },
+        ))
+        .with_children(|row| {
+            spawn_move_history_cell(row, &format!("{move_number}."), 20.0);
+            spawn_move_history_cell(row, white_move, 40.0);
+            spawn_move_history_cell(row, black_move.unwrap_or_default(), 40.0);
+        });
+}
+
+fn spawn_move_history_cell(parent: &mut ChildSpawnerCommands, text: &str, width: f32) {
+    parent.spawn((
+        MoveHistoryText,
+        Node {
+            width: percent(width),
+            min_width: px(0),
+            overflow: Overflow::clip(),
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
+            ..default()
+        },
+        Text::new(text),
+        TextLayout::no_wrap(),
+    ));
+}
+
+pub fn refresh_move_history(
+    _ev: On<MoveHistoryFullRefresh>,
+    query_display: Single<(Entity, Option<&Children>), With<MoveHistory>>,
+    history: Res<ActiveGame>,
+    commands: Commands,
+) {
+    rebuild_move_history(query_display, history, commands);
 }
 
 pub fn update_move_history(
     _ev: On<MoveHistoryUpdated>,
     query_display: Single<(Entity, Option<&Children>), With<MoveHistory>>,
-    history: ResMut<ActiveGame>,
-    mut query_text: Query<&mut Text>,
-    query_children: Query<&Children>,
-    mut commands: Commands,
+    history: Res<ActiveGame>,
+    commands: Commands,
 ) {
-    let history = &history.move_history;
-    let half_move_num = history.len();
-    if half_move_num == 0 {
-        return;
-    }
+    rebuild_move_history(query_display, history, commands);
+}
 
-    let (entity, children) = *query_display;
+pub fn resize_move_history_text(
+    window: Single<&Window>,
+    mut query: Query<&mut TextFont, With<MoveHistoryText>>,
+) {
+    let panel_width = window.width() * RIGHT_PANEL_RATIO;
+    let font_size = FontSize::Px((panel_width * 0.06).clamp(8.0, 16.0));
 
-    let last_move = history.last().unwrap();
-    if half_move_num % 2 == 1 {
-        let move_num = half_move_num / 2 + 1;
-        let move_num_spacing = " ".repeat(4 - move_num.to_string().len());
-        let half_move_spacing = " ".repeat(10 - last_move.len());
-        let text = format!(
-            "{}.{}{}{}",
-            move_num, move_num_spacing, last_move, &half_move_spacing
-        );
-        commands.entity(entity).with_children(|parent| {
-            parent.spawn((
-                MoveHistoryEntry,
-                Node { ..default() },
-                ClassList::new("move-history-entry"),
-                children![Text::new(text)],
-            ));
-        });
-    } else if let Some(text_entity) = children
-        .and_then(|c| c.last())
-        .and_then(|&lc| query_children.get(lc).ok())
-        .and_then(|c| c.first())
-    {
-        if let Ok(mut text) = query_text.get_mut(*text_entity) {
-            text.0.push_str(last_move);
-        }
+    for mut text_font in &mut query {
+        text_font.font_size = font_size;
     }
 }

@@ -18,9 +18,6 @@ pub struct GameOverEvent {
     pub reason: GameOverReason,
 }
 
-#[derive(Event)]
-pub struct DrawOfferedEvent;
-
 #[derive(Debug, Copy, Clone)]
 pub struct GameDetails {
     pub white_player: Option<ClientId>,

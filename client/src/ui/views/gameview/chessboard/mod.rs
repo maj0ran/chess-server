@@ -4,13 +4,13 @@ use crate::ui::views::gameview::chessboard::board::{
     draw_chessboard, draw_pieces, handle_move, on_move_request, reset_selections,
 };
 use crate::ui::views::gameview::dialogs::game_over_dialog::{
-    cleanup_game_over_dialog, game_over_dialog_action_system, on_game_over,
+    cleanup_game_over_dialog, game_over_dialog_scene, on_game_over, set_game_over_message,
 };
 use crate::ui::views::gameview::dialogs::promotion_dialog::{
-    despawn_promotion_dialog, promotion_action_system, spawn_promotion_dialog,
+    despawn_promotion_dialog, initialize_promotion_images, promotion_dialog_scene,
 };
-use crate::ui::views::gameview::dialogs::quit_game_dialog::{
-    cleanup_quit_game_dialog, quit_game_dialog_action_system, setup_quit_game_dialog,
+use crate::ui::views::gameview::dialogs::resign_dialog::{
+    cleanup_resign_dialog, resign_dialog_scene,
 };
 use bevy::prelude::*;
 use chess_core::Promotion;
@@ -48,23 +48,17 @@ impl Plugin for ChessboardPlugin {
             .add_observer(on_move_request)
             .add_observer(reset_selections)
             .add_observer(on_game_over)
-            .add_systems(OnEnter(Overlay::Promotion), spawn_promotion_dialog)
+            .add_systems(
+                OnEnter(Overlay::GameOver),
+                (game_over_dialog_scene.spawn(), set_game_over_message).chain(),
+            )
+            .add_systems(
+                OnEnter(Overlay::Promotion),
+                (promotion_dialog_scene.spawn(), initialize_promotion_images).chain(),
+            )
             .add_systems(OnExit(Overlay::Promotion), despawn_promotion_dialog)
-            .add_systems(
-                Update,
-                promotion_action_system.run_if(in_state(Overlay::Promotion)),
-            )
             .add_systems(OnExit(Overlay::GameOver), cleanup_game_over_dialog)
-            .add_systems(
-                Update,
-                game_over_dialog_action_system.run_if(in_state(Overlay::GameOver)),
-            )
-            // Quit game dialog when pressing Escape
-            .add_systems(OnEnter(Overlay::QuitGameDialog), setup_quit_game_dialog)
-            .add_systems(OnExit(Overlay::QuitGameDialog), cleanup_quit_game_dialog)
-            .add_systems(
-                Update,
-                quit_game_dialog_action_system.run_if(in_state(Overlay::QuitGameDialog)),
-            );
+            .add_systems(OnEnter(Overlay::ResignDialog), resign_dialog_scene.spawn())
+            .add_systems(OnExit(Overlay::ResignDialog), cleanup_resign_dialog);
     }
 }

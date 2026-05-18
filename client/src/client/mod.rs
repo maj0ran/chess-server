@@ -1,5 +1,5 @@
-use crate::net::network::*;
 use crate::client::config::*;
+use crate::net::network::*;
 use bevy::prelude::*;
 use lobby::LobbyState;
 use session::ClientSession;

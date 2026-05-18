@@ -25,7 +25,8 @@ impl ChessPiece {
                 rotation: Quat::from_rotation_z(if flip { std::f32::consts::PI } else { 0.0 }),
                 ..default()
             },
-            Pickable::default(),
+            // Pieces are visual children of squares; the square owns interaction.
+            Pickable::IGNORE,
         )
     }
 }

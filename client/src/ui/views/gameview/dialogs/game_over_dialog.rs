@@ -1,80 +1,63 @@
-use crate::client::game::GameOverEvent;
-use crate::ui::{Overlay, Screen};
+use bevy::feathers::controls::FeathersButton;
+use bevy::feathers::theme::{InheritableThemeTextColor, ThemedText};
+use bevy::feathers::tokens;
 use bevy::prelude::*;
-use bevy_flair::prelude::*;
 
-#[derive(Component)]
-pub struct GameOverDialogComponent;
+use crate::client::game::GameOverEvent;
+use crate::ui::theme::{WOOD_BORDER, WOOD_GOLD, WOOD_SURFACE};
+use crate::ui::{Dialog, Overlay, Screen};
+
+#[derive(Component, Clone, Copy, Default)]
+pub(crate) struct GameOverMessageText;
+#[derive(Resource)]
+pub(crate) struct GameOverMessage(String);
 
 pub fn on_game_over(
-    ev: On<GameOverEvent>,
+    event: On<GameOverEvent>,
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
     mut next_overlay: ResMut<NextState<Overlay>>,
 ) {
-    log::info!("Game over!");
-    let reason = Some(ev.reason);
-    let winner = ev.reason.get_winner();
-
     next_overlay.set(Overlay::GameOver);
-
-    let dialog_text = if let Some(p) = winner {
-        format!("{} won by {}!", p, reason.unwrap())
-    } else {
-        format!("Draw by {}!", reason.unwrap())
+    let reason = event.reason;
+    let message = match reason.get_winner() {
+        Some(player) => format!("{player} wins by {reason}!"),
+        None => format!("Draw by {reason}!"),
     };
-    commands.spawn((
-        Node::default(),
-        NodeStyleSheet::new(asset_server.load("style.css")),
-        ClassList::new("dialog-overlay"),
-        GameOverDialogComponent,
-        children![(
-            Node::default(),
-            ClassList::new("dialog-content column-align"),
-            children![
-                (Text::new("Game Over"), ClassList::new("label-large")),
-                (Text::new(dialog_text), ClassList::new("label-small")),
-                (
-                    Button,
-                    Interaction::default(),
-                    GameOverAction::Ok,
-                    children![Text::new("OK")],
-                )
-            ],
-        )],
-    ));
+    commands.insert_resource(GameOverMessage(message));
 }
 
-#[derive(Component)]
-pub enum GameOverAction {
-    Ok,
+pub fn game_over_dialog_scene() -> impl Scene {
+    bsn! {
+        Dialog
+        Children[(
+            Node { width: px(420), padding: UiRect::all(px(28)), flex_direction: FlexDirection::Column, row_gap: px(16), align_items: AlignItems::Center, border: UiRect::all(px(2)), border_radius: BorderRadius::all(px(10)) }
+            BackgroundColor(WOOD_SURFACE)
+            BorderColor::all(WOOD_BORDER)
+            BoxShadow::new(Color::srgba(0.0, 0.0, 0.0, 0.6), px(0), px(6), px(2), px(10))
+            InheritableThemeTextColor(tokens::TEXT_MAIN)
+            Children[
+                (Text("Game Over") ThemedText TextFont { font_size: FontSize::Px(28.0) } TextLayout::justify(Justify::Center)),
+                (Text("") ThemedText GameOverMessageText TextLayout::justify(Justify::Center)),
+                (Node { width: percent(100), height: px(1) } BackgroundColor(WOOD_GOLD)),
+                (@FeathersButton { @caption: bsn! { Text("OK") ThemedText } } Node { width: px(180), height: px(50) }
+                    on(|_: On<bevy::ui_widgets::Activate>, mut screen: ResMut<NextState<Screen>>, mut overlay: ResMut<NextState<Overlay>>| {
+                        screen.set(Screen::Menu); overlay.set(Overlay::None);
+                    }))
+            ]
+        )]
+    }
 }
 
-pub fn cleanup_game_over_dialog(
-    mut commands: Commands,
-    query: Query<Entity, With<GameOverDialogComponent>>,
+pub(crate) fn set_game_over_message(
+    message: Res<GameOverMessage>,
+    mut text: Single<&mut Text, With<GameOverMessageText>>,
 ) {
+    text.0 = message.0.clone();
+}
+
+pub fn cleanup_game_over_dialog(mut commands: Commands, query: Query<Entity, With<Dialog>>) {
     for entity in query.iter() {
         commands.entity(entity).despawn();
     }
-}
-
-pub fn game_over_dialog_action_system(
-    mut interaction_query: Query<
-        (&Interaction, &GameOverAction),
-        (Changed<Interaction>, With<Button>),
-    >,
-    mut next_screen: ResMut<NextState<Screen>>,
-    mut next_overlay: ResMut<NextState<Overlay>>,
-) {
-    for (interaction, action) in interaction_query.iter_mut() {
-        if *interaction == Interaction::Pressed {
-            match action {
-                GameOverAction::Ok => {
-                    next_screen.set(Screen::Menu);
-                    next_overlay.set(Overlay::None);
-                }
-            }
-        }
-    }
+    commands.remove_resource::<GameOverMessage>();
 }

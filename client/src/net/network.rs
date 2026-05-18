@@ -1,18 +1,21 @@
 use crate::client::session::*;
 use crate::net::tls::TlsClient;
-use crate::ui::gamelist_menu::UpdateGamesList;
+use crate::ui::views::menuview::gamemenu::dialogs::create_game_dialog::PendingJoinSide;
+use crate::ui::views::menuview::main_menu::UpdateGamesList;
 
 use crate::client::game::{ActiveGame, BoardUpdate, GameDetails, GameJoinedEvent, GameOverEvent};
 use crate::client::lobby::LobbyState;
+use crate::ui::views::gameview::chessboard::board::ResetSelection;
 use crate::ui::views::gameview::game_screen::DrawOffered;
 use crate::ui::views::gameview::historypanel::movehistory::{
     MoveHistoryFullRefresh, MoveHistoryUpdated,
 };
 use bevy::prelude::*;
+use chess_core::NetResult;
 use chess_core::net::connection::Connection;
 use chess_core::protocol::messages::{ClientMessage, ServerMessage};
 use chess_core::protocol::parser::NetMessage;
-use chess_core::{GameId, NetResult};
+use chess_core::protocol::{JoinGameParams, UserRoleSelection};
 use smol::channel::{Receiver, Sender};
 use smol::net::TcpStream;
 use std::collections::HashMap;
@@ -115,8 +118,10 @@ pub fn poll_network(
     mut lobby: ResMut<LobbyState>,
     active_game: Option<ResMut<ActiveGame>>,
     mut session: ResMut<ClientSession>,
+    pending_join_side: Option<Res<PendingJoinSide>>,
 ) {
     let mut active_game = active_game;
+    let pending_join_side = pending_join_side.map(|side| side.0);
     while let Ok(server_msg) = network.rx.try_recv() {
         log::debug!("Received server message: {:?}", server_msg);
 
@@ -165,10 +170,17 @@ pub fn poll_network(
                 commands.trigger(UpdateGamesList);
             }
 
-            /* A new game has been created, we query for a new games list. */
-            // TODO: could just query the details of the new game and update the internal list.
-            ServerMessage::GameCreated(_gid, _cid) => {
+            /* The creator joins the newly created game after receiving its id. */
+            ServerMessage::GameCreated(gid, cid) => {
                 commands.trigger(NetworkSend(ClientMessage::QueryGames));
+                if session.id == Some(cid) {
+                    commands.trigger(NetworkSend(ClientMessage::QueryGameDetails(gid)));
+                    commands.trigger(NetworkSend(ClientMessage::JoinGame(JoinGameParams {
+                        game_id: gid,
+                        side: pending_join_side.unwrap_or(UserRoleSelection::Random),
+                    })));
+                    commands.remove_resource::<PendingJoinSide>();
+                }
             }
 
             /* Someone (or we) successfully joined a game. */
@@ -178,7 +190,12 @@ pub fn poll_network(
 
                 // it is us, so set the active game
                 if session.id == Some(cid) {
-                    let game_info = lobby.get_game_info(gid).copied().unwrap();
+                    let game_info = lobby.get_game_info(gid).copied().unwrap_or(GameDetails {
+                        white_player: None,
+                        black_player: None,
+                        _time: 0,
+                        _time_inc: 0,
+                    });
                     let game = ActiveGame {
                         gid,
                         side,
@@ -207,6 +224,7 @@ pub fn poll_network(
                             game.internal_board.remove(&tile.to_string());
                         }
                     }
+                    commands.trigger(ResetSelection);
                     commands.trigger(BoardUpdate);
                     commands.trigger(MoveHistoryUpdated);
                     commands.trigger(DrawOffered(false)); // Reset any draw offer
@@ -214,10 +232,13 @@ pub fn poll_network(
             }
 
             /* Our last move was illegal. */
-            ServerMessage::IllegalMove(_) => {}
+            ServerMessage::IllegalMove(_) => {
+                commands.trigger(ResetSelection);
+            }
 
             /* We received a game over message. */
             ServerMessage::GameOver(_gid, reason) => {
+                commands.remove_resource::<ActiveGame>();
                 commands.trigger(GameOverEvent { reason });
             }
 

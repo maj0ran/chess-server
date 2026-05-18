@@ -2,13 +2,22 @@ use super::GameScreenComponent;
 use crate::client::game::{ActiveGame, GameJoinedEvent};
 use crate::client::lobby::LobbyState;
 use crate::net::network::NetworkSend;
+use crate::ui::theme::{
+    BOARD_AREA_RATIO, BOARD_EDGE_GAP, LEFT_PANEL_RATIO, PLAYER_LABEL_HEIGHT, PLAYER_LABEL_OFFSET,
+    RIGHT_PANEL_RATIO, WOOD_BORDER, WOOD_BUTTON, WOOD_DRAW_OFFER, WOOD_SURFACE,
+};
 use crate::ui::views::gameview::chessboard::board::{ChessBoard, RotateBoardEvent};
 use crate::ui::views::gameview::historypanel::movehistory::{
-    MoveHistory, on_scroll_handler, refresh_move_history, send_scroll_events, update_move_history,
+    move_history_scene, on_scroll_handler, refresh_move_history, resize_move_history_text,
+    send_scroll_events, update_move_history,
 };
 use crate::ui::{Overlay, Screen};
+use bevy::feathers::controls::FeathersButton;
+use bevy::feathers::theme::{InheritableThemeTextColor, ThemedText};
+use bevy::feathers::tokens;
+use bevy::picking::Pickable;
 use bevy::prelude::*;
-use bevy_flair::prelude::{ClassList, NodeStyleSheet};
+use chess_core::ClientId;
 use chess_core::protocol::messages::ClientMessage;
 use std::f32::consts::PI;
 
@@ -20,38 +29,49 @@ pub struct GameScreenPlugin;
 
 impl Plugin for GameScreenPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(Screen::Game), setup_gamescreen)
-            .add_systems(OnExit(Screen::Game), cleanup_gamescreen)
-            // listening for keyboard input (only ESC for now)
-            .add_systems(Update, listen_keyboard_input.run_if(in_state(Screen::Game)))
-            .add_systems(
-                Update,
-                (
-                    update_player_names.run_if(
-                        resource_exists::<ActiveGame>.and(
-                            resource_exists_and_changed::<LobbyState>
-                                .or(resource_exists_and_changed::<ActiveGame>),
-                        ),
+        app.add_systems(
+            OnEnter(Screen::Game),
+            (
+                game_screen_scene.spawn(),
+                move_history_scene.spawn(),
+                setup_gamescreen,
+            )
+                .chain(),
+        )
+        .add_systems(OnExit(Screen::Game), cleanup_gamescreen)
+        .add_systems(Update, listen_keyboard_input.run_if(in_state(Screen::Game)))
+        .add_systems(
+            Update,
+            (
+                update_player_names.run_if(
+                    resource_exists::<ActiveGame>.and_then(
+                        resource_exists_and_changed::<LobbyState>
+                            .or_else(resource_exists_and_changed::<ActiveGame>),
                     ),
-                    send_scroll_events,
-                )
-                    .run_if(in_state(Screen::Game)),
+                ),
+                (send_scroll_events, resize_move_history_text),
             )
-            .add_observer(on_game_joined)
-            .add_observer(on_rotate)
-            .add_observer(update_move_history)
-            .add_observer(refresh_move_history)
-            .add_observer(on_scroll_handler)
-            .add_observer(on_draw_offered)
-            .add_systems(
-                Update,
-                gamescreen_button_system.run_if(in_state(Screen::Game)),
+                .run_if(in_state(Screen::Game)),
+        )
+        .add_observer(on_game_joined)
+        .add_observer(on_rotate)
+        .add_observer(update_move_history)
+        .add_observer(refresh_move_history)
+        .add_observer(on_scroll_handler)
+        .add_observer(on_draw_offered)
+        .add_systems(
+            Update,
+            (
+                on_resize,
+                resize_action_button_text,
+                update_draw_offer_button,
             )
-            .add_systems(Update, on_resize.run_if(in_state(Screen::Game)));
+                .run_if(in_state(Screen::Game)),
+        );
     }
 }
 
-pub fn on_game_joined(
+fn on_game_joined(
     _ev: On<GameJoinedEvent>,
     mut next_screen: ResMut<NextState<Screen>>,
     mut next_overlay: ResMut<NextState<Overlay>>,
@@ -60,98 +80,59 @@ pub fn on_game_joined(
     next_overlay.set(Overlay::None);
 }
 
-#[derive(Component)]
+#[derive(Component, Clone, Copy, Default)]
 pub struct WhitePlayerLabel;
-#[derive(Component)]
+#[derive(Component, Clone, Copy, Default)]
 pub struct BlackPlayerLabel;
-#[derive(Component)]
-pub struct ResignButton;
-#[derive(Component)]
-pub struct DrawButton;
-
+#[derive(Component, Clone, Copy, Default)]
+pub struct GameActionButton;
+#[derive(Component, Clone, Copy, Default)]
+pub struct DrawOfferButton;
+#[derive(Component, Clone, Copy, Default)]
+pub struct DrawOfferActive;
 #[derive(Event)]
 pub struct GameScreenInitialized;
 #[derive(Event)]
 pub struct DrawOffered(pub bool);
 
-/// Sets up the in-game screen.
-/// Draws the chessboard and triggers a `BoardUpdate` event to trigger piece position retrievement.
-fn setup_gamescreen(
-    mut commands: Commands,
-    win_query: Query<(Entity, &Window)>,
-    asset_server: Res<AssetServer>,
-) {
+fn game_screen_scene() -> impl Scene {
+    bsn! {
+        Node { position_type: PositionType::Absolute, width: percent(100), height: percent(100) }
+        GameScreenComponent
+        Pickable::IGNORE
+        InheritableThemeTextColor(tokens::TEXT_MAIN)
+        Children[
+            (Node { position_type: PositionType::Absolute, height: px(48), bottom: px(16), left: percent(12), right: percent(27), padding: UiRect::all(px(8)), align_items: AlignItems::Center, justify_content: JustifyContent::Center, border: UiRect::all(px(1)), border_radius: BorderRadius::all(px(5)) } BackgroundColor(WOOD_SURFACE) BorderColor::all(WOOD_BORDER) Pickable::IGNORE WhitePlayerLabel Children[(Text("Waiting for White...") ThemedText)]),
+            (Node { position_type: PositionType::Absolute, height: px(48), top: px(16), left: percent(12), right: percent(27), padding: UiRect::all(px(8)), align_items: AlignItems::Center, justify_content: JustifyContent::Center, border: UiRect::all(px(1)), border_radius: BorderRadius::all(px(5)) } BackgroundColor(WOOD_SURFACE) BorderColor::all(WOOD_BORDER) Pickable::IGNORE BlackPlayerLabel Children[(Text("Waiting for Black...") ThemedText)]),
+            (
+                Node { position_type: PositionType::Absolute, height: percent(100), width: percent(10), left: px(0), flex_direction: FlexDirection::Column, align_items: AlignItems::Center, justify_content: JustifyContent::Center, row_gap: px(10), padding: UiRect::all(px(12)), border: UiRect::right(px(2)), border_radius: BorderRadius::all(px(6)) }
+                BackgroundColor(WOOD_SURFACE)
+                BorderColor::all(WOOD_BORDER)
+                BoxShadow::new(Color::srgba(0.0, 0.0, 0.0, 0.45), px(0), px(4), px(1), px(7))
+                Pickable::IGNORE
+                Children[
+                    (@FeathersButton { @caption: bsn! { Text("Resign") ThemedText } } GameActionButton Node { width: percent(100), height: px(48), padding: UiRect::horizontal(px(4)) } on(|_: On<bevy::ui_widgets::Activate>, mut overlay: ResMut<NextState<Overlay>>| overlay.set(Overlay::ResignDialog))),
+                    (@FeathersButton { @caption: bsn! { Text("Offer Draw") ThemedText } } GameActionButton DrawOfferButton Node { width: percent(100), height: px(48), padding: UiRect::horizontal(px(4)) } on(|_: On<bevy::ui_widgets::Activate>, game: Res<ActiveGame>, mut commands: Commands| {
+                        commands.trigger(NetworkSend(ClientMessage::OfferDraw(game.gid)));
+                    }))
+                ]
+            ),
+        ]
+    }
+}
+
+/// Sets up the in-game screen and triggers the initial board draw.
+fn setup_gamescreen(mut commands: Commands, window_query: Single<(Entity, &Window)>) {
     log::info!("Setting up gamescreen");
 
     commands.spawn(ChessBoard::new());
 
-    commands.spawn((
-        GameScreenComponent,
-        WhitePlayerLabel,
-        NodeStyleSheet::new(asset_server.load("style.css")),
-        ClassList::new("player-label"),
-        Node {
-            bottom: Val::Px(50.0),
-            left: Val::Px(0.0),
-            ..default()
-        },
-        children![Text::new("Waiting for White...")],
-    ));
-
-    commands.spawn((
-        GameScreenComponent,
-        BlackPlayerLabel,
-        NodeStyleSheet::new(asset_server.load("style.css")),
-        ClassList::new("player-label"),
-        Node {
-            top: Val::Px(50.0),
-            left: Val::Px(0.0),
-            ..default()
-        },
-        children![Text::new("Waiting for Black...")],
-    ));
-
-    commands.spawn((
-        GameScreenComponent,
-        NodeStyleSheet::new(asset_server.load("style.css")),
-        Node {
-            position_type: PositionType::Absolute,
-            height: Val::Percent(100.0),
-            width: Val::Auto,
-            left: Val::Px(0.0),
-            justify_items: JustifyItems::Center,
-            align_items: AlignItems::Center,
-            ..default()
-        },
-        ClassList::new("game-button-panel"),
-        children![
-            (
-                Button,
-                ResignButton,
-                Interaction::default(),
-                GameAction::Resign,
-                children![Text::new("R"), TextFont { ..default() }],
-                ClassList::new("game-button"),
-            ),
-            (
-                Button,
-                DrawButton,
-                Interaction::default(),
-                GameAction::OfferDraw,
-                children![Text::new("D"), TextFont { ..default() }],
-                ClassList::new("game-button"),
-            ),
-        ],
-    ));
-
-    commands.spawn(MoveHistory::new(&asset_server));
-
     // We trigger a WindowResized event manually so the board and other items scale
     // themselves properly at startup.
-    let window = win_query.single().unwrap();
-    let win_size = window.1.size();
+    let (window_entity, window) = *window_query;
+    let win_size = window.size();
     commands.write_message(bevy::window::WindowResized {
-        window: window.0,
+        window: window_entity,
         width: win_size.x,
         height: win_size.y,
     });
@@ -161,18 +142,12 @@ fn setup_gamescreen(
 
 /// Despawn all entities that are part of the in-game screen.
 /// Obviously happens when we leave a game.
-fn cleanup_gamescreen(
-    mut commands: Commands,
-    query: Query<Entity, With<GameScreenComponent>>,
-    mut ui_scale: ResMut<UiScale>,
-) {
+fn cleanup_gamescreen(mut commands: Commands, query: Query<Entity, With<GameScreenComponent>>) {
     log::debug!("Cleaning up gamescreen");
 
     for entity in query.iter() {
         commands.entity(entity).despawn();
     }
-    // rest scaling so the main menu isn't affected
-    ui_scale.0 = 1.0;
 }
 
 fn listen_keyboard_input(
@@ -181,7 +156,7 @@ fn listen_keyboard_input(
     overlay: Res<State<Overlay>>,
 ) {
     if keys.just_pressed(KeyCode::Escape) && *overlay.get() == Overlay::None {
-        next_overlay.set(Overlay::QuitGameDialog);
+        next_overlay.set(Overlay::ResignDialog);
     }
 }
 
@@ -194,50 +169,57 @@ fn update_player_names(
 ) {
     let game_info = game.game_info;
 
-    if let Some(&text_entity) = query_white.first() {
-        if let Ok(mut white_text) = query_text.get_mut(text_entity) {
-            let name = if let Some(wid) = game_info.white_player {
-                lobby
-                    .get_client_info(wid)
-                    .cloned()
-                    .unwrap_or_else(|| format!("Player {}", wid))
-            } else {
-                "Waiting for White...".to_string()
-            };
+    update_player_label(
+        &query_white,
+        game_info.white_player,
+        "Waiting for White...",
+        &lobby,
+        &mut query_text,
+    );
+    update_player_label(
+        &query_black,
+        game_info.black_player,
+        "Waiting for Black...",
+        &lobby,
+        &mut query_text,
+    );
+}
 
-            if white_text.0 != name {
-                log::debug!("Updating white player name to {}", name);
-                white_text.0 = name;
-            }
-        }
-    }
+fn update_player_label(
+    children: &Children,
+    player_id: Option<ClientId>,
+    waiting_text: &str,
+    lobby: &LobbyState,
+    query_text: &mut Query<&mut Text>,
+) {
+    let Some(&text_entity) = children.first() else {
+        return;
+    };
+    let Ok(mut text) = query_text.get_mut(text_entity) else {
+        return;
+    };
 
-    if let Some(&text_entity) = query_black.first() {
-        if let Ok(mut black_text) = query_text.get_mut(text_entity) {
-            let name = if let Some(bid) = game_info.black_player {
-                lobby
-                    .get_client_info(bid)
-                    .cloned()
-                    .unwrap_or_else(|| format!("Player {}", bid))
-            } else {
-                "Waiting for Black...".to_string()
-            };
+    let name = player_id
+        .map(|id| {
+            lobby
+                .get_client_info(id)
+                .cloned()
+                .unwrap_or_else(|| format!("Player {id}"))
+        })
+        .unwrap_or_else(|| waiting_text.to_string());
 
-            if black_text.0 != name {
-                log::debug!("Updating black player name to {}", name);
-                black_text.0 = name;
-            }
-        }
+    if text.0 != name {
+        log::debug!("Updating player name to {name}");
+        text.0 = name;
     }
 }
 
 /// Computes scale and position of all game screen components based on the current window size.
 /// This method is kinda complex due to the need to adjust various UI elements dynamically based on
 /// window size and available screen space.
-pub fn on_resize(
+fn on_resize(
     mut resize_reader: MessageReader<bevy::window::WindowResized>,
-    mut queries: ParamSet<(Single<&mut Transform, With<ChessBoard>>,)>,
-    mut ui_scale: ResMut<UiScale>,
+    mut board_transform: Single<&mut Transform, With<ChessBoard>>,
 ) {
     // Collect the latest window size.
     let mut last_size = None;
@@ -248,111 +230,99 @@ pub fn on_resize(
         return;
     };
 
-    let history_width = 400.0;
-    let padding = 10.0;
-
-    // Available space for the board is constrained by:
-    // 1. window_height (board must fit vertically)
-    // 2. window_width - history_width (to keep it centered and not overlap history)
-    let max_board_dim = win_size.y.min(win_size.x - (history_width + padding));
-    let scale = (max_board_dim / RESOLUTION) * 0.75;
+    // Keep the board inside the central area, below the top label, above the bottom label,
+    // and away from all four neighboring UI regions.
+    let available_width = (win_size.x * BOARD_AREA_RATIO - 2.0 * BOARD_EDGE_GAP).max(1.0);
+    let label_reserved_height = PLAYER_LABEL_OFFSET + PLAYER_LABEL_HEIGHT + BOARD_EDGE_GAP;
+    let available_height = (win_size.y - 2.0 * label_reserved_height).max(1.0);
+    let board_size = available_width.min(available_height);
+    let scale = board_size / RESOLUTION;
 
     // The board is not a UI element, so it's NOT affected by UiScale.
     // We scale it manually.
-    {
-        let mut board_transform = queries.p0();
-        board_transform.scale = Vec3::splat(scale);
-    }
-
-    // Finally, update the global UI scale.
-    ui_scale.0 = scale;
+    board_transform.scale = Vec3::splat(scale);
+    board_transform.translation.x = (LEFT_PANEL_RATIO - RIGHT_PANEL_RATIO) * win_size.x / 2.0;
 }
-pub fn on_rotate(
+
+fn resize_action_button_text(
+    window: Single<&Window>,
+    buttons: Query<&Children, With<GameActionButton>>,
+    mut text_fonts: Query<&mut TextFont>,
+) {
+    let panel_width = window.width() * LEFT_PANEL_RATIO;
+    let font_size = FontSize::Px((panel_width * 0.14).clamp(8.0, 16.0));
+
+    for children in &buttons {
+        for &child in children {
+            if let Ok(mut text_font) = text_fonts.get_mut(child) {
+                text_font.font_size = font_size;
+            }
+        }
+    }
+}
+
+fn update_draw_offer_button(
+    mut buttons: Query<(&mut BackgroundColor, Option<&DrawOfferActive>), With<DrawOfferButton>>,
+) {
+    for (mut background, active) in &mut buttons {
+        background.0 = if active.is_some() {
+            WOOD_DRAW_OFFER
+        } else {
+            WOOD_BUTTON
+        };
+    }
+}
+
+fn on_rotate(
     _ev: On<RotateBoardEvent>,
-    mut queries: ParamSet<(
-        Query<&mut Transform, With<ChessBoard>>,
-        Single<&mut Node, With<WhitePlayerLabel>>,
-        Single<&mut Node, (With<BlackPlayerLabel>, Without<WhitePlayerLabel>)>,
-    )>,
+    mut board: Single<&mut Transform, With<ChessBoard>>,
+    mut white_node: Single<&mut Node, With<WhitePlayerLabel>>,
+    mut black_node: Single<&mut Node, (With<BlackPlayerLabel>, Without<WhitePlayerLabel>)>,
     mut commands: Commands,
-    win_query: Query<(Entity, &Window)>,
+    window_query: Single<(Entity, &Window)>,
 ) {
     log::debug!("Rotating game view");
 
     // rotate the board 180'
-    let is_rotated = {
-        let mut board_query = queries.p0();
-        let mut rotated = false;
-        for mut board in board_query.iter_mut() {
-            board.rotate_z(PI);
-            rotated = board.rotation.z.abs() > 0.1;
-        }
-        rotated
-    };
+    board.rotate_z(PI);
+    let is_rotated = board.rotation.z.abs() > 0.1;
 
     // Update Player Labels
     let set_label = |node: &mut Node, is_top: bool| {
         if is_top {
-            node.top = Val::Px(50.0);
+            node.top = Val::Px(PLAYER_LABEL_OFFSET);
             node.bottom = Val::Auto;
         } else {
-            node.bottom = Val::Px(50.0);
+            node.bottom = Val::Px(PLAYER_LABEL_OFFSET);
             node.top = Val::Auto;
         }
     };
 
     // White is normally at the bottom, Black at the top.
     // Swap if the board is rotated.
-    {
-        let mut white_node = queries.p1();
-        set_label(&mut white_node, is_rotated);
-    }
-    {
-        let mut black_node = queries.p2();
-        set_label(&mut black_node, !is_rotated);
-    }
+    set_label(&mut white_node, is_rotated);
+    set_label(&mut black_node, !is_rotated);
 
     // Trigger a resize to update UI node positions
-    if let Ok((entity, window)) = win_query.single() {
-        let win_size = window.size();
-        commands.write_message(bevy::window::WindowResized {
-            window: entity,
-            width: win_size.x,
-            height: win_size.y,
-        });
-    }
+    let (entity, window) = *window_query;
+    let win_size = window.size();
+    commands.write_message(bevy::window::WindowResized {
+        window: entity,
+        width: win_size.x,
+        height: win_size.y,
+    });
 }
 
-#[derive(Component)]
-pub enum GameAction {
-    Resign,
-    OfferDraw,
-}
-
-pub fn gamescreen_button_system(
-    mut interaction_query: Query<(&Interaction, &GameAction), (Changed<Interaction>, With<Button>)>,
+fn on_draw_offered(
+    ev: On<DrawOffered>,
     mut commands: Commands,
-    game: ResMut<ActiveGame>,
+    button: Single<Entity, With<DrawOfferButton>>,
 ) {
-    for (interaction, action) in interaction_query.iter_mut() {
-        if *interaction == Interaction::Pressed {
-            match action {
-                GameAction::Resign => {
-                    commands.trigger(NetworkSend(ClientMessage::Resign(game.gid)));
-                }
-                GameAction::OfferDraw => {
-                    commands.trigger(NetworkSend(ClientMessage::OfferDraw(game.gid)))
-                }
-            }
-        }
-    }
-}
+    log::debug!("Draw offer state changed: {}", ev.0);
 
-pub fn on_draw_offered(ev: On<DrawOffered>, query: Single<&mut ClassList, With<DrawButton>>) {
-    let mut btn = query.into_inner();
     if ev.0 {
-        btn.add("game-button-draw-pending");
+        commands.entity(*button).insert(DrawOfferActive);
     } else {
-        btn.remove("game-button-draw-pending");
+        commands.entity(*button).remove::<DrawOfferActive>();
     }
 }

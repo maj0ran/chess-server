@@ -1,110 +1,70 @@
-use crate::client::lobby::LobbyState;
-use crate::net::network::NetworkSend;
-use crate::ui::Overlay;
+use bevy::feathers::controls::FeathersButton;
+use bevy::feathers::theme::{InheritableThemeTextColor, ThemedText};
+use bevy::feathers::tokens;
 use bevy::prelude::*;
-use bevy_flair::prelude::*;
+use bevy::ui_widgets::Activate;
 use chess_core::protocol::messages::ClientMessage;
 use chess_core::protocol::{JoinGameParams, UserRoleSelection};
 
-#[derive(Component)]
-pub struct JoinDialogComponent;
+use crate::client::lobby::LobbyState;
+use crate::net::network::NetworkSend;
+use crate::ui::theme::{WOOD_BORDER, WOOD_GOLD, WOOD_SURFACE};
+use crate::ui::{Dialog, Overlay};
 
-pub fn setup_join_dialog(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn((
-        Node::default(),
-        JoinDialogComponent,
-        NodeStyleSheet::new(asset_server.load("style.css")),
-        ClassList::new("dialog-overlay"),
-        children![(
-            Node::default(),
-            ClassList::new("dialog-content column-align"),
-            children![
-                (Text::new("Select Side"), ClassList::new("label-large")),
-                (
-                    Button,
-                    Interaction::default(),
-                    ClassList::new(""),
-                    JoinAction::Select(UserRoleSelection::White),
-                    children![Text::new("White")],
-                ),
-                (
-                    Button,
-                    Interaction::default(),
-                    ClassList::new(""),
-                    JoinAction::Select(UserRoleSelection::Black),
-                    children![Text::new("Black")],
-                ),
-                (
-                    Button,
-                    Interaction::default(),
-                    ClassList::new(""),
-                    JoinAction::Select(UserRoleSelection::Random),
-                    children![Text::new("Random")],
-                ),
-                //  (
-                //      Button,
-                //      Interaction::default(),
-                //      ClassList::new(""),
-                //      JoinAction::Select(UserRoleSelection::Both),
-                //      children![Text::new("Both")],
-                //  ),
-                (
-                    Button,
-                    Interaction::default(),
-                    ClassList::new(""),
-                    JoinAction::Select(UserRoleSelection::Spectator),
-                    children![Text::new("Spectator")],
-                ),
-                (
-                    Button,
-                    Interaction::default(),
-                    ClassList::new("button-red"),
-                    JoinAction::Cancel,
-                    children![Text::new("Cancel")],
-                )
-            ],
-        )],
-    ));
-}
-
-#[derive(Component)]
-pub enum JoinAction {
-    Select(UserRoleSelection),
-    Cancel,
-}
-
-pub fn cleanup_join_dialog(
-    mut commands: Commands,
-    query: Query<Entity, With<JoinDialogComponent>>,
-) {
-    for entity in query.iter() {
-        commands.entity(entity).despawn();
+pub fn join_dialog_scene() -> impl Scene {
+    bsn! {
+        Dialog
+        Children[(
+            Node {
+                width: px(420), padding: UiRect::all(px(28)),
+                flex_direction: FlexDirection::Column, row_gap: px(14),
+                align_items: AlignItems::Center,
+                border: UiRect::all(px(2)),
+                border_radius: BorderRadius::all(px(10)),
+            }
+            BackgroundColor(WOOD_SURFACE)
+            BorderColor::all(WOOD_BORDER)
+            BoxShadow::new(Color::srgba(0.0, 0.0, 0.0, 0.6), px(0), px(6), px(2), px(10))
+            InheritableThemeTextColor(tokens::TEXT_MAIN)
+            Children[
+                (Text("Select Side") ThemedText TextFont { font_size: FontSize::Px(26.0) } TextLayout::justify(Justify::Center)),
+                (Node { width: percent(100), height: px(1) } BackgroundColor(WOOD_GOLD)),
+                (@FeathersButton { @caption: bsn! { Text("White") ThemedText } } Node { width: px(240), height: px(48) } on(|_: On<Activate>, lobby: ResMut<LobbyState>, next: ResMut<NextState<Overlay>>, commands: Commands| {
+                    join(UserRoleSelection::White, lobby, next, commands);
+                })),
+                (@FeathersButton { @caption: bsn! { Text("Black") ThemedText } } Node { width: px(240), height: px(48) } on(|_: On<Activate>, lobby: ResMut<LobbyState>, next: ResMut<NextState<Overlay>>, commands: Commands| {
+                    join(UserRoleSelection::Black, lobby, next, commands);
+                })),
+                (@FeathersButton { @caption: bsn! { Text("Random") ThemedText } } Node { width: px(240), height: px(48) } on(|_: On<Activate>, lobby: ResMut<LobbyState>, next: ResMut<NextState<Overlay>>, commands: Commands| {
+                    join(UserRoleSelection::Random, lobby, next, commands);
+                })),
+                (@FeathersButton { @caption: bsn! { Text("Spectate") ThemedText } } Node { width: px(240), height: px(48) } on(|_: On<Activate>, lobby: ResMut<LobbyState>, next: ResMut<NextState<Overlay>>, commands: Commands| {
+                    join(UserRoleSelection::Spectator, lobby, next, commands);
+                })),
+                (Node { width: percent(100), height: px(1) } BackgroundColor(WOOD_BORDER)),
+                (@FeathersButton { @caption: bsn! { Text("Cancel") ThemedText } } Node { width: px(180), height: px(48) } on(|_: On<Activate>, mut next: ResMut<NextState<Overlay>>| next.set(Overlay::None)))
+            ]
+        )]
     }
 }
 
-pub fn join_dialog_action_system(
-    mut interaction_query: Query<(&Interaction, &JoinAction), (Changed<Interaction>, With<Button>)>,
+fn join(
+    side: UserRoleSelection,
     mut lobby: ResMut<LobbyState>,
-    mut next_overlay: ResMut<NextState<Overlay>>,
+    mut next: ResMut<NextState<Overlay>>,
     mut commands: Commands,
 ) {
-    for (interaction, action) in interaction_query.iter_mut() {
-        if *interaction == Interaction::Pressed {
-            match action {
-                JoinAction::Select(side) => {
-                    if let Some(gid) = lobby.pending_join_game {
-                        commands.trigger(NetworkSend(ClientMessage::JoinGame(JoinGameParams {
-                            game_id: gid,
-                            side: side.clone(),
-                        })));
-                    }
-                    lobby.pending_join_game = None;
-                    next_overlay.set(Overlay::None);
-                }
-                JoinAction::Cancel => {
-                    next_overlay.set(Overlay::None);
-                }
-            }
-        }
+    if let Some(game_id) = lobby.pending_join_game.take() {
+        commands.trigger(NetworkSend(ClientMessage::JoinGame(JoinGameParams {
+            game_id,
+            side,
+        })));
+    }
+    next.set(Overlay::None);
+}
+
+pub fn cleanup_join_dialog(mut commands: Commands, query: Query<Entity, With<Dialog>>) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn();
     }
 }
