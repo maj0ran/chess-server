@@ -12,10 +12,6 @@ use crate::ui::{Dialog, Overlay};
 
 #[derive(Component, Clone, Copy, Default)]
 struct TimeControlOption;
-
-#[derive(Component, Clone, Copy, Default)]
-struct ModeOption;
-
 #[derive(Component, Clone, Copy, Default)]
 struct SideOption;
 

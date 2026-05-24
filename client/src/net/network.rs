@@ -1,15 +1,13 @@
 use crate::client::session::*;
 use crate::net::tls::TlsClient;
-use crate::ui::views::menuview::gamemenu::dialogs::create_game_dialog::PendingJoinSide;
-use crate::ui::views::menuview::main_menu::UpdateGamesList;
+use crate::ui::dialogs::create_game::PendingJoinSide;
+use crate::ui::mainmenu::UpdateGamesList;
 
 use crate::client::game::{ActiveGame, BoardUpdate, GameDetails, GameJoinedEvent, GameOverEvent};
 use crate::client::lobby::LobbyState;
-use crate::ui::views::gameview::chessboard::board::ResetSelection;
-use crate::ui::views::gameview::game_screen::DrawOffered;
-use crate::ui::views::gameview::historypanel::movehistory::{
-    MoveHistoryFullRefresh, MoveHistoryUpdated,
-};
+use crate::ui::ingame::DrawOffered;
+use crate::ui::ingame::chessboard::board::ResetSelection;
+use crate::ui::ingame::move_history::{MoveHistoryFullRefresh, MoveHistoryUpdated};
 use bevy::prelude::*;
 use chess_core::NetResult;
 use chess_core::net::connection::Connection;

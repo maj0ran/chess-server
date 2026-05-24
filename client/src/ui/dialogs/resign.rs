@@ -35,9 +35,3 @@ pub fn resign_dialog_scene() -> impl Scene {
         )]
     }
 }
-
-pub fn cleanup_resign_dialog(mut commands: Commands, query: Query<Entity, With<Dialog>>) {
-    for entity in query.iter() {
-        commands.entity(entity).despawn();
-    }
-}

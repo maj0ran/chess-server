@@ -1,15 +1,14 @@
-use super::GameScreenComponent;
 use crate::client::game::{ActiveGame, GameJoinedEvent};
 use crate::client::lobby::LobbyState;
 use crate::net::network::NetworkSend;
+use crate::ui::ingame::chessboard::board::{ChessBoard, RotateBoardEvent};
+use crate::ui::ingame::move_history::{
+    move_history_scene, on_scroll_handler, refresh_move_history, resize_move_history_text,
+    send_scroll_events, update_move_history,
+};
 use crate::ui::theme::{
     BOARD_AREA_RATIO, BOARD_EDGE_GAP, LEFT_PANEL_RATIO, PLAYER_LABEL_HEIGHT, PLAYER_LABEL_OFFSET,
     RIGHT_PANEL_RATIO, WOOD_BORDER, WOOD_BUTTON, WOOD_DRAW_OFFER, WOOD_SURFACE,
-};
-use crate::ui::views::gameview::chessboard::board::{ChessBoard, RotateBoardEvent};
-use crate::ui::views::gameview::historypanel::movehistory::{
-    move_history_scene, on_scroll_handler, refresh_move_history, resize_move_history_text,
-    send_scroll_events, update_move_history,
 };
 use crate::ui::{Overlay, Screen};
 use bevy::feathers::controls::FeathersButton;
@@ -21,53 +20,59 @@ use chess_core::ClientId;
 use chess_core::protocol::messages::ClientMessage;
 use std::f32::consts::PI;
 
+pub mod chessboard;
+pub mod move_history;
+
+/// Marker component for everything that belongs to the in-game screen.
+#[derive(Component, Clone, Copy, Default)]
+pub struct IngameRoot;
+
 pub const SOURCE_COLOR: Color = Color::srgb_u8(250, 113, 113);
 pub const DESTINATION_COLOR: Color = Color::srgb_u8(113, 250, 113);
-pub const RESOLUTION: f32 = 800.0;
+pub struct IngamePlugin;
 
-pub struct GameScreenPlugin;
-
-impl Plugin for GameScreenPlugin {
+impl Plugin for IngamePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            OnEnter(Screen::Game),
-            (
-                game_screen_scene.spawn(),
-                move_history_scene.spawn(),
-                setup_gamescreen,
+        app.add_plugins(chessboard::ChessboardPlugin)
+            .add_systems(
+                OnEnter(Screen::Game),
+                (
+                    ingame_scene.spawn(),
+                    move_history_scene.spawn(),
+                    setup_ingame,
+                )
+                    .chain(),
             )
-                .chain(),
-        )
-        .add_systems(OnExit(Screen::Game), cleanup_gamescreen)
-        .add_systems(Update, listen_keyboard_input.run_if(in_state(Screen::Game)))
-        .add_systems(
-            Update,
-            (
-                update_player_names.run_if(
-                    resource_exists::<ActiveGame>.and_then(
-                        resource_exists_and_changed::<LobbyState>
-                            .or_else(resource_exists_and_changed::<ActiveGame>),
+            .add_systems(OnExit(Screen::Game), cleanup_ingame)
+            .add_systems(Update, listen_keyboard_input.run_if(in_state(Screen::Game)))
+            .add_systems(
+                Update,
+                (
+                    update_player_names.run_if(
+                        resource_exists::<ActiveGame>.and_then(
+                            resource_exists_and_changed::<LobbyState>
+                                .or_else(resource_exists_and_changed::<ActiveGame>),
+                        ),
                     ),
-                ),
-                (send_scroll_events, resize_move_history_text),
+                    (send_scroll_events, resize_move_history_text),
+                )
+                    .run_if(in_state(Screen::Game)),
             )
-                .run_if(in_state(Screen::Game)),
-        )
-        .add_observer(on_game_joined)
-        .add_observer(on_rotate)
-        .add_observer(update_move_history)
-        .add_observer(refresh_move_history)
-        .add_observer(on_scroll_handler)
-        .add_observer(on_draw_offered)
-        .add_systems(
-            Update,
-            (
-                on_resize,
-                resize_action_button_text,
-                update_draw_offer_button,
-            )
-                .run_if(in_state(Screen::Game)),
-        );
+            .add_observer(on_game_joined)
+            .add_observer(on_rotate)
+            .add_observer(update_move_history)
+            .add_observer(refresh_move_history)
+            .add_observer(on_scroll_handler)
+            .add_observer(on_draw_offered)
+            .add_systems(
+                Update,
+                (
+                    on_resize,
+                    resize_action_button_text,
+                    update_draw_offer_button,
+                )
+                    .run_if(in_state(Screen::Game)),
+            );
     }
 }
 
@@ -91,14 +96,14 @@ pub struct DrawOfferButton;
 #[derive(Component, Clone, Copy, Default)]
 pub struct DrawOfferActive;
 #[derive(Event)]
-pub struct GameScreenInitialized;
+pub struct IngameInitialized;
 #[derive(Event)]
 pub struct DrawOffered(pub bool);
 
-fn game_screen_scene() -> impl Scene {
+fn ingame_scene() -> impl Scene {
     bsn! {
         Node { position_type: PositionType::Absolute, width: percent(100), height: percent(100) }
-        GameScreenComponent
+        IngameRoot
         Pickable::IGNORE
         InheritableThemeTextColor(tokens::TEXT_MAIN)
         Children[
@@ -111,7 +116,7 @@ fn game_screen_scene() -> impl Scene {
                 BoxShadow::new(Color::srgba(0.0, 0.0, 0.0, 0.45), px(0), px(4), px(1), px(7))
                 Pickable::IGNORE
                 Children[
-                    (@FeathersButton { @caption: bsn! { Text("Resign") ThemedText } } GameActionButton Node { width: percent(100), height: px(48), padding: UiRect::horizontal(px(4)) } on(|_: On<bevy::ui_widgets::Activate>, mut overlay: ResMut<NextState<Overlay>>| overlay.set(Overlay::ResignDialog))),
+                    (@FeathersButton { @caption: bsn! { Text("Resign") ThemedText } } GameActionButton Node { width: percent(100), height: px(48), padding: UiRect::horizontal(px(4)) } on(|_: On<bevy::ui_widgets::Activate>, mut overlay: ResMut<NextState<Overlay>>| overlay.set(Overlay::Resign))),
                     (@FeathersButton { @caption: bsn! { Text("Offer Draw") ThemedText } } GameActionButton DrawOfferButton Node { width: percent(100), height: px(48), padding: UiRect::horizontal(px(4)) } on(|_: On<bevy::ui_widgets::Activate>, game: Res<ActiveGame>, mut commands: Commands| {
                         commands.trigger(NetworkSend(ClientMessage::OfferDraw(game.gid)));
                     }))
@@ -122,7 +127,7 @@ fn game_screen_scene() -> impl Scene {
 }
 
 /// Sets up the in-game screen and triggers the initial board draw.
-fn setup_gamescreen(mut commands: Commands, window_query: Single<(Entity, &Window)>) {
+fn setup_ingame(mut commands: Commands, window_query: Single<(Entity, &Window)>) {
     log::info!("Setting up gamescreen");
 
     commands.spawn(ChessBoard::new());
@@ -137,12 +142,12 @@ fn setup_gamescreen(mut commands: Commands, window_query: Single<(Entity, &Windo
         height: win_size.y,
     });
 
-    commands.trigger(GameScreenInitialized);
+    commands.trigger(IngameInitialized);
 }
 
 /// Despawn all entities that are part of the in-game screen.
 /// Obviously happens when we leave a game.
-fn cleanup_gamescreen(mut commands: Commands, query: Query<Entity, With<GameScreenComponent>>) {
+fn cleanup_ingame(mut commands: Commands, query: Query<Entity, With<IngameRoot>>) {
     log::debug!("Cleaning up gamescreen");
 
     for entity in query.iter() {
@@ -156,7 +161,7 @@ fn listen_keyboard_input(
     overlay: Res<State<Overlay>>,
 ) {
     if keys.just_pressed(KeyCode::Escape) && *overlay.get() == Overlay::None {
-        next_overlay.set(Overlay::ResignDialog);
+        next_overlay.set(Overlay::Resign);
     }
 }
 
@@ -236,7 +241,7 @@ fn on_resize(
     let label_reserved_height = PLAYER_LABEL_OFFSET + PLAYER_LABEL_HEIGHT + BOARD_EDGE_GAP;
     let available_height = (win_size.y - 2.0 * label_reserved_height).max(1.0);
     let board_size = available_width.min(available_height);
-    let scale = board_size / RESOLUTION;
+    let scale = board_size / chessboard::BOARD_SIZE;
 
     // The board is not a UI element, so it's NOT affected by UiScale.
     // We scale it manually.

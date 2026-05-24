@@ -10,10 +10,10 @@ pub struct ChessPiece {
 impl ChessPiece {
     pub fn new(
         id: char,
-        assets: &Res<ChessAssets>,
+        assets: &ChessAssets,
         flip: bool,
     ) -> (ChessPiece, Sprite, Transform, Pickable) {
-        let image = assets.get(id).unwrap();
+        let image = assets.get(id).expect("missing chess piece asset");
         (
             ChessPiece { id },
             Sprite {

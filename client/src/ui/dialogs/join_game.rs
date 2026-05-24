@@ -62,9 +62,3 @@ fn join(
     }
     next.set(Overlay::None);
 }
-
-pub fn cleanup_join_dialog(mut commands: Commands, query: Query<Entity, With<Dialog>>) {
-    for entity in query.iter() {
-        commands.entity(entity).despawn();
-    }
-}

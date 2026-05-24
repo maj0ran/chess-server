@@ -7,8 +7,6 @@ use bevy::prelude::*;
 /// 64 `ChessSquare`s are rendered onto the chessboard and are used to position pieces.
 #[derive(Component, Clone, Debug)]
 pub struct ChessSquare {
-    pub x: u8,
-    pub y: u8,
     pub name: String,
     pub color: Color,
 }
@@ -20,12 +18,7 @@ impl ChessSquare {
         color: Color,
     ) -> (ChessSquare, Sprite, Transform, Pickable) {
         (
-            ChessSquare {
-                name,
-                color,
-                x: pos.x as u8,
-                y: pos.y as u8,
-            },
+            ChessSquare { name, color },
             Sprite {
                 color,
                 custom_size: Some(Vec2::splat(SQUARE_SIZE)),

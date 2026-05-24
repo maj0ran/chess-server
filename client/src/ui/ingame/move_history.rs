@@ -1,6 +1,6 @@
 use crate::client::game::ActiveGame;
+use crate::ui::ingame::IngameRoot;
 use crate::ui::theme::{RIGHT_PANEL_RATIO, WOOD_BORDER, WOOD_SURFACE};
-use crate::ui::views::gameview::GameScreenComponent;
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::picking::hover::HoverMap;
 use bevy::prelude::*;
@@ -102,7 +102,7 @@ pub fn on_scroll_handler(
 
 pub fn move_history_scene() -> impl Scene {
     bsn! {
-        GameScreenComponent
+        IngameRoot
         MoveHistory
         Node {
             position_type: PositionType::Absolute,

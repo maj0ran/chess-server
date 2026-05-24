@@ -10,18 +10,12 @@ use crate::net::network::NetworkSend;
 use crate::ui::theme::{
     WOOD_BACKGROUND, WOOD_BORDER, WOOD_SURFACE, WOOD_SURFACE_LIGHT, wood_theme,
 };
-use crate::ui::views::menuview::gamemenu::dialogs::create_game_dialog::{
-    cleanup_create_dialog, create_dialog_scene, initialize_create_dialog,
-};
-use crate::ui::views::menuview::gamemenu::dialogs::join_game_dialog::{
-    cleanup_join_dialog, join_dialog_scene,
-};
 use crate::ui::{Overlay, Screen};
 
-pub struct MenuRootPlugin;
+pub struct MainMenuPlugin;
 
 #[derive(Component, Clone, Copy, Default)]
-pub struct MenuRootComponent;
+pub struct MainMenuRoot;
 
 #[derive(Event)]
 pub struct UpdateGamesList;
@@ -39,7 +33,7 @@ fn game_list_row_scene(label: String, game_id: GameId) -> impl Scene {
         BackgroundColor(WOOD_SURFACE_LIGHT)
         on(move |_: On<Activate>, mut next: ResMut<NextState<Overlay>>, mut lobby: ResMut<LobbyState>| {
             lobby.pending_join_game = Some(game_id);
-            next.set(Overlay::JoinDialog);
+            next.set(Overlay::JoinGame);
         })
     }
 }
@@ -48,13 +42,10 @@ pub fn update_games_list(
     _event: On<UpdateGamesList>,
     lobby: Res<LobbyState>,
     mut commands: Commands,
-    container_query: Query<Entity, With<GamesList>>,
-    children_query: Query<&Children, With<GamesList>>,
+    container: Single<(Entity, Option<&Children>), With<GamesList>>,
 ) {
-    let Ok(container) = container_query.single() else {
-        return;
-    };
-    if let Ok(children) = children_query.get(container) {
+    let (container, children) = *container;
+    if let Some(children) = children {
         for child in children.iter() {
             commands.entity(child).despawn();
         }
@@ -95,18 +86,11 @@ pub fn update_games_list(
     }
 }
 
-impl Plugin for MenuRootPlugin {
+impl Plugin for MainMenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(Screen::Menu), (scene.spawn(), request_games))
-            .add_systems(OnExit(Screen::Menu), cleanup_menu_root)
+            .add_systems(OnExit(Screen::Menu), cleanup_main_menu)
             .add_observer(update_games_list)
-            .add_systems(
-                OnEnter(Overlay::CreateDialog),
-                (initialize_create_dialog, create_dialog_scene.spawn()).chain(),
-            )
-            .add_systems(OnExit(Overlay::CreateDialog), cleanup_create_dialog)
-            .add_systems(OnEnter(Overlay::JoinDialog), join_dialog_scene.spawn())
-            .add_systems(OnExit(Overlay::JoinDialog), cleanup_join_dialog)
             .insert_resource(wood_theme());
     }
 }
@@ -124,7 +108,7 @@ fn main_menu() -> impl Scene {
             flex_direction: FlexDirection::Column,
             align_items: AlignItems::Stretch,
         }
-        MenuRootComponent
+        MainMenuRoot
         BackgroundColor(WOOD_BACKGROUND)
         InheritableThemeTextColor(tokens::TEXT_MAIN)
         Children[
@@ -156,7 +140,7 @@ fn main_menu() -> impl Scene {
                                 }
                                 Node { width: px(190), height: px(56) }
                                 on(|_: On<Activate>, mut next: ResMut<NextState<Overlay>>| {
-                                    next.set(Overlay::CreateDialog);
+                                    next.set(Overlay::CreateGame);
                                 })
                             ),
                             (
@@ -240,7 +224,7 @@ fn request_games(mut commands: Commands) {
     ));
 }
 
-fn cleanup_menu_root(mut commands: Commands, query: Query<Entity, With<MenuRootComponent>>) {
+fn cleanup_main_menu(mut commands: Commands, query: Query<Entity, With<MainMenuRoot>>) {
     for entity in query.iter() {
         commands.entity(entity).despawn();
     }

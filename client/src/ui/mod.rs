@@ -2,8 +2,10 @@ use bevy::prelude::*;
 
 use crate::ui::theme::WOOD_OVERLAY;
 
+pub mod dialogs;
+pub mod ingame;
+pub mod mainmenu;
 pub mod theme;
-pub mod views;
 
 pub const COLOR_DARK: Color = Color::srgb(0.125, 0.125, 0.125);
 pub const COLOR_LIGHT2: Color = Color::srgb(0.722, 0.647, 0.443);
@@ -20,9 +22,9 @@ pub enum Screen {
 pub enum Overlay {
     #[default]
     None,
-    CreateDialog,
-    JoinDialog,
-    ResignDialog,
+    CreateGame,
+    JoinGame,
+    Resign,
     GameOver,
     Promotion,
 }
@@ -34,7 +36,8 @@ pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, setup_dialogs);
+        app.add_plugins(dialogs::DialogsPlugin)
+            .add_systems(Update, setup_dialogs);
     }
 }
 

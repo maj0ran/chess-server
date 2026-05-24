@@ -1,16 +1,15 @@
-use super::super::GameScreenComponent;
 use super::assets::ChessAssets;
 use super::piece::ChessPiece;
 use super::square::ChessSquare;
-use super::*;
+use super::{BOARD_SIZE, PendingMove, RequestMove, SQUARE_SIZE};
 use crate::client::game::{ActiveGame, BoardUpdate};
 use crate::net::network::NetworkSend;
-use crate::ui::views::gameview::game_screen::{
-    DESTINATION_COLOR, GameScreenInitialized, SOURCE_COLOR,
-};
+use crate::ui::Overlay;
+use crate::ui::ingame::{DESTINATION_COLOR, IngameInitialized, IngameRoot, SOURCE_COLOR};
 use crate::ui::{COLOR_LIGHT2, COLOR_MID};
 use bevy::color::Color;
 use bevy::math::{Vec2, Vec3};
+use bevy::prelude::*;
 use chess_core::protocol::UserRoleSelection;
 use chess_core::protocol::messages::ClientMessage;
 use chess_core::{ChessMove, Tile};
@@ -35,9 +34,9 @@ pub struct ChessBoard {
 }
 
 impl ChessBoard {
-    pub fn new() -> (GameScreenComponent, ChessBoard, Sprite, Transform) {
+    pub fn new() -> (IngameRoot, ChessBoard, Sprite, Transform) {
         (
-            GameScreenComponent,
+            IngameRoot,
             ChessBoard {
                 selected_src: None,
                 selected_dst: None,
@@ -57,12 +56,12 @@ impl ChessBoard {
 /// Helper method to draw the chessboard. Spawns the `ChessBoard` plane and
 /// 64 `ChessSquare` as children onto it.
 pub fn draw_chessboard(
-    _ev: On<GameScreenInitialized>,
+    _ev: On<IngameInitialized>,
     mut commands: Commands,
     active_game: Res<ActiveGame>,
-    query: Query<Entity, With<ChessBoard>>,
+    board: Single<Entity, With<ChessBoard>>,
 ) {
-    let board_entity = query.single().expect("ChessBoard not found");
+    let board_entity = *board;
 
     commands.entity(board_entity).with_children(|parent| {
         let mut file = 'a';
@@ -142,23 +141,22 @@ pub fn draw_pieces(
 pub fn select_square(
     ev: On<Pointer<Press>>,
     mut commands: Commands,
-    mut query_board: Query<&mut ChessBoard>,
+    mut board: Single<&mut ChessBoard>,
     mut query: Query<&mut Sprite, With<ChessSquare>>,
 ) {
     let clicked: Entity = ev.event_target();
-    let mut board = query_board.single_mut().unwrap();
 
-    if board.selected_src == None {
+    if board.selected_src.is_none() {
         if let Ok(mut sprite) = query.get_mut(clicked) {
             board.selected_src = Some(clicked);
             sprite.color = SOURCE_COLOR;
         }
-    } else if board.selected_dst == None {
-        if let Ok(mut sprite) = query.get_mut(clicked) {
-            board.selected_dst = Some(clicked);
-            sprite.color = DESTINATION_COLOR;
-            commands.trigger(MoveSquaresSelected)
-        }
+    } else if board.selected_dst.is_none()
+        && let Ok(mut sprite) = query.get_mut(clicked)
+    {
+        board.selected_dst = Some(clicked);
+        sprite.color = DESTINATION_COLOR;
+        commands.trigger(MoveSquaresSelected);
     }
 }
 
@@ -176,12 +174,11 @@ pub fn handle_move(
     _ev: On<MoveSquaresSelected>,
     mut commands: Commands,
     query: Query<(&ChessSquare, Option<&Children>)>,
-    board_query: Query<&ChessBoard>,
+    board: Single<&ChessBoard>,
     piece_query: Query<&ChessPiece>,
     game: Res<ActiveGame>,
     mut next_overlay: ResMut<NextState<Overlay>>,
 ) -> Result<()> {
-    let board = board_query.single()?;
     let src = board.selected_src.ok_or("Source square not selected")?;
     let dst = board
         .selected_dst
@@ -243,18 +240,14 @@ pub fn handle_move(
 pub fn reset_selections(
     _ev: On<ResetSelection>,
     mut query: Query<(Entity, &mut ChessSquare, &mut Sprite)>,
-    mut board_query: Query<&mut ChessBoard>,
+    mut board: Single<&mut ChessBoard>,
 ) {
-    let mut board = board_query.single_mut().unwrap();
-
     for square_entity in query.iter_mut() {
         let entity = square_entity.0;
         let square = square_entity.1;
         let mut sprite = square_entity.2;
 
-        if board.selected_src == Some(entity) {
-            sprite.color = square.color;
-        } else if board.selected_dst == Some(entity) {
+        if board.selected_src == Some(entity) || board.selected_dst == Some(entity) {
             sprite.color = square.color;
         }
     }

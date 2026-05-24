@@ -10,9 +10,8 @@ use ui::theme::{MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH};
 
 use crate::ui::{Overlay, Screen};
 use client::ClientPlugin;
-use ui::views::gameview::chessboard::ChessboardPlugin;
-use ui::views::gameview::game_screen::GameScreenPlugin;
-use ui::views::menuview::main_menu::MenuRootPlugin;
+use ui::ingame::IngamePlugin;
+use ui::mainmenu::MainMenuPlugin;
 
 fn main() {
     env_logger::init();
@@ -45,9 +44,8 @@ fn main() {
         .add_plugins((
             FeathersPlugins,
             ui::UiPlugin,
-            MenuRootPlugin,
-            GameScreenPlugin,
-            ChessboardPlugin,
+            MainMenuPlugin,
+            IngamePlugin,
             ClientPlugin,
         ))
         .insert_resource(ClearColor(COLOR_DARK))
