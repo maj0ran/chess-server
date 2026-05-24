@@ -1,9 +1,10 @@
 use super::manager::GameManager;
 use super::session::ClientSession;
-use chess_core::protocol::messages::ClientMessage;
+use crate::net::tls::TlsServer;
 use chess_core::ClientId;
-use smol::channel::{unbounded, Sender};
+use smol::channel::unbounded;
 use smol::net::*;
+use std::sync::Arc;
 
 pub type Result<T> = std::result::Result<T, std::io::Error>;
 
@@ -15,24 +16,18 @@ pub type Result<T> = std::result::Result<T, std::io::Error>;
 pub struct Server {
     _listener: Option<TcpListener>, // listen port for incoming connections
     client_id_counter: ClientId,
+    tls_server: Arc<TlsServer>,
 }
 
 impl Server {
     pub fn new() -> Server {
+        let tls_server = TlsServer::new().expect("failed to create TlsServer");
+
         Server {
             _listener: None,
             client_id_counter: 0,
+            tls_server: Arc::new(tls_server),
         }
-    }
-
-    /// Creates a client handler for a new client connection.
-    pub async fn create_client(
-        &mut self,
-        socket: TcpStream,
-        tx_channel: Sender<(ClientId, ClientMessage)>,
-    ) -> ClientSession {
-        self.client_id_counter += 1;
-        ClientSession::new(self.client_id_counter, socket, tx_channel).await
     }
 
     /// run the server.
@@ -57,13 +52,24 @@ impl Server {
         // listen for incoming connections. An accepted connection will be converted to a client task.
         loop {
             let (socket, addr) = listener.accept().await?;
-            // each client gets its own tx, all of them are bound to srv_rx
-            let mut net_client = self.create_client(socket, client_tx.clone()).await;
-
             log::info!("accepted connection from {}!", addr);
 
+            let tls_server = self.tls_server.clone();
+            let client_tx = client_tx.clone();
+
+            self.client_id_counter += 1;
+            let id = self.client_id_counter;
+
             smol::spawn(async move {
-                net_client.run().await;
+                match tls_server.to_tls(socket).await {
+                    Ok(tls_stream) => {
+                        let net_client = ClientSession::new(id, tls_stream, client_tx).await;
+                        net_client.run().await;
+                    }
+                    Err(e) => {
+                        log::error!("TLS handshake failed for {}: {}", addr, e);
+                    }
+                }
             })
             .detach();
         }

@@ -4,26 +4,31 @@ use crate::NetError;
 use crate::NetResult;
 use smol::io::AsyncReadExt;
 use smol::io::AsyncWriteExt;
-use smol::net::TcpStream;
+use smol::io::{AsyncRead, AsyncWrite};
+use smol::io::{ReadHalf, WriteHalf};
 
-#[derive(Clone)]
 /// A `Connection` provides a generic interface for communicating over a TCP stream.
 /// It can be used both on the server and client sides to send and receive messages
 /// that implement the `NetMessage` trait. Those messages will be parsed into byte stream
 /// that can be sent over the network.
-pub struct Connection {
-    pub stream: TcpStream,
+pub struct Connection<S> {
+    /// `stream` is either a TCP Stream or a TLS stream. Since we are only using TLS, we could
+    /// discard this use of Generics, but our code base once changed from TCP to TLS and this
+    /// shows best that things are not much different.
+    pub stream: S,
     pub buf: Buffer,
 }
 
-impl Connection {
-    pub fn new(socket: TcpStream) -> Connection {
+impl<S> Connection<S> {
+    pub fn new(socket: S) -> Connection<S> {
         Connection {
             stream: socket,
             buf: Buffer::new(),
         }
     }
+}
 
+impl<S: AsyncRead + Unpin> Connection<S> {
     /// Reads a frame from the stream and parses it into a message of type `T`.
     /// That is, either a `ClientMessage` or a `ServerMessage`.
     /// Returns `NetResult<T>` if successful, or an error otherwise.
@@ -52,7 +57,9 @@ impl Connection {
 
         T::from_bytes(&self.buf[..self.buf.len])
     }
+}
 
+impl<S: AsyncWrite + Unpin> Connection<S> {
     /// Writes a message to the stream.
     /// The message is serialized into a byte stream and written to the stream.
     /// Returns `Ok(())` if the message was successfully written, or a `NetError` otherwise.
@@ -72,5 +79,12 @@ impl Connection {
         self.stream.write_all(&buf).await?;
         log::trace!("sent buffer: {:?} ({} bytes)", buf, data.len());
         Ok(())
+    }
+}
+
+impl<S: AsyncRead + AsyncWrite + Unpin> Connection<S> {
+    pub fn split(self) -> (Connection<ReadHalf<S>>, Connection<WriteHalf<S>>) {
+        let (r, w) = smol::io::split(self.stream);
+        (Connection::new(r), Connection::new(w))
     }
 }

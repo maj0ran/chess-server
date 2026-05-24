@@ -1,4 +1,5 @@
 mod chess;
+mod net;
 mod server;
 mod test;
 

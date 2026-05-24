@@ -1,4 +1,5 @@
 use crate::client::session::*;
+use crate::net::tls::TlsClient;
 use crate::ui::gamelist_menu::UpdateGamesList;
 
 use crate::client::game::{ActiveGame, BoardUpdate, GameDetails, GameJoinedEvent, GameOverEvent};
@@ -33,6 +34,8 @@ impl NetTransport {
         let (tx_to_server, rx_from_client) = smol::channel::unbounded();
         let (tx_to_client, rx_from_server) = smol::channel::unbounded();
 
+        log::info!("Connecting to: {}", server_addr);
+
         std::thread::spawn(move || {
             match smol::block_on(network_thread(&server_addr, rx_from_client, tx_to_client)) {
                 Ok(_) => {}
@@ -61,12 +64,19 @@ pub async fn network_thread(
     tx_to_client: Sender<ServerMessage>,
 ) -> NetResult<()> {
     let stream = TcpStream::connect(addr).await?;
-    let conn = Connection::new(stream);
+
+    // build the TLS wrapper. This converts our TCP stream into a TLS stream.
+    let tls_client = TlsClient::new().expect("failed to create TlsClient");
+    let domain = addr.split(':').next().unwrap_or("localhost");
+    let tls_stream = tls_client.to_tls(stream, domain).await?;
+
+    let conn = Connection::new(tls_stream);
 
     log::info!("Network thread started");
 
+    let (mut from_server, mut to_server) = conn.split();
+
     // listens on the `NetTransport` channel and transmits the messages via TCP to the server.
-    let mut to_server = conn.clone();
     std::thread::spawn(move || {
         smol::block_on(async move {
             while let Ok(cmd) = rx_from_client.recv().await {
@@ -79,7 +89,6 @@ pub async fn network_thread(
     });
 
     // listens for TCP messages from the server and transmits them to the `NetTransport` channel.
-    let mut from_server = conn;
     std::thread::spawn(move || {
         smol::block_on(async move {
             while let Ok(server_msg) = from_server.read_msg::<ServerMessage>().await {
