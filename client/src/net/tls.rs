@@ -9,15 +9,13 @@ use smol::io::{AsyncRead, AsyncWrite};
 use std::io;
 use std::sync::Arc;
 
-pub const CA_CERT: &[u8] = include_bytes!("ca.crt");
-
 pub struct TlsClient {
     pub client_config: Arc<ClientConfig>,
 }
 
 impl TlsClient {
     pub fn new() -> NetResult<Self> {
-        let ca_cert = CertificateDer::from_pem_slice(CA_CERT).expect("failed to load cert");
+        let ca_cert = CertificateDer::from_pem_file("cert/ca.crt").expect("failed to load cert");
 
         let mut root_store = RootCertStore::empty();
         root_store.add(ca_cert).unwrap();

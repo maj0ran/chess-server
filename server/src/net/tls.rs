@@ -9,17 +9,16 @@ use smol::io::{AsyncRead, AsyncWrite};
 use std::io;
 use std::sync::Arc;
 
-pub const SERVER_CERT: &[u8] = include_bytes!("server.crt");
-pub const SERVER_KEY: &[u8] = include_bytes!("server.key");
-
 pub struct TlsServer {
     pub server_config: Arc<ServerConfig>,
 }
 
 impl TlsServer {
     pub fn new() -> NetResult<Self> {
-        let cert = CertificateDer::from_pem_slice(SERVER_CERT).expect("failed to load cert");
-        let key = PrivateKeyDer::from_pem_slice(SERVER_KEY).expect("failed to load key");
+        let cert =
+            CertificateDer::from_pem_file("cert/schach_server.crt").expect("failed to load cert");
+        let key =
+            PrivateKeyDer::from_pem_file("cert/schach_server.key").expect("failed to load key");
 
         let server_config = ServerConfig::builder()
             .with_no_client_auth()

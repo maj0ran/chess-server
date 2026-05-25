@@ -5,3 +5,6 @@ client/Cargo.lock
 .idea
 .cargo
 **/*.txt
+cert/*.key
+cert/*.crt
+cert/*.srl
