@@ -5,6 +5,9 @@ const TEST_GAME_FILE: &str = "testgame2";
 
 #[cfg(test)]
 pub mod testgames {
+    #[cfg(test)]
+    const PORT: u16 = 7878;
+
     use crate::server::server::Server;
     use std::fs::File;
     use std::io::{self, BufRead};
@@ -24,17 +27,16 @@ pub mod testgames {
         })
         .detach();
 
-        Timer::after(Duration::from_millis(500)).await;
+        Timer::after(Duration::from_millis(1000)).await;
     }
 
     test! {
         async fn test_one_player() {
             env_logger::try_init().ok();
 
-            let port = 7878;
-            start_server(port).await;
+            start_server(PORT).await;
 
-            let mut client = TestClient::new(port).await;
+            let mut client = TestClient::new(PORT).await;
 
             let gid = client.create_game(1, 120, 0).await;
             client.join_game(gid, UserRoleSelection::Both).await;
@@ -44,7 +46,7 @@ pub mod testgames {
             let mut move_count = 0;
             for full_line in moves {
                 move_count += 1;
-                Timer::after(Duration::from_millis(100)).await;
+                Timer::after(Duration::from_millis(200)).await;
                 match full_line {
                     Ok(line) => {
                         let without_comment: Vec<&str> = line.split("#").collect();
@@ -76,11 +78,9 @@ pub mod testgames {
         async fn test_two_players() {
             env_logger::try_init().ok();
 
-            let port = 7879;
-            start_server(port).await;
 
-            let mut client1 = TestClient::new(port).await;
-            let mut client2 = TestClient::new(port).await;
+            let mut client1 = TestClient::new(PORT).await;
+            let mut client2 = TestClient::new(PORT).await;
 
             // client 1: create new game
             let gid = client1.create_game(1, 120, 0).await;
@@ -128,9 +128,7 @@ pub mod testgames {
                             }
                             "NOK" => {
                                 if response_opcode != ServerMessage::ILLEGAL_MOVE {
-                                    // Server thought it was legal, but test expected NOK.
-                                    // Even so, we don't swap turns as per requirement.
-                                    white_turn = !white_turn;
+                                    assert_eq!(response_opcode, ServerMessage::ILLEGAL_MOVE, "Move {} should be illegal. Got 0x{:02X}", mov_str, response_opcode);
                                 }
                             }
                             _ => panic!("Unknown indicator {}", expected),
@@ -138,7 +136,7 @@ pub mod testgames {
                     }
                     Err(_) => todo!(),
                 }
-                Timer::after(Duration::from_millis(100)).await;
+                Timer::after(Duration::from_millis(200)).await;
             }
             log::info!("test_two_players complete");
         }

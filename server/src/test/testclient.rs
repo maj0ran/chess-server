@@ -6,12 +6,18 @@ use chess_core::protocol::messages::{ClientMessage, ServerMessage};
 use chess_core::protocol::parser::NetMessage;
 #[cfg(test)]
 use chess_core::protocol::{JoinGameParams, NewGameParams, UserRoleSelection};
+use futures_rustls::pki_types::{CertificateDer, ServerName};
+use futures_rustls::rustls::{ClientConfig, RootCertStore};
+use futures_rustls::TlsConnector;
+use futures_rustls::TlsStream;
+use rustls::pki_types::pem::PemObject;
 #[cfg(test)]
 use smol::net::TcpStream;
+use std::sync::Arc;
 
 #[cfg(test)]
 pub struct TestClient {
-    pub conn: Connection,
+    pub conn: Connection<TlsStream<TcpStream>>,
 }
 
 #[cfg(test)]
@@ -19,8 +25,27 @@ impl TestClient {
     pub async fn new(port: u16) -> Self {
         let stream = TcpStream::connect(format!("127.0.0.1:{}", port))
             .await
-            .unwrap();
-        let mut conn = Connection::new(stream);
+            .expect("failed to connect to server");
+
+        // Load CA cert
+        let ca_cert_bytes = include_bytes!("../../../cert/ca.crt");
+        let ca_cert = CertificateDer::from_pem_slice(ca_cert_bytes).expect("failed to load cert");
+
+        let mut root_store = RootCertStore::empty();
+        root_store.add(ca_cert).unwrap();
+
+        let client_config = ClientConfig::builder()
+            .with_root_certificates(root_store)
+            .with_no_client_auth();
+
+        let connector = TlsConnector::from(Arc::new(client_config));
+        let server_name = ServerName::try_from("localhost").unwrap().to_owned();
+
+        let tls_stream = connector
+            .connect(server_name, stream)
+            .await
+            .expect("TLS handshake failed");
+        let mut conn = Connection::new(TlsStream::Client(tls_stream));
 
         // Consume login message
         match conn.read_msg::<ServerMessage>().await {
