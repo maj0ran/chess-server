@@ -1,4 +1,5 @@
 use crate::chess::chess::Chess;
+use crate::chess::clock::ChessClock;
 use crate::chess::pieces::Piece;
 use chess_core::protocol::UserRoleSelection;
 use chess_core::states::{ChessGameState, GameOverReason};
@@ -17,19 +18,38 @@ pub struct ChessGame {
     pub black_player: Option<ClientId>,
     pub spectators: Vec<ClientId>,
 
-    pub _time: u32,
-    pub _time_inc: u32,
+    pub time: u32,
+    pub time_inc: u32,
 
     pub draw_offer_white: bool,
     pub draw_offer_black: bool,
 
     pub move_history: Vec<String>,
+    pub clock: ChessClock,
 }
 
 impl ChessGame {
+    pub fn new(id: GameId, time: u32, time_inc: u32) -> Self {
+        ChessGame {
+            id,
+            chess: Chess::new(),
+            _started: false,
+            white_player: None,
+            black_player: None,
+            spectators: vec![],
+            draw_offer_white: false,
+            draw_offer_black: false,
+            move_history: vec![],
+            time,
+            time_inc,
+            clock: ChessClock::new(time, time, time_inc, time_inc),
+        }
+    }
     /// Starts a chess game.
     /// Chess game can only start when two players are joined.
-    pub fn _start_game(&mut self) -> GameManagerResult<()> {
+    pub fn start_game(&mut self) -> GameManagerResult<()> {
+        log::info!("starting game with ID: {}", self.id);
+
         if self.white_player.is_none() {
             return Err(GameManagerError::InvalidGameStatus(
                 "White player missing".to_string(),
@@ -45,7 +65,10 @@ impl ChessGame {
                 "Game already started".to_string(),
             ));
         }
+
         self._started = true;
+        self.clock.start();
+
         Ok(())
     }
 
@@ -189,7 +212,7 @@ impl ChessGame {
         }
     }
 
-    pub fn make_move(
+    pub async fn make_move(
         &mut self,
         mov: ChessMove,
         client_id: ClientId,
@@ -203,7 +226,10 @@ impl ChessGame {
             return Err(ChessError::NotYourTurn);
         }
         match self.chess.make_move(mov) {
-            Ok(ret) => Ok(ret),
+            Ok(ret) => {
+                self.clock.press().await;
+                Ok(ret)
+            }
             Err(e) => Err(e),
         }
     }
@@ -232,7 +258,6 @@ impl ChessGame {
         } else if self.black_player == Some(client_id) {
             Some(ChessColor::Black)
         } else {
-            log::warn!("Client is not part of the game");
             None
         }
     }

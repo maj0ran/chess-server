@@ -1,4 +1,5 @@
 use crate::chess::chess::Chess;
+use crate::chess::clock::ChessClock;
 use crate::chess::san::San;
 use crate::server::chessgame::ChessGame;
 use chess_core::protocol::messages::{ClientMessage, ServerMessage};
@@ -9,7 +10,9 @@ use chrono::prelude::*;
 use smol::channel::{Receiver, Sender};
 use smol::fs::File;
 use smol::io::AsyncWriteExt;
+use smol::lock::Mutex;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// The endpoint of a client for the `GameManager`.
 /// Those are used by the `GameManager` to keep a connection
@@ -66,19 +69,8 @@ impl GameManager {
         self.next_game_id += 1;
 
         log::info!("create game with id: {} (mode: {})", id, game_params.mode);
-        ChessGame {
-            id,
-            chess: Chess::new(),
-            _started: false,
-            white_player: None,
-            black_player: None,
-            spectators: vec![],
-            _time: game_params.time,
-            _time_inc: game_params.time_inc,
-            draw_offer_white: false,
-            draw_offer_black: false,
-            move_history: vec![],
-        }
+
+        ChessGame::new(id, game_params.time, game_params.time_inc)
     }
 
     /// The main loop of the `GameManager`.
@@ -164,6 +156,11 @@ impl GameManager {
                 // TODO: Joining game failed; currently we do not propagate a specific event to client here.
                 log::warn!("JoinGame failed for client {} in game {}: {}", cid, gid, e);
             }
+        };
+
+        let game = self.games.get_mut(&gid).unwrap();
+        if game.white_player.is_some() && game.black_player.is_some() {
+            let _ = game.start_game();
         }
     }
 
@@ -213,7 +210,7 @@ impl GameManager {
         let san = mov.to_san(&game.chess);
         let san_len = san.len() as u8;
 
-        match game.make_move(mov, cid) {
+        match game.make_move(mov, cid).await {
             // a legal move was made and accepted:
             // Update move history, clear any draw offers
             // and send the updated squares to all clients in the game.
@@ -276,8 +273,8 @@ impl GameManager {
                     gid,
                     game.white_player,
                     game.black_player,
-                    game._time,
-                    game._time_inc,
+                    game.time,
+                    game.time_inc,
                 );
                 self.send_to(cid, msg).await;
             }
