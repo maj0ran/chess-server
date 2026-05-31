@@ -15,7 +15,7 @@ pub struct TlsClient {
 
 impl TlsClient {
     pub fn new() -> NetResult<Self> {
-        let ca_cert_bytes = include_bytes!("../cert/ca.crt");
+        let ca_cert_bytes = include_bytes!(concat!(env!("OUT_DIR"), "/ca.crt"));
         let ca_cert = CertificateDer::from_pem_slice(ca_cert_bytes).expect("failed to load cert");
 
         let mut root_store = RootCertStore::empty();

@@ -48,12 +48,6 @@ if [ "${#MISSING_CERTS[@]}" -ne 0 ]; then
     exit 1
 fi
 
-# Prepare client cert for include_bytes!
-# The client code uses include_bytes!("../cert/ca.crt") relative to client/src/net/tls.rs
-# which means it looks for client/src/cert/ca.crt
-CLIENT_CERT_INTERMEDIATE_DIR="client/src/cert"
-mkdir -p "$CLIENT_CERT_INTERMEDIATE_DIR"
-cp "$CERT_DIR/ca.crt" "$CLIENT_CERT_INTERMEDIATE_DIR/"
 
 # Build chess-server
 echo "Building chess-server..."
@@ -91,8 +85,5 @@ CLIENT_ASSET_DIR="client/assets/"
 cp -r "$CLIENT_ASSET_DIR" "$CLIENT_TARGET_DIR"
 mv "$CLIENT_TARGET_DIR/assets/default_settings.cfg" "$CLIENT_TARGET_DIR/settings.cfg"
 
-# Cleanup intermediate cert
-echo "Cleaning up..."
-rm -rf "$CLIENT_CERT_INTERMEDIATE_DIR"
 
 echo "Build successful! Artifacts are in $FINAL_BUILD_DIR/"
