@@ -1,6 +1,6 @@
 use crate::client::game::ActiveGame;
-use crate::ui::ingame::IngameRoot;
-use crate::ui::theme::{RIGHT_PANEL_RATIO, WOOD_BORDER, WOOD_SURFACE};
+use crate::ui::chessgame::ChessSceneItem;
+use crate::ui::theme::{RIGHT_PANEL_RATIO, THEME_BORDER, THEME_SURFACE};
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::picking::hover::HoverMap;
 use bevy::prelude::*;
@@ -97,28 +97,6 @@ pub fn on_scroll_handler(
     // Stop propagating when the delta is fully consumed.
     if *delta == Vec2::ZERO {
         scroll.propagate(false);
-    }
-}
-
-pub fn move_history_scene() -> impl Scene {
-    bsn! {
-        IngameRoot
-        MoveHistory
-        Node {
-            position_type: PositionType::Absolute,
-            flex_direction: FlexDirection::Column,
-            height: percent(100),
-            width: percent(RIGHT_PANEL_RATIO * 100.0),
-            right: px(0),
-            top: px(0),
-            padding: UiRect::all(px(12)),
-            border: UiRect::left(px(2)),
-            border_radius: BorderRadius::all(px(6)),
-            overflow: Overflow::scroll_y(),
-        }
-        BackgroundColor(WOOD_SURFACE)
-        BorderColor::all(WOOD_BORDER)
-        BoxShadow::new(Color::srgba(0.0, 0.0, 0.0, 0.45), px(0), px(4), px(1), px(7))
     }
 }
 

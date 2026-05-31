@@ -5,9 +5,9 @@ use crate::ui::mainmenu::UpdateGamesList;
 
 use crate::client::game::{ActiveGame, BoardUpdate, GameDetails, GameJoinedEvent, GameOverEvent};
 use crate::client::lobby::LobbyState;
-use crate::ui::ingame::DrawOffered;
-use crate::ui::ingame::chessboard::board::ResetSelection;
-use crate::ui::ingame::move_history::{MoveHistoryFullRefresh, MoveHistoryUpdated};
+use crate::ui::chessgame::DrawOffered;
+use crate::ui::chessgame::chessboard::board::ResetSelection;
+use crate::ui::chessgame::move_history::{MoveHistoryFullRefresh, MoveHistoryUpdated};
 use bevy::prelude::*;
 use chess_core::NetResult;
 use chess_core::net::connection::Connection;

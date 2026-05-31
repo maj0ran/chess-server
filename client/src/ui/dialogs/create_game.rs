@@ -1,5 +1,7 @@
 use bevy::feathers::controls::{ButtonVariant, FeathersButton};
-use bevy::feathers::theme::{InheritableThemeTextColor, ThemedText};
+use bevy::feathers::display::{caption, label};
+use bevy::feathers::rounded_corners::RoundedCorners;
+use bevy::feathers::theme::InheritableThemeTextColor;
 use bevy::feathers::tokens;
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
@@ -7,13 +9,13 @@ use chess_core::protocol::messages::ClientMessage;
 use chess_core::protocol::{NewGameParams, UserRoleSelection};
 
 use crate::net::network::NetworkSend;
-use crate::ui::theme::{WOOD_BORDER, WOOD_GOLD, WOOD_SURFACE};
+use crate::ui::theme;
 use crate::ui::{Dialog, Overlay};
 
 #[derive(Component, Clone, Copy, Default)]
-struct TimeControlOption;
+struct TimeControlOptionGroup;
 #[derive(Component, Clone, Copy, Default)]
-struct SideOption;
+struct SideOptionGroup;
 
 #[derive(Resource)]
 pub struct CreateGameSettings {
@@ -38,98 +40,128 @@ pub fn initialize_create_dialog(mut commands: Commands) {
 pub fn create_dialog_scene() -> impl Scene {
     bsn! {
         Dialog
-        Children[(
-            Node {
-                width: px(520), padding: UiRect::all(px(28)),
-                flex_direction: FlexDirection::Column, row_gap: px(14),
-                align_items: AlignItems::Center,
-                border: UiRect::all(px(2)),
-                border_radius: BorderRadius::all(px(10)),
-            }
-            BackgroundColor(WOOD_SURFACE)
-            BorderColor::all(WOOD_BORDER)
-            BoxShadow::new(Color::srgba(0.0, 0.0, 0.0, 0.6), px(0), px(6), px(2), px(10))
+        Children [
+            theme::default_dialog_node()
+            theme::default_ui_shadow()
+            BackgroundColor(theme::THEME_SURFACE)
+            BorderColor::all(theme::THEME_BORDER)
             InheritableThemeTextColor(tokens::TEXT_MAIN)
-            Children[
-                (Text("New Game") ThemedText TextFont { font_size: FontSize::Px(28.0) } TextLayout::justify(Justify::Center)),
-                (Node { width: percent(100), height: px(1) } BackgroundColor(WOOD_GOLD)),
-                (Text("Time Control") ThemedText TextFont { font_size: FontSize::Px(18.0) } TextLayout::justify(Justify::Center)),
-                (
-                    Node { width: percent(100), flex_direction: FlexDirection::Row, justify_content: JustifyContent::Center, column_gap: px(10) }
-                    Children[
-                        (@FeathersButton { @caption: bsn! { Text("10 + 0") ThemedText } } TimeControlOption Node { width: px(135), height: px(46) } on(|activate: On<Activate>, mut settings: ResMut<CreateGameSettings>, mut commands: Commands, options: Query<Entity, With<TimeControlOption>>| {
-                            select_time(&mut settings, 600, 0);
-                            update_selected_option_button(&mut commands, activate.entity, options.iter());
-                        })),
-                        (@FeathersButton { @caption: bsn! { Text("10 + 10") ThemedText }, @variant: ButtonVariant::Primary } TimeControlOption Node { width: px(135), height: px(46) } on(|activate: On<Activate>, mut settings: ResMut<CreateGameSettings>, mut commands: Commands, options: Query<Entity, With<TimeControlOption>>| {
-                            select_time(&mut settings, 600, 10);
-                            update_selected_option_button(&mut commands, activate.entity, options.iter());
-                        })),
-                        (@FeathersButton { @caption: bsn! { Text("5 + 3") ThemedText } } TimeControlOption Node { width: px(135), height: px(46) } on(|activate: On<Activate>, mut settings: ResMut<CreateGameSettings>, mut commands: Commands, options: Query<Entity, With<TimeControlOption>>| {
-                            select_time(&mut settings, 300, 3);
-                            update_selected_option_button(&mut commands, activate.entity, options.iter());
-                        }))
-                    ]
-                ),
-                (Text("Join As") ThemedText TextFont { font_size: FontSize::Px(18.0) } TextLayout::justify(Justify::Center)),
-                (
-                    Node { width: percent(100), flex_direction: FlexDirection::Row, justify_content: JustifyContent::Center, column_gap: px(10) }
-                    Children[
-                        (@FeathersButton { @caption: bsn! { Text("White") ThemedText } } SideOption Node { width: px(135), height: px(46) } on(|activate: On<Activate>, mut settings: ResMut<CreateGameSettings>, mut commands: Commands, options: Query<Entity, With<SideOption>>| {
+            Children [
+                @label("New Game")
+                TextFont { font_size: FontSize::Rem(1.5) }
+                TextLayout::justify(Justify::Center)
+                --
+                // line separator
+                Node { width: percent(100), height: px(1) }
+                BackgroundColor(theme::THEME_GOLD)
+                --
+                @label("Time Control")
+                TextFont { font_size: FontSize::Rem(1.0) }
+                --
+                theme::default_button_row()
+                Children [
+                    @FeathersButton { @caption: bsn! { @caption("10 + 0") } }
+                    theme::default_button_size_120()
+                    TimeControlOptionGroup
+                    on(|activate: On<Activate>, mut settings: ResMut<CreateGameSettings>, mut commands: Commands, options: Query<Entity, With<TimeControlOptionGroup >>| {
+                        select_time(&mut settings, 600, 0);
+                        update_selected_option_button(&mut commands, activate.entity, options.iter());
+                    })
+                    --
+                    @FeathersButton { @caption: bsn! { @caption("10 + 10") }, @variant: ButtonVariant::Primary }
+                    theme::default_button_size_120()
+                    TimeControlOptionGroup
+                    on(|activate: On<Activate>, mut settings: ResMut<CreateGameSettings>, mut commands: Commands, options: Query<Entity, With<TimeControlOptionGroup >>| {
+                        select_time(&mut settings, 600, 10);
+                        update_selected_option_button(&mut commands, activate.entity, options.iter());
+                    })
+                    --
+                    @FeathersButton { @caption: bsn! { @caption("5 + 3") } }
+                    theme::default_button_size_120()
+                    TimeControlOptionGroup
+                    on(|activate: On<Activate>, mut settings: ResMut<CreateGameSettings>, mut commands: Commands, options: Query<Entity, With<TimeControlOptionGroup >>| {
+                        select_time(&mut settings, 300, 3);
+                        update_selected_option_button(&mut commands, activate.entity, options.iter());
+                    })
+                ]
+                --
+                @label("Join As")
+                TextFont { font_size: FontSize::Rem(1.0) }
+                --
+                theme::default_button_row()
+                Children [
+                    @FeathersButton { @caption: bsn! { @caption("White") }, @corners: RoundedCorners::All }
+                    theme::default_button_size_120()
+                    SideOptionGroup
+                    on(|activate: On<Activate>,
+                        mut settings: ResMut<CreateGameSettings>,
+                        mut commands: Commands,
+                        button_group: Query<Entity, With<SideOptionGroup >>| {
                             select_side(&mut settings, UserRoleSelection::White);
-                            update_selected_option_button(&mut commands, activate.entity, options.iter());
-                        })),
-                        (@FeathersButton { @caption: bsn! { Text("Black") ThemedText } } SideOption Node { width: px(135), height: px(46) } on(|activate: On<Activate>, mut settings: ResMut<CreateGameSettings>, mut commands: Commands, options: Query<Entity, With<SideOption>>| {
+                            update_selected_option_button(&mut commands, activate.entity, button_group.iter());
+                    })
+                    --
+                    @FeathersButton { @caption: bsn! { @caption("Black") } }
+                    theme::default_button_size_120()
+                    SideOptionGroup
+                    on(|activate: On<Activate>,
+                        mut settings: ResMut<CreateGameSettings>,
+                        mut commands: Commands,
+                        button_group: Query<Entity, With<SideOptionGroup >>| {
                             select_side(&mut settings, UserRoleSelection::Black);
-                            update_selected_option_button(&mut commands, activate.entity, options.iter());
-                        })),
-                        (@FeathersButton { @caption: bsn! { Text("Random") ThemedText }, @variant: ButtonVariant::Primary } SideOption Node { width: px(135), height: px(46) } on(|activate: On<Activate>, mut settings: ResMut<CreateGameSettings>, mut commands: Commands, options: Query<Entity, With<SideOption>>| {
+                            update_selected_option_button(&mut commands, activate.entity, button_group.iter());
+                    })
+                    --
+                    @FeathersButton { @caption: bsn! { @caption("Random") }, @variant: ButtonVariant::Primary, @corners: RoundedCorners::All }
+                    theme::default_button_size_120()
+                    SideOptionGroup
+                        on(|activate: On<Activate>,
+                        mut settings: ResMut<CreateGameSettings>,
+                        mut commands: Commands,
+                        button_group: Query<Entity, With<SideOptionGroup >>| {
                             select_side(&mut settings, UserRoleSelection::Random);
-                            update_selected_option_button(&mut commands, activate.entity, options.iter());
-                        }))
-                    ]
-                ),
-                (Node { width: percent(100), height: px(1) } BackgroundColor(WOOD_BORDER)),
-                (
-                    Node { width: percent(100), flex_direction: FlexDirection::Row, justify_content: JustifyContent::Center, column_gap: px(14), padding: UiRect::top(px(4)) }
-                    Children[
-                        (@FeathersButton { @caption: bsn! { Text("Cancel") ThemedText } }
-                            Node { width: px(150), height: px(50) }
-                            on(|_: On<Activate>, mut next: ResMut<NextState<Overlay>>| {
-                                next.set(Overlay::None);
-                            })),
-                        (@FeathersButton { @caption: bsn! { Text("Create Game") ThemedText }, @variant: ButtonVariant::Primary }
-                            Node { width: px(180), height: px(50) }
-                            on(confirm_create_game))
-                    ]
-                )
+                            update_selected_option_button(&mut commands, activate.entity, button_group.iter());
+                    })
+                ]
+                --
+                Node { width: percent(100), height: px(1) }
+                BackgroundColor(theme::THEME_BORDER)
+                --
+                theme::default_button_row()
+                Children [
+                    @FeathersButton { @caption: bsn! { @caption("Cancel") } }
+                        theme::default_button_size_180()
+                        on(|_: On<Activate>, mut next: ResMut<NextState<Overlay>>| {
+                            next.set(Overlay::None);
+                        })
+                    --
+                    @FeathersButton { @caption: bsn! { @caption("Create Game") }, @variant: ButtonVariant::Primary }
+                        theme::default_button_size_180()
+                        on(confirm_create_game)
+                ]
             ]
-        )]
+        ]
     }
 }
 
-pub fn cleanup_create_dialog(mut commands: Commands, query: Query<Entity, With<Dialog>>) {
-    for entity in query.iter() {
-        commands.entity(entity).despawn();
-    }
-    commands.remove_resource::<CreateGameSettings>();
-}
-
+/// Callback for the time selection buttons
 fn select_time(settings: &mut CreateGameSettings, time: u32, time_inc: u32) {
     settings.time = time;
     settings.time_inc = time_inc;
 }
 
+/// Callback for the side selection buttons
 fn select_side(settings: &mut CreateGameSettings, side: UserRoleSelection) {
     settings.side = side;
 }
 
+/// Highlights the currently selected option button in a given button group
 fn update_selected_option_button(
     commands: &mut Commands,
     selected: Entity,
-    options: impl Iterator<Item = Entity>,
+    button_group: impl Iterator<Item = Entity>,
 ) {
-    for entity in options {
+    for entity in button_group {
         commands.entity(entity).insert(if entity == selected {
             ButtonVariant::Primary
         } else {
@@ -138,6 +170,11 @@ fn update_selected_option_button(
     }
 }
 
+/// Callback for "Create Game".
+/// This method sends the actual command to create a game to the server.
+/// It also inserts the "PendingJoinSide" resource to the client backend. With this
+/// resource, the client will wait for the server response with the created game, then join
+/// the game.
 fn confirm_create_game(
     _: On<Activate>,
     settings: Res<CreateGameSettings>,
@@ -151,4 +188,12 @@ fn confirm_create_game(
     })));
     commands.insert_resource(PendingJoinSide(settings.side));
     next_overlay.set(Overlay::None);
+}
+
+/// dialog destructor
+pub fn cleanup_create_dialog(mut commands: Commands, query: Query<Entity, With<Dialog>>) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn();
+    }
+    commands.remove_resource::<CreateGameSettings>();
 }

@@ -11,7 +11,7 @@ use smol::net::TcpStream;
 
 #[cfg(test)]
 pub struct TestClient {
-    pub conn: Connection,
+    pub conn: Connection<TcpStream>,
 }
 
 #[cfg(test)]

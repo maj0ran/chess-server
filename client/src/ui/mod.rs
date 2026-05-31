@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 
-use crate::ui::theme::WOOD_OVERLAY;
+use crate::ui::theme::THEME_OVERLAY;
 
 pub mod dialogs;
-pub mod ingame;
+pub mod chessgame;
 pub mod mainmenu;
 pub mod theme;
 
@@ -52,7 +52,7 @@ fn setup_dialogs(mut commands: Commands, dialogs: Query<Entity, Added<Dialog>>) 
                 justify_content: JustifyContent::Center,
                 ..default()
             },
-            BackgroundColor(WOOD_OVERLAY),
+            BackgroundColor(THEME_OVERLAY),
         ));
     }
 }

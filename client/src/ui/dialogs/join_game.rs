@@ -1,5 +1,6 @@
 use bevy::feathers::controls::FeathersButton;
-use bevy::feathers::theme::{InheritableThemeTextColor, ThemedText};
+use bevy::feathers::display::{caption, label};
+use bevy::feathers::theme::InheritableThemeTextColor;
 use bevy::feathers::tokens;
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
@@ -8,46 +9,80 @@ use chess_core::protocol::{JoinGameParams, UserRoleSelection};
 
 use crate::client::lobby::LobbyState;
 use crate::net::network::NetworkSend;
-use crate::ui::theme::{WOOD_BORDER, WOOD_GOLD, WOOD_SURFACE};
+use crate::ui::theme;
 use crate::ui::{Dialog, Overlay};
 
+/// Visual definition of the Join Game dialog.
 pub fn join_dialog_scene() -> impl Scene {
     bsn! {
         Dialog
-        Children[(
-            Node {
-                width: px(420), padding: UiRect::all(px(28)),
-                flex_direction: FlexDirection::Column, row_gap: px(14),
-                align_items: AlignItems::Center,
-                border: UiRect::all(px(2)),
-                border_radius: BorderRadius::all(px(10)),
-            }
-            BackgroundColor(WOOD_SURFACE)
-            BorderColor::all(WOOD_BORDER)
-            BoxShadow::new(Color::srgba(0.0, 0.0, 0.0, 0.6), px(0), px(6), px(2), px(10))
+        Children [
+            theme::default_dialog_node()
+            theme::default_ui_shadow()
+            BackgroundColor(theme::THEME_SURFACE)
+            BorderColor::all(theme::THEME_BORDER)
             InheritableThemeTextColor(tokens::TEXT_MAIN)
-            Children[
-                (Text("Select Side") ThemedText TextFont { font_size: FontSize::Px(26.0) } TextLayout::justify(Justify::Center)),
-                (Node { width: percent(100), height: px(1) } BackgroundColor(WOOD_GOLD)),
-                (@FeathersButton { @caption: bsn! { Text("White") ThemedText } } Node { width: px(240), height: px(48) } on(|_: On<Activate>, lobby: ResMut<LobbyState>, next: ResMut<NextState<Overlay>>, commands: Commands| {
-                    join(UserRoleSelection::White, lobby, next, commands);
-                })),
-                (@FeathersButton { @caption: bsn! { Text("Black") ThemedText } } Node { width: px(240), height: px(48) } on(|_: On<Activate>, lobby: ResMut<LobbyState>, next: ResMut<NextState<Overlay>>, commands: Commands| {
-                    join(UserRoleSelection::Black, lobby, next, commands);
-                })),
-                (@FeathersButton { @caption: bsn! { Text("Random") ThemedText } } Node { width: px(240), height: px(48) } on(|_: On<Activate>, lobby: ResMut<LobbyState>, next: ResMut<NextState<Overlay>>, commands: Commands| {
-                    join(UserRoleSelection::Random, lobby, next, commands);
-                })),
-                (@FeathersButton { @caption: bsn! { Text("Spectate") ThemedText } } Node { width: px(240), height: px(48) } on(|_: On<Activate>, lobby: ResMut<LobbyState>, next: ResMut<NextState<Overlay>>, commands: Commands| {
-                    join(UserRoleSelection::Spectator, lobby, next, commands);
-                })),
-                (Node { width: percent(100), height: px(1) } BackgroundColor(WOOD_BORDER)),
-                (@FeathersButton { @caption: bsn! { Text("Cancel") ThemedText } } Node { width: px(180), height: px(48) } on(|_: On<Activate>, mut next: ResMut<NextState<Overlay>>| next.set(Overlay::None)))
+            Children [
+                @label("Select Side")
+                TextFont { font_size: FontSize::Rem(1.5) }
+                TextLayout::justify(Justify::Center)
+                --
+                // line separator
+                Node { width: percent(100), height: px(1) }
+                BackgroundColor(theme::THEME_GOLD)
+                --
+                @FeathersButton { @caption: bsn! { @caption("White") } }
+                theme::default_button_size_180()
+                on(|_: On<Activate>,
+                    lobby: ResMut<LobbyState>,
+                    next: ResMut<NextState<Overlay>>,
+                    commands: Commands| {
+                        join(UserRoleSelection::White, lobby, next, commands);
+                })
+                --
+                @FeathersButton { @caption: bsn! { @caption("Black") } }
+                theme::default_button_size_180()
+                on(|_: On<Activate>,
+                    lobby: ResMut<LobbyState>,
+                    next: ResMut<NextState<Overlay>>,
+                    commands: Commands| {
+                        join(UserRoleSelection::Black, lobby, next, commands);
+                })
+                --
+                @FeathersButton { @caption: bsn! { @caption("Random") } }
+                theme::default_button_size_180()
+                on(|_: On<Activate>,
+                    lobby: ResMut<LobbyState>,
+                    next: ResMut<NextState<Overlay>>,
+                    commands: Commands| {
+                        join(UserRoleSelection::Random, lobby, next, commands);
+                })
+                --
+                @FeathersButton { @caption: bsn! { @caption("Spectate") } }
+                theme::default_button_size_180()
+                on(|_: On<Activate>,
+                    lobby: ResMut<LobbyState>,
+                    next: ResMut<NextState<Overlay>>,
+                    commands: Commands| {
+                        join(UserRoleSelection::Spectator, lobby, next, commands);
+                })
+                --
+                // line separator
+                Node { width: percent(100), height: px(1) }
+                BackgroundColor(theme::THEME_BORDER)
+                --
+                @FeathersButton { @caption: bsn! { @caption("Cancel") } }
+                theme::default_button_size_180()
+                on(|_: On<Activate>, mut next: ResMut<NextState<Overlay>>| {
+                    next.set(Overlay::None);
+                })
             ]
-        )]
+        ]
     }
 }
 
+/// Callback to join a game.
+/// This will send the JoinGame message to the server.
 fn join(
     side: UserRoleSelection,
     mut lobby: ResMut<LobbyState>,

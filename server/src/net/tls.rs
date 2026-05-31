@@ -15,10 +15,20 @@ pub struct TlsServer {
 
 impl TlsServer {
     pub fn new() -> NetResult<Self> {
+        let cert_path = if std::path::Path::new("cert/schach_server.crt").exists() {
+            "cert/schach_server.crt"
+        } else {
+            "../cert/schach_server.crt"
+        };
+        let key_path = if std::path::Path::new("cert/schach_server.key").exists() {
+            "cert/schach_server.key"
+        } else {
+            "../cert/schach_server.key"
+        };
         let cert =
-            CertificateDer::from_pem_file("cert/schach_server.crt").expect("failed to load cert");
+            CertificateDer::from_pem_file(cert_path).expect("failed to load cert");
         let key =
-            PrivateKeyDer::from_pem_file("cert/schach_server.key").expect("failed to load key");
+            PrivateKeyDer::from_pem_file(key_path).expect("failed to load key");
 
         let server_config = ServerConfig::builder()
             .with_no_client_auth()

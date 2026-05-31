@@ -1,5 +1,5 @@
-use crate::ui::ingame::chessboard::assets::ChessAssets;
-use crate::ui::ingame::chessboard::board::{
+use crate::ui::chessgame::chessboard::assets::ChessAssets;
+use crate::ui::chessgame::chessboard::board::{
     draw_chessboard, draw_pieces, handle_move, on_move_request, reset_selections,
 };
 use bevy::prelude::*;

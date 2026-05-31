@@ -10,7 +10,7 @@ use ui::theme::{MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH};
 
 use crate::ui::{Overlay, Screen};
 use client::ClientPlugin;
-use ui::ingame::IngamePlugin;
+use ui::chessgame::IngamePlugin;
 use ui::mainmenu::MainMenuPlugin;
 
 fn main() {

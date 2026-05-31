@@ -1,17 +1,22 @@
 use bevy::feathers::controls::FeathersButton;
+use bevy::feathers::display::{caption, label};
 use bevy::feathers::theme::{InheritableThemeTextColor, ThemedText};
 use bevy::feathers::tokens;
 use bevy::prelude::*;
-
+use bevy::ui_widgets::Activate;
 use crate::client::game::GameOverEvent;
-use crate::ui::theme::{WOOD_BORDER, WOOD_GOLD, WOOD_SURFACE};
-use crate::ui::{Dialog, Overlay, Screen};
+use crate::ui::theme::{THEME_BORDER, THEME_GOLD, THEME_SURFACE};
+use crate::ui::{theme, Dialog, Overlay, Screen};
 
 #[derive(Component, Clone, Copy, Default)]
 pub(crate) struct GameOverMessageText;
 #[derive(Resource)]
 pub(crate) struct GameOverMessage(String);
 
+/// Composes the message for the 'GameOverMessageText' Component.
+/// The message is composed using the Server Message and is either:
+/// - {side} wins by {reason}
+/// - Draw by {reason}
 pub fn on_game_over(
     event: On<GameOverEvent>,
     mut commands: Commands,
@@ -29,25 +34,41 @@ pub fn on_game_over(
 pub fn game_over_dialog_scene() -> impl Scene {
     bsn! {
         Dialog
-        Children[(
-            Node { width: px(420), padding: UiRect::all(px(28)), flex_direction: FlexDirection::Column, row_gap: px(16), align_items: AlignItems::Center, border: UiRect::all(px(2)), border_radius: BorderRadius::all(px(10)) }
-            BackgroundColor(WOOD_SURFACE)
-            BorderColor::all(WOOD_BORDER)
-            BoxShadow::new(Color::srgba(0.0, 0.0, 0.0, 0.6), px(0), px(6), px(2), px(10))
+        Children [
+            theme::default_dialog_node()
+            theme::default_ui_shadow()
+            BackgroundColor(THEME_SURFACE)
+            BorderColor::all(THEME_BORDER)
             InheritableThemeTextColor(tokens::TEXT_MAIN)
-            Children[
-                (Text("Game Over") ThemedText TextFont { font_size: FontSize::Px(28.0) } TextLayout::justify(Justify::Center)),
-                (Text("") ThemedText GameOverMessageText TextLayout::justify(Justify::Center)),
-                (Node { width: percent(100), height: px(1) } BackgroundColor(WOOD_GOLD)),
-                (@FeathersButton { @caption: bsn! { Text("OK") ThemedText } } Node { width: px(180), height: px(50) }
-                    on(|_: On<bevy::ui_widgets::Activate>, mut screen: ResMut<NextState<Screen>>, mut overlay: ResMut<NextState<Overlay>>| {
-                        screen.set(Screen::Menu); overlay.set(Overlay::None);
-                    }))
+            Children [
+                @label("Game Over")
+                TextFont { font_size: FontSize::Rem(1.5) }
+                TextLayout::justify(Justify::Center)
+                --
+                // no Feather component here as this gets changed by `set_game_over_message()`.
+                // idk if it is possible to use Feather here.
+                Text("")
+                ThemedText
+                GameOverMessageText
+                TextLayout::justify(Justify::Center)
+                --
+                // line separator
+                Node { width: percent(100), height: px(1) }
+                BackgroundColor(THEME_GOLD)
+                --
+                @FeathersButton { @caption: bsn! { @caption("OK") } }
+                theme::default_button_size_180()
+                    on(|_: On<Activate>,
+                        mut screen: ResMut<NextState<Screen>>,
+                        mut overlay: ResMut<NextState<Overlay>>| {
+                            screen.set(Screen::Menu); overlay.set(Overlay::None);
+                    })
             ]
-        )]
+        ]
     }
 }
 
+/// Sets the message in the 'GameOverMessageText' Component. (see `on_game_over()`)
 pub(crate) fn set_game_over_message(
     message: Res<GameOverMessage>,
     mut text: Single<&mut Text, With<GameOverMessageText>>,
@@ -55,6 +76,7 @@ pub(crate) fn set_game_over_message(
     text.0 = message.0.clone();
 }
 
+/// Dialog Destructor
 pub fn cleanup_game_over_dialog(mut commands: Commands, query: Query<Entity, With<Dialog>>) {
     for entity in query.iter() {
         commands.entity(entity).despawn();

@@ -1,16 +1,10 @@
 use crate::client::game::{ActiveGame, GameJoinedEvent};
 use crate::client::lobby::LobbyState;
 use crate::net::network::NetworkSend;
-use crate::ui::ingame::chessboard::board::{ChessBoard, RotateBoardEvent};
-use crate::ui::ingame::move_history::{
-    move_history_scene, on_scroll_handler, refresh_move_history, resize_move_history_text,
-    send_scroll_events, update_move_history,
-};
-use crate::ui::theme::{
-    BOARD_AREA_RATIO, BOARD_EDGE_GAP, LEFT_PANEL_RATIO, PLAYER_LABEL_HEIGHT, PLAYER_LABEL_OFFSET,
-    RIGHT_PANEL_RATIO, WOOD_BORDER, WOOD_BUTTON, WOOD_DRAW_OFFER, WOOD_SURFACE,
-};
-use crate::ui::{Overlay, Screen};
+use crate::ui::chessgame::chessboard::board::{ChessBoard, RotateBoardEvent};
+use crate::ui::chessgame::move_history::*;
+use crate::ui::theme::*;
+use crate::ui::{theme, Overlay, Screen};
 use bevy::feathers::controls::FeathersButton;
 use bevy::feathers::theme::{InheritableThemeTextColor, ThemedText};
 use bevy::feathers::tokens;
@@ -19,16 +13,19 @@ use bevy::prelude::*;
 use chess_core::ClientId;
 use chess_core::protocol::messages::ClientMessage;
 use std::f32::consts::PI;
+use bevy::feathers::display::label;
+use bevy::ui_widgets::Activate;
 
 pub mod chessboard;
 pub mod move_history;
 
 /// Marker component for everything that belongs to the in-game screen.
 #[derive(Component, Clone, Copy, Default)]
-pub struct IngameRoot;
+pub struct ChessSceneItem;
 
 pub const SOURCE_COLOR: Color = Color::srgb_u8(250, 113, 113);
 pub const DESTINATION_COLOR: Color = Color::srgb_u8(113, 250, 113);
+
 pub struct IngamePlugin;
 
 impl Plugin for IngamePlugin {
@@ -37,13 +34,12 @@ impl Plugin for IngamePlugin {
             .add_systems(
                 OnEnter(Screen::Game),
                 (
-                    ingame_scene.spawn(),
-                    move_history_scene.spawn(),
-                    setup_ingame,
+                    chess_ui_scene.spawn(),
+                    setup_chessboard,
                 )
                     .chain(),
             )
-            .add_systems(OnExit(Screen::Game), cleanup_ingame)
+            .add_systems(OnExit(Screen::Game), cleanup_chess_scene)
             .add_systems(Update, listen_keyboard_input.run_if(in_state(Screen::Game)))
             .add_systems(
                 Update,
@@ -100,35 +96,114 @@ pub struct IngameInitialized;
 #[derive(Event)]
 pub struct DrawOffered(pub bool);
 
-fn ingame_scene() -> impl Scene {
+/// `chess_ui_scene` creates all the UI elements around the chess game: the player labels,
+/// the panel for resign/draw buttons, and the move history.
+/// The actual chess board is NOT a UI element but a real game element.
+/// It is thus managed by `setup_chessboard()`.
+fn chess_ui_scene() -> impl Scene {
     bsn! {
-        Node { position_type: PositionType::Absolute, width: percent(100), height: percent(100) }
-        IngameRoot
+        // Root Element
+        Node {
+            position_type: PositionType::Absolute,
+            width: percent(100),
+            height: percent(100) }
+        ChessSceneItem
         Pickable::IGNORE
         InheritableThemeTextColor(tokens::TEXT_MAIN)
-        Children[
-            (Node { position_type: PositionType::Absolute, height: px(48), bottom: px(16), left: percent(12), right: percent(27), padding: UiRect::all(px(8)), align_items: AlignItems::Center, justify_content: JustifyContent::Center, border: UiRect::all(px(1)), border_radius: BorderRadius::all(px(5)) } BackgroundColor(WOOD_SURFACE) BorderColor::all(WOOD_BORDER) Pickable::IGNORE WhitePlayerLabel Children[(Text("Waiting for White...") ThemedText)]),
-            (Node { position_type: PositionType::Absolute, height: px(48), top: px(16), left: percent(12), right: percent(27), padding: UiRect::all(px(8)), align_items: AlignItems::Center, justify_content: JustifyContent::Center, border: UiRect::all(px(1)), border_radius: BorderRadius::all(px(5)) } BackgroundColor(WOOD_SURFACE) BorderColor::all(WOOD_BORDER) Pickable::IGNORE BlackPlayerLabel Children[(Text("Waiting for Black...") ThemedText)]),
-            (
-                Node { position_type: PositionType::Absolute, height: percent(100), width: percent(10), left: px(0), flex_direction: FlexDirection::Column, align_items: AlignItems::Center, justify_content: JustifyContent::Center, row_gap: px(10), padding: UiRect::all(px(12)), border: UiRect::right(px(2)), border_radius: BorderRadius::all(px(6)) }
-                BackgroundColor(WOOD_SURFACE)
-                BorderColor::all(WOOD_BORDER)
-                BoxShadow::new(Color::srgba(0.0, 0.0, 0.0, 0.45), px(0), px(4), px(1), px(7))
-                Pickable::IGNORE
-                Children[
-                    (@FeathersButton { @caption: bsn! { Text("Resign") ThemedText } } GameActionButton Node { width: percent(100), height: px(48), padding: UiRect::horizontal(px(4)) } on(|_: On<bevy::ui_widgets::Activate>, mut overlay: ResMut<NextState<Overlay>>| overlay.set(Overlay::Resign))),
-                    (@FeathersButton { @caption: bsn! { Text("Offer Draw") ThemedText } } GameActionButton DrawOfferButton Node { width: percent(100), height: px(48), padding: UiRect::horizontal(px(4)) } on(|_: On<bevy::ui_widgets::Activate>, game: Res<ActiveGame>, mut commands: Commands| {
-                        commands.trigger(NetworkSend(ClientMessage::OfferDraw(game.gid)));
-                    }))
-                ]
-            ),
-        ]
+        Children [
+            // White Player Label
+            Node {
+                position_type: PositionType::Absolute,
+                height: px(48),
+                bottom: px(16),
+                left: percent(12),
+                right: percent(27),
+                padding: UiRect::all(px(8)),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                border: UiRect::all(px(1)),
+                border_radius: BorderRadius::all(px(5))
+            }
+            BackgroundColor(THEME_SURFACE)
+            BorderColor::all(THEME_BORDER)
+            WhitePlayerLabel
+            Children [ Text("Waiting for White...") ThemedText ]
+            --
+            // Black Player Label
+            Node {
+                position_type: PositionType::Absolute,
+                height: px(48),
+                top: px(16),
+                left: percent(12),
+                right: percent(27),
+                padding: UiRect::all(px(8)),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                border: UiRect::all(px(1)),
+                border_radius: BorderRadius::all(px(5))
+            }
+            BackgroundColor(THEME_SURFACE)
+            BorderColor::all(THEME_BORDER)
+            BlackPlayerLabel
+            Children [ Text("Waiting for Black...") ThemedText ]
+            --
+            // Left Panel (Game Buttons)
+            Node {
+                position_type: PositionType::Absolute,
+                height: percent(100),
+                width: percent(10),
+                left: px(0),
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                row_gap: px(10),
+                padding: UiRect::all(px(12)),
+                border: UiRect::right(px(2)),
+                border_radius: BorderRadius::all(px(6))
+            }
+            BackgroundColor(THEME_SURFACE)
+            BorderColor::all(THEME_BORDER)
+            default_ui_shadow()
+            Children [
+                @FeathersButton { @caption: bsn! { @label("R") } }
+                GameActionButton
+                theme::default_button_icon()
+                on(|_: On<Activate>, mut overlay: ResMut<NextState<Overlay>>| overlay.set(Overlay::Resign))
+                --
+                @FeathersButton { @caption: bsn! { @label("D") ThemedText } }
+                GameActionButton
+                DrawOfferButton
+                theme::default_button_icon()
+                on(|_: On<Activate>, game: Res<ActiveGame>, mut commands: Commands| {
+                    commands.trigger(NetworkSend(ClientMessage::OfferDraw(game.gid)));
+                })
+            ]
+            --
+            // Right Panel (Move History)
+            ChessSceneItem
+            MoveHistory
+            Node {
+                position_type: PositionType::Absolute,
+                flex_direction: FlexDirection::Column,
+                height: percent(100),
+                width: percent(RIGHT_PANEL_RATIO * 100.0),
+                right: px(0),
+                top: px(0),
+                padding: UiRect::all(px(12)),
+                border: UiRect::left(px(2)),
+                border_radius: BorderRadius::all(px(6)),
+                overflow: Overflow::scroll_y(),
+            }
+            BackgroundColor(THEME_SURFACE)
+            BorderColor::all(THEME_BORDER)
+            default_ui_shadow()
+            ]
     }
 }
 
-/// Sets up the in-game screen and triggers the initial board draw.
-fn setup_ingame(mut commands: Commands, window_query: Single<(Entity, &Window)>) {
-    log::info!("Setting up gamescreen");
+/// Sets up the chess board and triggers the initial board draw.
+fn setup_chessboard(mut commands: Commands, window_query: Single<(Entity, &Window)>) {
+    log::info!("Setting up chessboard");
 
     commands.spawn(ChessBoard::new());
 
@@ -147,8 +222,8 @@ fn setup_ingame(mut commands: Commands, window_query: Single<(Entity, &Window)>)
 
 /// Despawn all entities that are part of the in-game screen.
 /// Obviously happens when we leave a game.
-fn cleanup_ingame(mut commands: Commands, query: Query<Entity, With<IngameRoot>>) {
-    log::debug!("Cleaning up gamescreen");
+fn cleanup_chess_scene(mut commands: Commands, query: Query<Entity, With<ChessSceneItem>>) {
+    log::debug!("Cleaning up chess scene");
 
     for entity in query.iter() {
         commands.entity(entity).despawn();
@@ -271,9 +346,9 @@ fn update_draw_offer_button(
 ) {
     for (mut background, active) in &mut buttons {
         background.0 = if active.is_some() {
-            WOOD_DRAW_OFFER
+            THEME_PENDING_DRAW_OFFER
         } else {
-            WOOD_BUTTON
+            THEME_BUTTON
         };
     }
 }

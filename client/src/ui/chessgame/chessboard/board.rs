@@ -5,10 +5,11 @@ use super::{BOARD_SIZE, PendingMove, RequestMove, SQUARE_SIZE};
 use crate::client::game::{ActiveGame, BoardUpdate};
 use crate::net::network::NetworkSend;
 use crate::ui::Overlay;
-use crate::ui::ingame::{DESTINATION_COLOR, IngameInitialized, IngameRoot, SOURCE_COLOR};
+use crate::ui::chessgame::{DESTINATION_COLOR, IngameInitialized, ChessSceneItem, SOURCE_COLOR};
 use crate::ui::{COLOR_LIGHT2, COLOR_MID};
 use bevy::color::Color;
 use bevy::math::{Vec2, Vec3};
+use bevy::picking::events::PointerClick;
 use bevy::prelude::*;
 use chess_core::protocol::UserRoleSelection;
 use chess_core::protocol::messages::ClientMessage;
@@ -34,9 +35,9 @@ pub struct ChessBoard {
 }
 
 impl ChessBoard {
-    pub fn new() -> (IngameRoot, ChessBoard, Sprite, Transform) {
+    pub fn new() -> (ChessSceneItem, ChessBoard, Sprite, Transform) {
         (
-            IngameRoot,
+            ChessSceneItem,
             ChessBoard {
                 selected_src: None,
                 selected_dst: None,
@@ -134,17 +135,17 @@ pub fn draw_pieces(
 
 /// Observer that is connected to each square. It is triggered when the square is clicked.
 /// This adds the clicked square to the global resource for either source or destination selection
-/// and colors the square accordingly. If both, source and destination, is selected after the click,
+/// and colors the square accordingly. If both - source and destination - are selected after the click,
 /// a `RequestMove` event is triggered that is caught by the client to send the move to the server.
 /// When the client receives the answer to the move (accepted or rejected), it will again trigger an event
 /// that is caught by `reset_selections` (below) to undo the coloring.
 pub fn select_square(
-    ev: On<Pointer<Press>>,
+    ev: On<PointerClick>,
     mut commands: Commands,
     mut board: Single<&mut ChessBoard>,
     mut query: Query<&mut Sprite, With<ChessSquare>>,
 ) {
-    let clicked: Entity = ev.event_target();
+    let clicked: Entity = ev.entity;
 
     if board.selected_src.is_none() {
         if let Ok(mut sprite) = query.get_mut(clicked) {

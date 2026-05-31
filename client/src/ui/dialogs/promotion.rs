@@ -1,14 +1,15 @@
 use bevy::feathers::controls::FeathersButton;
-use bevy::feathers::theme::{InheritableThemeTextColor, ThemedText};
+use bevy::feathers::display::label;
+use bevy::feathers::theme::InheritableThemeTextColor;
 use bevy::feathers::tokens;
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 use chess_core::Promotion;
 
 use crate::client::game::ActiveGame;
-use crate::ui::ingame::chessboard::assets::ChessAssets;
-use crate::ui::ingame::chessboard::{PendingMove, RequestMove};
-use crate::ui::theme::{WOOD_BORDER, WOOD_GOLD, WOOD_SURFACE};
+use crate::ui::chessgame::chessboard::assets::ChessAssets;
+use crate::ui::chessgame::chessboard::{PendingMove, RequestMove};
+use crate::ui::theme;
 use crate::ui::{Dialog, Overlay};
 
 #[derive(Component, Clone, Copy)]
@@ -20,37 +21,83 @@ impl Default for PromotionImage {
     }
 }
 
+/// Macro to insert a piece image to the promotion buttons.
+macro_rules! promotion_image {
+    ($piece:ident) => {
+        bsn! {
+            Node { width: px(56), height: px(56) }
+            ImageNode
+            PromotionImage(Promotion::$piece)
+        }
+    };
+}
+
 pub fn promotion_dialog_scene() -> impl Scene {
     bsn! {
         Dialog
-        Children[(
-            Node { padding: UiRect::all(px(28)), flex_direction: FlexDirection::Column, row_gap: px(16), align_items: AlignItems::Center, border: UiRect::all(px(2)), border_radius: BorderRadius::all(px(10)) }
-            BackgroundColor(WOOD_SURFACE)
-            BorderColor::all(WOOD_BORDER)
-            BoxShadow::new(Color::srgba(0.0, 0.0, 0.0, 0.6), px(0), px(6), px(2), px(10))
+        Children [
+            theme::default_dialog_node()
+            theme::default_ui_shadow()
+            BackgroundColor(theme::THEME_SURFACE)
+            BorderColor::all(theme::THEME_BORDER)
             InheritableThemeTextColor(tokens::TEXT_MAIN)
-            Children[
-                (Text("Promote Pawn") ThemedText TextFont { font_size: FontSize::Px(26.0) } TextLayout::justify(Justify::Center)),
-                (Node { width: percent(100), height: px(1) } BackgroundColor(WOOD_GOLD)),
-                (
-                    Node { flex_direction: FlexDirection::Row, justify_content: JustifyContent::Center, column_gap: px(10) }
-                    Children[
-                        (@FeathersButton { @caption: bsn! { (Node { width: px(56), height: px(56) } ImageNode PromotionImage(Promotion::Queen)) } } Node { width: px(110), height: px(72) } on(|_: On<Activate>, pending: Res<PendingMove>, commands: Commands, next_overlay: ResMut<NextState<Overlay>>| {
+            Children [
+                @label("Promote Pawn")
+                TextFont { font_size: FontSize::Rem(1.5) }
+                TextLayout::justify(Justify::Center)
+                --
+                // line separator
+                Node { width: percent(100), height: px(1) }
+                BackgroundColor(theme::THEME_GOLD)
+                --
+                theme::default_button_row()
+                Children [
+                    @FeathersButton {
+                        @caption: promotion_image!(Queen)
+                    }
+                    theme::default_button_icon()
+                    on(|_: On<Activate>,
+                        pending: Res<PendingMove>,
+                        commands: Commands,
+                        next_overlay: ResMut<NextState<Overlay>>| {
                             promote(Promotion::Queen, pending, commands, next_overlay);
-                        })),
-                        (@FeathersButton { @caption: bsn! { (Node { width: px(56), height: px(56) } ImageNode PromotionImage(Promotion::Rook)) } } Node { width: px(110), height: px(72) } on(|_: On<Activate>, pending: Res<PendingMove>, commands: Commands, next_overlay: ResMut<NextState<Overlay>>| {
+                    })
+                    --
+                    @FeathersButton {
+                        @caption: promotion_image!(Rook)
+                    }
+                    theme::default_button_icon()
+                    on(|_: On<Activate>,
+                        pending: Res<PendingMove>,
+                        commands: Commands,
+                        next_overlay: ResMut<NextState<Overlay>>| {
                             promote(Promotion::Rook, pending, commands, next_overlay);
-                        })),
-                        (@FeathersButton { @caption: bsn! { (Node { width: px(56), height: px(56) } ImageNode PromotionImage(Promotion::Bishop)) } } Node { width: px(110), height: px(72) } on(|_: On<Activate>, pending: Res<PendingMove>, commands: Commands, next_overlay: ResMut<NextState<Overlay>>| {
+                    })
+                    --
+                    @FeathersButton {
+                        @caption: promotion_image!(Bishop)
+                    }
+                    theme::default_button_icon()
+                    on(|_: On<Activate>,
+                        pending: Res<PendingMove>,
+                        commands: Commands,
+                        next_overlay: ResMut<NextState<Overlay>>| {
                             promote(Promotion::Bishop, pending, commands, next_overlay);
-                        })),
-                        (@FeathersButton { @caption: bsn! { (Node { width: px(56), height: px(56) } ImageNode PromotionImage(Promotion::Knight)) } } Node { width: px(110), height: px(72) } on(|_: On<Activate>, pending: Res<PendingMove>, commands: Commands, next_overlay: ResMut<NextState<Overlay>>| {
+                    })
+                    --
+                    @FeathersButton {
+                        @caption: promotion_image!(Knight)
+                    }
+                    theme::default_button_icon()
+                    on(|_: On<Activate>,
+                        pending: Res<PendingMove>,
+                        commands: Commands,
+                        next_overlay: ResMut<NextState<Overlay>>| {
                             promote(Promotion::Knight, pending, commands, next_overlay);
-                        }))
-                    ]
-                )
+                    })
+                ]
             ]
-        )]
+        ]
     }
 }
 
