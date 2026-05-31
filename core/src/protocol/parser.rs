@@ -172,14 +172,17 @@ impl NetMessage for ServerMessage {
                 let san_len = reader.read_u8()?;
                 let san = reader.read_str(san_len as usize)?.to_string();
                 let mut updates = Vec::new();
-                while reader.remaining().len() >= 3 {
+                while reader.remaining().len() > 4 {
                     let tile_str = reader.read_str(2)?;
                     let tile = Tile::from(tile_str);
                     let piece_char = reader.read_u8()? as char;
                     let piece = Piece::from_char(piece_char);
                     updates.push((tile, piece));
                 }
-                Ok(ServerMessage::MoveAccepted(san_len, san, updates))
+                let time_used = reader.read_u32_le()?;
+                Ok(ServerMessage::MoveAccepted(
+                    san_len, san, updates, time_used,
+                ))
             }
             Self::GAME_CREATED => {
                 let gid = reader.read_u32_le()?;
@@ -299,7 +302,7 @@ impl NetMessage for ServerMessage {
 
     fn to_bytes(&self) -> Vec<u8> {
         match self {
-            ServerMessage::MoveAccepted(san_len, san, tiles) => {
+            ServerMessage::MoveAccepted(san_len, san, tiles, time_used) => {
                 let mut msg = vec![Self::MOVE_ACCEPTED];
                 msg.push(*san_len);
                 msg.extend_from_slice(san.as_bytes());
@@ -312,6 +315,7 @@ impl NetMessage for ServerMessage {
                     msg.append(&mut tile);
                     msg.push(piece as u8);
                 }
+                msg.extend_from_slice(&time_used.to_le_bytes());
                 msg
             }
             ServerMessage::IllegalMove(err) => {

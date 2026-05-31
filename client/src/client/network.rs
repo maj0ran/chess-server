@@ -196,7 +196,7 @@ pub fn poll_network(
             }
 
             /* A piece in the current game has been moved. */
-            ServerMessage::MoveAccepted(_, san, updates) => {
+            ServerMessage::MoveAccepted(_, san, updates, _time_used) => {
                 if let Some(game) = active_game.as_mut() {
                     game.move_history.push(san.clone());
 

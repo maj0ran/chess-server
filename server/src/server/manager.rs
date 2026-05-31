@@ -214,7 +214,7 @@ impl GameManager {
             // a legal move was made and accepted:
             // Update move history, clear any draw offers
             // and send the updated squares to all clients in the game.
-            Ok(changes) => {
+            Ok((changes, time_used)) => {
                 game.move_history.push(san.clone());
 
                 game.draw_offer_white = false;
@@ -228,7 +228,8 @@ impl GameManager {
                     .map(|(t, p)| (*t, p.map(|piece| piece.piece)))
                     .collect();
 
-                let msg = ServerMessage::MoveAccepted(san_len, san.clone(), changes.clone());
+                let msg =
+                    ServerMessage::MoveAccepted(san_len, san.clone(), changes.clone(), time_used);
                 self.broadcast(gid, msg).await;
                 // The move has been executed. Now we check if the game is over,
                 // e.g., checkmate or stalemate.

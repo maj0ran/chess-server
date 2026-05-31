@@ -55,7 +55,7 @@ impl ChessClock {
     /**
      * Press the clock. This will switch the active player and subtracts the time used since the last press.
      **/
-    pub async fn press(&mut self) {
+    pub async fn press(&mut self) -> u32 {
         let mut time = self.time.lock().await;
 
         let ts = Instant::now();
@@ -73,6 +73,7 @@ impl ChessClock {
         time.active_player = !time.active_player;
 
         log::info!("White time: {}s, Black time: {}s", time.white, time.black);
+        time_used
     }
 
     /**

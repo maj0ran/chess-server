@@ -216,7 +216,7 @@ impl ChessGame {
         &mut self,
         mov: ChessMove,
         client_id: ClientId,
-    ) -> ChessResult<Vec<(Tile, Option<Piece>)>> {
+    ) -> ChessResult<(Vec<(Tile, Option<Piece>)>, u32)> {
         let is_current_player = match self.chess.active_player {
             ChessColor::White => self.white_player == Some(client_id),
             ChessColor::Black => self.black_player == Some(client_id),
@@ -226,9 +226,9 @@ impl ChessGame {
             return Err(ChessError::NotYourTurn);
         }
         match self.chess.make_move(mov) {
-            Ok(ret) => {
-                self.clock.press().await;
-                Ok(ret)
+            Ok(new_tiles) => {
+                let time_used = self.clock.press().await;
+                Ok((new_tiles, time_used))
             }
             Err(e) => Err(e),
         }

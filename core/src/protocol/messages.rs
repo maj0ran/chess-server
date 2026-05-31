@@ -67,7 +67,7 @@ impl fmt::Display for ClientMessage {
 
 #[derive(Debug, Clone)]
 pub enum ServerMessage {
-    MoveAccepted(u8, String, Vec<(Tile, Option<WoodPiece>)>), // len(SAN), SAN, [updates tiles]
+    MoveAccepted(u8, String, Vec<(Tile, Option<WoodPiece>)>, u32), // len(SAN), SAN, [updates tiles], time used
     GameCreated(GameId, ClientId),
     GameJoined(GameId, ClientId, UserRoleSelection),
     GameLeft(GameId, ClientId),
@@ -101,7 +101,7 @@ impl ServerMessage {
         match self {
             ServerMessage::GameCreated(_, _) => Self::GAME_CREATED,
             ServerMessage::GameJoined(_, _, _) => Self::GAME_JOINED,
-            ServerMessage::MoveAccepted(_, _, _) => Self::MOVE_ACCEPTED,
+            ServerMessage::MoveAccepted(_, _, _, _) => Self::MOVE_ACCEPTED,
             ServerMessage::IllegalMove(_) => Self::ILLEGAL_MOVE,
             ServerMessage::GamesList(_) => Self::GAMES_LIST,
             ServerMessage::GameOver(_, _) => Self::GAME_OVER,

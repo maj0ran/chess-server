@@ -120,7 +120,7 @@ impl TestClient {
         loop {
             match self.conn.read_msg::<ServerMessage>().await {
                 Ok(event) => match event {
-                    ServerMessage::MoveAccepted(_, _, _) => {
+                    ServerMessage::MoveAccepted(_, _, _, _) => {
                         // For the purpose of the test_checkmate, we KNOW a CHECKMATE follows d8h4.
                         if mov_str == "d8h4" {
                             if let Ok(next_event) = self.conn.read_msg::<ServerMessage>().await {
