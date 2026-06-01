@@ -1,4 +1,5 @@
 use chess_core::ChessColor;
+use smol::channel::Sender;
 use smol::lock::Mutex;
 use smol::Timer;
 use std::sync::Arc;
@@ -13,6 +14,7 @@ use std::time::Instant;
 pub struct ChessClock {
     pub time: Arc<Mutex<ChessClockTime>>,
     clock_task: Option<smol::Task<()>>,
+    tx: Sender<ChessColor>,
 }
 
 /**
@@ -32,9 +34,16 @@ pub struct ChessClockTime {
 
 impl ChessClock {
     /**
-     * Creates a new chess clock. Does not start the task to observe the time yet.
+     * Creates a new chess clock.
+     * Does not start the task to observe the time yet.
      **/
-    pub fn new(white_time: u32, black_time: u32, white_inc: u32, black_inc: u32) -> Self {
+    pub fn new(
+        tx: Sender<ChessColor>,
+        white_time: u32,
+        black_time: u32,
+        white_inc: u32,
+        black_inc: u32,
+    ) -> Self {
         let time = Arc::new(Mutex::new(ChessClockTime {
             white: white_time,
             black: black_time,
@@ -49,6 +58,7 @@ impl ChessClock {
         ChessClock {
             time,
             clock_task: None,
+            tx: tx,
         }
     }
 
@@ -81,6 +91,7 @@ impl ChessClock {
      **/
     pub fn start(&mut self) {
         let time_poll = self.time.clone();
+        let tx = self.tx.clone();
 
         self.clock_task = Some(smol::spawn(async move {
             log::info!("Clock started");
@@ -97,12 +108,14 @@ impl ChessClock {
                     t.white = t.white.saturating_sub(time_used);
                     if t.white == 0 {
                         log::info!("White time ran out!");
+                        let _ = tx.send(ChessColor::White).await;
                         break;
                     }
                 } else {
                     t.black = t.black.saturating_sub(time_used);
                     if t.black == 0 {
                         log::info!("Black time ran out!");
+                        let _ = tx.send(ChessColor::Black).await;
                         break;
                     }
                 }

@@ -1,4 +1,5 @@
 use crate::net::tls::TlsStream;
+use crate::server::manager::ManagerEvent;
 use chess_core::net::Connection;
 use chess_core::protocol::messages::{ClientMessage, ServerMessage};
 use chess_core::protocol::parser::NetMessage;
@@ -14,8 +15,8 @@ pub type Result<T> = std::result::Result<T, std::io::Error>;
 /// this interface to further communicate with the internal `GameManager`.
 /// This is needed because `ClientSession` and `GameManager` are in different tasks.
 pub struct ServerInterface {
-    pub tx: Sender<(ClientId, ClientMessage)>, // sends messages to the internal server
-    pub rx: Receiver<ServerMessage>,           // receives messages from the internal server
+    pub tx: Sender<ManagerEvent>,    // sends messages to the internal server
+    pub rx: Receiver<ServerMessage>, // receives messages from the internal server
 }
 
 /// A `ClientSession` is a connection between a remote network client and the server.
@@ -36,17 +37,15 @@ impl ClientSession {
     /// id: the internal client ID
     /// tx: Transmitter to the Game Manager.
     ///     This is set up by the `Server` and used to communicate with the `GameManager`.
-    pub async fn new(
-        id: ClientId,
-        stream: TlsStream<TcpStream>,
-        tx: Sender<(ClientId, ClientMessage)>,
-    ) -> Self {
+    pub async fn new(id: ClientId, stream: TlsStream<TcpStream>, tx: Sender<ManagerEvent>) -> Self {
         // From the parameter we already got the transmitter to the Game Manager, which is constructed by the server.
         // Now we construct another channel for the reverse direction.
         // We use the transmitter we have to send the transmitter to this client to the Game Manager.
         // Now have a (tx,rx) pair from a client to game manager and a (tx,rx) pair from game manager to a client.
         let (srv_tx, rx) = unbounded();
-        let res = tx.send((id, ClientMessage::Register(srv_tx))).await;
+        let res = tx
+            .send(ManagerEvent::Client(id, ClientMessage::Register(srv_tx)))
+            .await;
 
         match res {
             Ok(_) => {}
@@ -78,11 +77,11 @@ impl ClientSession {
     /// so the client ID gets attached here, so the `GameManager` can identify the client.
     pub async fn handle_incoming_message(
         id: ClientId,
-        srv_tx: &Sender<(ClientId, ClientMessage)>,
+        srv_tx: &Sender<ManagerEvent>,
         cmd: ClientMessage,
     ) -> Result<()> {
         log::debug!("receiving message from client: {:?}", cmd);
-        if let Err(e) = srv_tx.send((id, cmd)).await {
+        if let Err(e) = srv_tx.send(ManagerEvent::Client(id, cmd)).await {
             log::warn!("error sending client message to GM!: {}", e);
         };
 
@@ -130,7 +129,7 @@ impl ClientSession {
                             NetError::Protocol(_) => {}
                             NetError::Disconnected => {
                                 let msg = ClientMessage::LeaveGame(0); // 0 = All Games
-                                let _ = srv_tx.send((id, msg)).await.unwrap();
+                                let _ = srv_tx.send(ManagerEvent::Client(id, msg)).await.unwrap();
                                 break;
                             }
                         }

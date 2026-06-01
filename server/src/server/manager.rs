@@ -1,5 +1,3 @@
-use crate::chess::chess::Chess;
-use crate::chess::clock::ChessClock;
 use crate::chess::san::San;
 use crate::server::chessgame::ChessGame;
 use chess_core::protocol::messages::{ClientMessage, ServerMessage};
@@ -10,9 +8,7 @@ use chrono::prelude::*;
 use smol::channel::{Receiver, Sender};
 use smol::fs::File;
 use smol::io::AsyncWriteExt;
-use smol::lock::Mutex;
 use std::collections::HashMap;
-use std::sync::Arc;
 
 /// The endpoint of a client for the `GameManager`.
 /// Those are used by the `GameManager` to keep a connection
@@ -35,6 +31,17 @@ impl ClientEndpoint {
     }
 }
 
+/// Types of events that go to the `GameManager`.
+/// `ManagerEvent::Client` : Messages from a Client over the network. Those are all actions a
+/// remote client can do, like creating games or making chess moves.
+///
+/// `ManagerEvent::Timeout` : The only "other" message. This does not come from a remote client
+/// but from the `ChessGame`. Happens when `ChessClock` time runs out.
+pub enum ManagerEvent {
+    Client(ClientId, ClientMessage),
+    Timeout(GameId, ChessColor),
+}
+
 /// The `GameManager` is responsible for managing all games and communicating
 /// game states to the clients.
 /// The manager has one receiver channel which is used by all `ClientSessions`
@@ -47,17 +54,19 @@ impl ClientEndpoint {
 pub struct GameManager {
     games: HashMap<GameId, ChessGame>,
     pub clients: HashMap<ClientId, ClientEndpoint>, // Maps ClientId to their outbound message channel
-    rx: Receiver<(ClientId, ClientMessage)>,        // receives messages from clients
+    rx: Receiver<ManagerEvent>, // receives messages from clients and internal events
+    tx: Sender<ManagerEvent>,   // transmitter to ourselves (for timeouts)
     next_game_id: GameId,
 }
 
 impl GameManager {
     /// constructor
-    pub fn new(recv: Receiver<(ClientId, ClientMessage)>) -> Self {
+    pub fn new(recv: Receiver<ManagerEvent>, send: Sender<ManagerEvent>) -> Self {
         GameManager {
             games: HashMap::new(),
             clients: HashMap::new(),
             rx: recv,
+            tx: send,
             next_game_id: 1,
         }
     }
@@ -70,16 +79,33 @@ impl GameManager {
 
         log::info!("create game with id: {} (mode: {})", id, game_params.mode);
 
-        ChessGame::new(id, game_params.time, game_params.time_inc)
+        let game = ChessGame::new(id, game_params.time, game_params.time_inc);
+        let game_timeout_rx = game.timeout_rx.clone();
+        let main_tx = self.tx.clone();
+
+        // For each game, we create a task that listens for the clock to timeout. When this happens,
+        // this task will forward this as a ManagerEvent Message, which will be processed in the
+        // same way as `ClientMessage` events.
+        smol::spawn(async move {
+            if let Ok(color) = game_timeout_rx.recv().await {
+                let _ = main_tx.send(ManagerEvent::Timeout(id, color)).await;
+            }
+        })
+        .detach();
+
+        game
     }
 
     /// The main loop of the `GameManager`.
-    /// Here, the GM listens for `ClientMessages` from `ClientSessions` on its receiver channel.
+    /// Here, the GM listens for `ClientMessages` from `ClientSessions` or the `Timeout` event from a `ChessGame` on its receiver channel.
     /// It will then process the message and send back `ServerMessages` to the `ClientSessions`.
     pub async fn run(&mut self) {
         loop {
-            match self.rx.recv().await {
-                Ok((cid, cmd)) => {
+            let res = self.rx.recv().await;
+
+            match res {
+                // Messages from the remote client
+                Ok(ManagerEvent::Client(cid, cmd)) => {
                     // the actual command
                     match cmd {
                         ClientMessage::NewGame(game_params) => {
@@ -123,6 +149,14 @@ impl GameManager {
                             self.handle_offer_draw(cid, gid).await;
                         }
                     }
+                }
+                // Timeout message from the ChessGame's ChessClock.
+                Ok(ManagerEvent::Timeout(gid, color)) => {
+                    log::info!("Game {}: Player {:?} ran out of time!", gid, color);
+                    let reason = GameOverReason::TimeOut(!color);
+                    let msg = ServerMessage::GameOver(gid, reason);
+                    self.broadcast(gid, msg).await;
+                    self.close_game(gid).await;
                 }
                 Err(_) => {
                     break;

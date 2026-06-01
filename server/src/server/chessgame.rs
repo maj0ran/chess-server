@@ -4,6 +4,7 @@ use crate::chess::pieces::Piece;
 use chess_core::protocol::UserRoleSelection;
 use chess_core::states::{ChessGameState, GameOverReason};
 use chess_core::*;
+use smol::channel::Receiver;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// A `ChessGame` represents a real chess game between two players.
@@ -26,10 +27,13 @@ pub struct ChessGame {
 
     pub move_history: Vec<String>,
     pub clock: ChessClock,
+    pub timeout_rx: Receiver<ChessColor>,
 }
 
 impl ChessGame {
     pub fn new(id: GameId, time: u32, time_inc: u32) -> Self {
+        let (tx, rx) = smol::channel::unbounded();
+        let mut clock = ChessClock::new(tx, time, time, time_inc, time_inc);
         ChessGame {
             id,
             chess: Chess::new(),
@@ -42,7 +46,8 @@ impl ChessGame {
             move_history: vec![],
             time,
             time_inc,
-            clock: ChessClock::new(time, time, time_inc, time_inc),
+            clock,
+            timeout_rx: rx,
         }
     }
     /// Starts a chess game.

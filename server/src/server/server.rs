@@ -41,7 +41,7 @@ impl Server {
         let (client_tx, srv_rx) = unbounded();
 
         // Game Manager gets the receiver of the channel
-        let mut game_manager = GameManager::new(srv_rx);
+        let mut game_manager = GameManager::new(srv_rx, client_tx.clone());
         smol::spawn(async move {
             game_manager.run().await;
         })
