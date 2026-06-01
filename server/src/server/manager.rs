@@ -11,12 +11,9 @@ use smol::io::AsyncWriteExt;
 use std::collections::HashMap;
 
 /// The endpoint of a client for the `GameManager`.
-/// Those are used by the `GameManager` to keep a connection
-/// to all `ClientSession` via channels.
-/// Since the clients all run in their own task, they cannot be
-/// directly accessed by the `GameManager`. So we use channels
-/// to let messages flow from the `GameManager` task to the
-/// individual `ClientSession` tasks.
+/// Those are used by the `GameManager` to keep a connection to all `ClientSession` via channels.
+/// Since the clients all run in their own task, they cannot be directly accessed by the `GameManager`.
+/// So we use channels to let messages flow from the `GameManager` task to the individual `ClientSession` tasks.
 pub struct ClientEndpoint {
     pub tx: Sender<ServerMessage>,
     pub name: String,
@@ -32,10 +29,10 @@ impl ClientEndpoint {
 }
 
 /// Types of events that go to the `GameManager`.
-/// `ManagerEvent::Client` : Messages from a Client over the network. Those are all actions a
+/// `ManagerEvent::Client`: Messages from a Client over the network. Those are all actions a
 /// remote client can do, like creating games or making chess moves.
 ///
-/// `ManagerEvent::Timeout` : The only "other" message. This does not come from a remote client
+/// `ManagerEvent::Timeout`: The only "other" message. This does not come from a remote client
 /// but from the `ChessGame`. Happens when `ChessClock` time runs out.
 pub enum ManagerEvent {
     Client(ClientId, ClientMessage),
@@ -357,7 +354,7 @@ impl GameManager {
         }
     }
 
-    pub async fn handle_resign(&mut self, cid: ClientId, gid: GameId) {
+    async fn handle_resign(&mut self, cid: ClientId, gid: GameId) {
         let Some(side) = self.get_player_side(gid, cid).await else {
             return;
         };
@@ -367,7 +364,7 @@ impl GameManager {
         self.close_game(gid).await;
     }
 
-    pub async fn handle_offer_draw(&mut self, cid: ClientId, gid: GameId) {
+    async fn handle_offer_draw(&mut self, cid: ClientId, gid: GameId) {
         // can only offer draw if both players are in the game
         if !self.is_full(gid) {
             return;
@@ -483,6 +480,10 @@ impl GameManager {
         game.get_side(cid)
     }
 
+    /// Get the state of a game. That is, either the game is running or it is finished by
+    /// one of the various possibilities, e.g., checkmate, stalemate, 50-move-rule, repetition.
+    /// Clock state is _not_ included here. This is managed separately, because the clock
+    /// informs the `GameManager` on its own.
     async fn get_game_state(&self, gid: GameId) -> Option<ChessGameState> {
         let Some(game) = self.games.get(&gid) else {
             return None;
@@ -500,6 +501,7 @@ impl GameManager {
         }
     }
 
+    /// Send a message to a specific client. Convenient method.
     async fn send_to(&self, cid: ClientId, message: ServerMessage) {
         if let Some(client) = self.clients.get(&cid) {
             let _ = client.tx.send(message).await;

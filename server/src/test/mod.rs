@@ -8,7 +8,7 @@ pub mod testgames {
     #[cfg(test)]
     const PORT: u16 = 7878;
 
-    use crate::server::server::Server;
+    use crate::net::server::Server;
     use std::fs::File;
     use std::io::{self, BufRead};
     use std::time::Duration;

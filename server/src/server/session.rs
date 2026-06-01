@@ -75,7 +75,7 @@ impl ClientSession {
     /// Note: The original message has no client ID because the client is bound to its
     /// session. But from here, we forward the message to the `GameManager`,
     /// so the client ID gets attached here, so the `GameManager` can identify the client.
-    pub async fn handle_incoming_message(
+    async fn handle_incoming_message(
         id: ClientId,
         srv_tx: &Sender<ManagerEvent>,
         cmd: ClientMessage,
@@ -90,7 +90,7 @@ impl ClientSession {
 
     /// takes a message that has been received from the internal `GameManager`
     /// and sends it to the remote client.
-    pub async fn handle_outgoing_message<S: smol::io::AsyncWrite + Unpin>(
+    async fn handle_outgoing_message<S: smol::io::AsyncWrite + Unpin>(
         conn: &mut Connection<S>,
         msg: ServerMessage,
     ) -> NetResult<()> {
@@ -99,8 +99,9 @@ impl ClientSession {
     }
 
     /// Run the `ClientSession`.
-    /// Here, we listen periodically for messages from both sides: The remote client and the
-    /// internal `GameManager`. `GameManager` messages will be forwarded to the remote client,
+    /// Here, we listen on two separate tasks for messages from both sides: The remote client and
+    /// the internal `GameManager`.
+    /// `GameManager` messages will be forwarded to the remote client,
     /// and client messages will be forwarded to the `GameManager`.
     pub async fn run(self) {
         let id = self.id;

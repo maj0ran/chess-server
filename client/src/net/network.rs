@@ -9,10 +9,10 @@ use crate::ui::views::gameview::historypanel::movehistory::{
     MoveHistoryFullRefresh, MoveHistoryUpdated,
 };
 use bevy::prelude::*;
+use chess_core::NetResult;
 use chess_core::net::connection::Connection;
 use chess_core::protocol::messages::{ClientMessage, ServerMessage};
 use chess_core::protocol::parser::NetMessage;
-use chess_core::{GameId, NetResult};
 use smol::channel::{Receiver, Sender};
 use smol::net::TcpStream;
 use std::collections::HashMap;

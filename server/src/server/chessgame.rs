@@ -211,16 +211,6 @@ impl ChessGame {
         players
     }
 
-    pub fn get_opponent(&self, cid: ClientId) -> Option<ClientId> {
-        if self.white_player == Some(cid) {
-            self.black_player
-        } else if self.black_player == Some(cid) {
-            self.white_player
-        } else {
-            None
-        }
-    }
-
     pub async fn make_move(
         &mut self,
         mov: ChessMove,

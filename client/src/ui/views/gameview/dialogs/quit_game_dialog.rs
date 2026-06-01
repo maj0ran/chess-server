@@ -1,5 +1,5 @@
 use crate::client::game::ActiveGame;
-use crate::client::network::NetworkSend;
+use crate::net::network::NetworkSend;
 use crate::ui::{Overlay, Screen};
 use bevy::prelude::*;
 use bevy_flair::prelude::*;

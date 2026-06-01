@@ -4,7 +4,7 @@ use super::piece::ChessPiece;
 use super::square::ChessSquare;
 use super::*;
 use crate::client::game::{ActiveGame, BoardUpdate};
-use crate::client::network::NetworkSend;
+use crate::net::network::NetworkSend;
 use crate::ui::views::gameview::game_screen::{
     DESTINATION_COLOR, GameScreenInitialized, SOURCE_COLOR,
 };

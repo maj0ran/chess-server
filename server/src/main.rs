@@ -3,7 +3,7 @@ mod net;
 mod server;
 mod test;
 
-use server::server::Server;
+use net::server::Server;
 
 use smol_macros::main;
 use std::io;
