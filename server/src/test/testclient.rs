@@ -6,13 +6,21 @@ use chess_core::protocol::messages::{ClientMessage, ServerMessage};
 use chess_core::protocol::parser::NetMessage;
 #[cfg(test)]
 use chess_core::protocol::{JoinGameParams, NewGameParams, UserRoleSelection};
+#[cfg(test)]
+use chess_core::TimeValue;
+#[cfg(test)]
 use futures_rustls::pki_types::{CertificateDer, ServerName};
+#[cfg(test)]
 use futures_rustls::rustls::{ClientConfig, RootCertStore};
+#[cfg(test)]
 use futures_rustls::TlsConnector;
+#[cfg(test)]
 use futures_rustls::TlsStream;
+#[cfg(test)]
 use rustls::pki_types::pem::PemObject;
 #[cfg(test)]
 use smol::net::TcpStream;
+#[cfg(test)]
 use std::sync::Arc;
 
 #[cfg(test)]
@@ -57,7 +65,7 @@ impl TestClient {
         TestClient { conn }
     }
 
-    pub async fn create_game(&mut self, mode: u8, time: u32, time_inc: u32) -> u32 {
+    pub async fn create_game(&mut self, mode: u8, time: TimeValue, time_inc: TimeValue) -> u32 {
         let cmd = ClientMessage::NewGame(NewGameParams {
             mode,
             time,

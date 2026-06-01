@@ -1,4 +1,4 @@
-use crate::{NetError, NetResult};
+use crate::{NetError, NetResult, TimeValue};
 use std::fmt::Display;
 
 pub mod messages;
@@ -7,13 +7,13 @@ pub mod parser;
 #[derive(Debug, Clone)]
 pub struct NewGameParams {
     pub mode: u8,
-    pub time: u32,
-    pub time_inc: u32,
+    pub time: TimeValue,
+    pub time_inc: TimeValue,
 }
 
 impl NewGameParams {
     pub fn to_bytes(&self) -> Vec<u8> {
-        let mut bytes = vec![self.mode, 0];
+        let mut bytes = vec![self.mode];
         bytes.extend_from_slice(&self.time.to_le_bytes());
         bytes.extend_from_slice(&self.time_inc.to_le_bytes());
         bytes

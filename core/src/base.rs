@@ -1,6 +1,7 @@
 #![allow(non_upper_case_globals)]
 pub type GameId = u32;
 pub type ClientId = usize;
+pub type TimeValue = u32; // Time in milliseconds
 
 pub const style_bold: &str = "\x1B[1m";
 pub const style_underline: &str = "\x1B[4m";

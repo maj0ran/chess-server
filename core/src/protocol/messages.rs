@@ -67,13 +67,19 @@ impl fmt::Display for ClientMessage {
 
 #[derive(Debug, Clone)]
 pub enum ServerMessage {
-    MoveAccepted(u8, String, Vec<(Tile, Option<WoodPiece>)>, u32), // len(SAN), SAN, [updates tiles], time used
+    MoveAccepted(u8, String, Vec<(Tile, Option<WoodPiece>)>, TimeValue), // len(SAN), SAN, [updates tiles], time used
     GameCreated(GameId, ClientId),
     GameJoined(GameId, ClientId, UserRoleSelection),
     GameLeft(GameId, ClientId),
     IllegalMove(ChessError),
     GamesList(Vec<GameId>),
-    GameDetails(GameId, Option<ClientId>, Option<ClientId>, u32, u32),
+    GameDetails(
+        GameId,
+        Option<ClientId>,
+        Option<ClientId>,
+        TimeValue,
+        TimeValue,
+    ),
     ClientDetails(ClientId, String),
     GameOver(GameId, GameOverReason),
     LoginAccepted(ClientId),

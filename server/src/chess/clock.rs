@@ -1,4 +1,4 @@
-use chess_core::ChessColor;
+use chess_core::{ChessColor, TimeValue};
 use smol::channel::Sender;
 use smol::lock::Mutex;
 use smol::Timer;
@@ -21,11 +21,11 @@ pub struct ChessClock {
  * The time block inside a `ChessCock`.
 **/
 pub struct ChessClockTime {
-    pub white: u32,
-    pub black: u32,
+    pub white: TimeValue,
+    pub black: TimeValue,
 
-    white_inc: u32,
-    black_inc: u32,
+    white_inc: TimeValue,
+    black_inc: TimeValue,
 
     active_player: ChessColor,
 
@@ -39,10 +39,10 @@ impl ChessClock {
      **/
     pub fn new(
         tx: Sender<ChessColor>,
-        white_time: u32,
-        black_time: u32,
-        white_inc: u32,
-        black_inc: u32,
+        white_time: TimeValue,
+        black_time: TimeValue,
+        white_inc: TimeValue,
+        black_inc: TimeValue,
     ) -> Self {
         let time = Arc::new(Mutex::new(ChessClockTime {
             white: white_time,
@@ -65,11 +65,11 @@ impl ChessClock {
     /**
      * Press the clock. This will switch the active player and subtracts the time used since the last press.
      **/
-    pub async fn press(&mut self) -> u32 {
+    pub async fn press(&mut self) -> TimeValue {
         let mut time = self.time.lock().await;
 
         let ts = Instant::now();
-        let time_used = ts.duration_since(time.last_time).as_millis() as u32;
+        let time_used = ts.duration_since(time.last_time).as_millis() as TimeValue;
 
         if time.active_player == ChessColor::White {
             time.white = time.white.saturating_sub(time_used);
@@ -102,10 +102,11 @@ impl ChessClock {
                 Timer::after(std::time::Duration::from_secs(1)).await;
                 let mut t = time_poll.lock().await;
                 let ts = Instant::now();
-                let time_used = ts.duration_since(t.last_time).as_millis() as u32;
+                let time_used = ts.duration_since(t.last_time).as_millis() as TimeValue;
 
                 if t.active_player == ChessColor::White {
                     t.white = t.white.saturating_sub(time_used);
+                    t.last_time = ts;
                     if t.white == 0 {
                         log::info!("White time ran out!");
                         let _ = tx.send(ChessColor::White).await;
@@ -113,6 +114,7 @@ impl ChessClock {
                     }
                 } else {
                     t.black = t.black.saturating_sub(time_used);
+                    t.last_time = ts;
                     if t.black == 0 {
                         log::info!("Black time ran out!");
                         let _ = tx.send(ChessColor::Black).await;

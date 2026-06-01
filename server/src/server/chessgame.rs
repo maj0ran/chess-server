@@ -31,9 +31,13 @@ pub struct ChessGame {
 }
 
 impl ChessGame {
-    pub fn new(id: GameId, time: u32, time_inc: u32) -> Self {
+    pub fn new(id: GameId, time: TimeValue, time_inc: TimeValue) -> Self {
+        // client sends seconds, we want milliseconds
+        let time = time * 1000;
+        let time_inc = time_inc * 1000;
+
         let (tx, rx) = smol::channel::unbounded();
-        let mut clock = ChessClock::new(tx, time, time, time_inc, time_inc);
+        let clock = ChessClock::new(tx, time, time, time_inc, time_inc);
         ChessGame {
             id,
             chess: Chess::new(),
@@ -221,7 +225,7 @@ impl ChessGame {
         &mut self,
         mov: ChessMove,
         client_id: ClientId,
-    ) -> ChessResult<(Vec<(Tile, Option<Piece>)>, u32)> {
+    ) -> ChessResult<(Vec<(Tile, Option<Piece>)>, TimeValue)> {
         let is_current_player = match self.chess.active_player {
             ChessColor::White => self.white_player == Some(client_id),
             ChessColor::Black => self.black_player == Some(client_id),
