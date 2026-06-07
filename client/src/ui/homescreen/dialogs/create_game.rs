@@ -8,7 +8,7 @@ use bevy::ui_widgets::Activate;
 use chess_core::protocol::messages::ClientMessage;
 use chess_core::protocol::{NewGameParams, UserRoleSelection};
 
-use crate::net::network::NetworkSend;
+use crate::backend::net::NetworkSend;
 use crate::ui::theme;
 use crate::ui::{Dialog, Overlay};
 

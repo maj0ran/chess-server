@@ -1,23 +1,20 @@
-use crate::client::game::{ActiveGame, GameJoinedEvent};
-use crate::client::lobby::LobbyState;
-use crate::net::network::NetworkSend;
-use crate::ui::chessgame::chessboard::board::{ChessBoard, RotateBoardEvent};
-use crate::ui::chessgame::move_history::*;
+use crate::backend::net::NetworkSend;
+use crate::backend::{ActiveGame, GameJoinedEvent, LobbyState};
+use crate::ui::gamescreen::chessboard::{BOARD_SIZE, ChessBoard, ChessboardPlugin, RotateBoardEvent};
+use crate::ui::gamescreen::dialogs::GamescreenDialogsPlugin;
+use crate::ui::gamescreen::move_history::*;
 use crate::ui::theme::*;
-use crate::ui::{theme, Overlay, Screen};
+use crate::ui::{Overlay, Screen};
 use bevy::feathers::controls::FeathersButton;
+use bevy::feathers::display::label;
 use bevy::feathers::theme::{InheritableThemeTextColor, ThemedText};
 use bevy::feathers::tokens;
 use bevy::picking::Pickable;
 use bevy::prelude::*;
+use bevy::ui_widgets::Activate;
 use chess_core::ClientId;
 use chess_core::protocol::messages::ClientMessage;
 use std::f32::consts::PI;
-use bevy::feathers::display::label;
-use bevy::ui_widgets::Activate;
-
-pub mod chessboard;
-pub mod move_history;
 
 /// Marker component for everything that belongs to the in-game screen.
 #[derive(Component, Clone, Copy, Default)]
@@ -26,11 +23,11 @@ pub struct ChessSceneItem;
 pub const SOURCE_COLOR: Color = Color::srgb_u8(250, 113, 113);
 pub const DESTINATION_COLOR: Color = Color::srgb_u8(113, 250, 113);
 
-pub struct IngamePlugin;
+pub struct ChessGamePlugin;
 
-impl Plugin for IngamePlugin {
+impl Plugin for ChessGamePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(chessboard::ChessboardPlugin)
+        app.add_plugins(ChessboardPlugin)
             .add_systems(
                 OnEnter(Screen::Game),
                 (
@@ -68,7 +65,8 @@ impl Plugin for IngamePlugin {
                     update_draw_offer_button,
                 )
                     .run_if(in_state(Screen::Game)),
-            );
+            )
+        .add_plugins(GamescreenDialogsPlugin);
     }
 }
 
@@ -92,7 +90,7 @@ pub struct DrawOfferButton;
 #[derive(Component, Clone, Copy, Default)]
 pub struct DrawOfferActive;
 #[derive(Event)]
-pub struct IngameInitialized;
+pub struct ChessGameInitialized;
 #[derive(Event)]
 pub struct DrawOffered(pub bool);
 
@@ -167,13 +165,13 @@ fn chess_ui_scene() -> impl Scene {
             Children [
                 @FeathersButton { @caption: bsn! { @label("R") } }
                 GameActionButton
-                theme::default_button_icon()
+                default_button_icon()
                 on(|_: On<Activate>, mut overlay: ResMut<NextState<Overlay>>| overlay.set(Overlay::Resign))
                 --
                 @FeathersButton { @caption: bsn! { @label("D") ThemedText } }
                 GameActionButton
                 DrawOfferButton
-                theme::default_button_icon()
+                default_button_icon()
                 on(|_: On<Activate>, game: Res<ActiveGame>, mut commands: Commands| {
                     commands.trigger(NetworkSend(ClientMessage::OfferDraw(game.gid)));
                 })
@@ -217,7 +215,7 @@ fn setup_chessboard(mut commands: Commands, window_query: Single<(Entity, &Windo
         height: win_size.y,
     });
 
-    commands.trigger(IngameInitialized);
+    commands.trigger(ChessGameInitialized);
 }
 
 /// Despawn all entities that are part of the in-game screen.
@@ -316,7 +314,7 @@ fn on_resize(
     let label_reserved_height = PLAYER_LABEL_OFFSET + PLAYER_LABEL_HEIGHT + BOARD_EDGE_GAP;
     let available_height = (win_size.y - 2.0 * label_reserved_height).max(1.0);
     let board_size = available_width.min(available_height);
-    let scale = board_size / chessboard::BOARD_SIZE;
+    let scale = board_size / BOARD_SIZE;
 
     // The board is not a UI element, so it's NOT affected by UiScale.
     // We scale it manually.

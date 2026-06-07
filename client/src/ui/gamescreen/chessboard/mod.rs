@@ -1,7 +1,3 @@
-use crate::ui::chessgame::chessboard::assets::ChessAssets;
-use crate::ui::chessgame::chessboard::board::{
-    draw_chessboard, draw_pieces, handle_move, on_move_request, reset_selections,
-};
 use bevy::prelude::*;
 use chess_core::Promotion;
 
@@ -9,6 +5,14 @@ pub mod assets;
 pub mod board;
 pub mod piece;
 pub mod square;
+
+pub use assets::ChessAssets;
+pub use board::{
+    draw_chessboard, draw_pieces, handle_move, on_move_request, reset_selections, ChessBoard,
+    MoveSquaresSelected, ResetSelection, RotateBoardEvent,
+};
+pub use piece::ChessPiece;
+pub use square::ChessSquare;
 
 pub const BOARD_SIZE: f32 = 800.0;
 pub const SQUARE_SIZE: f32 = BOARD_SIZE / 8.0;

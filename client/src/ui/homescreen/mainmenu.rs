@@ -1,17 +1,17 @@
-use bevy::feathers::controls::{ButtonVariant, FeathersButton, FeathersScrollbar};
-use bevy::feathers::display::{caption, label};
-use bevy::feathers::theme::{InheritableThemeTextColor, ThemedText};
+use bevy::feathers::controls::*;
+use bevy::feathers::display::*;
+use bevy::feathers::theme::*;
 use bevy::feathers::tokens;
 use bevy::prelude::*;
-use bevy::ui_widgets::{Activate, ControlOrientation, ScrollArea};
-use chess_core::{ClientId, GameId};
-use chess_core::protocol::messages::ClientMessage;
-use crate::client::lobby::LobbyState;
-use crate::net::network::NetworkSend;
-use crate::ui::theme::{default_button_size_180, wood_theme, THEME_BACKGROUND, THEME_BORDER, THEME_SURFACE, THEME_SURFACE_LIGHT, default_ui_shadow};
-use crate::ui::{Overlay, Screen};
+use bevy::ui_widgets::*;
 
-pub struct MainMenuPlugin;
+use crate::backend::LobbyState;
+use crate::backend::net::NetworkSend;
+use crate::ui::homescreen::dialogs::HomescreenDialogsPlugin;
+use crate::ui::theme::{THEME_BACKGROUND, THEME_BORDER, THEME_SURFACE, THEME_SURFACE_LIGHT, chess_theme, default_button_size_180, default_ui_shadow};
+use crate::ui::{Overlay, Screen};
+use chess_core::protocol::messages::ClientMessage;
+use chess_core::{ClientId, GameId};
 
 #[derive(Component, Clone, Copy, Default)]
 pub struct MainMenuRoot;
@@ -22,13 +22,15 @@ pub struct UpdateGamesList;
 #[derive(Component, Clone, Copy, Default)]
 pub struct GamesList;
 
+pub struct HomescreenPlugin;
 
-impl Plugin for MainMenuPlugin {
+impl Plugin for HomescreenPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(Screen::Menu), (main_menu_scene.spawn(), request_games))
             .add_systems(OnExit(Screen::Menu), cleanup_main_menu)
             .add_observer(update_games_list)
-            .insert_resource(wood_theme());
+            .insert_resource(chess_theme())
+            .add_plugins(HomescreenDialogsPlugin);
     }
 }
 
@@ -220,7 +222,7 @@ fn update_games_list(
     }
 }
 
-/// Requests the list of games from the server. This is a bevy sustem that is executed automatically
+/// Requests the list of games from the server. This bevy system is executed automatically
 /// when the main menu scene is loaded.
 fn request_games(mut commands: Commands) {
     commands.trigger(NetworkSend(

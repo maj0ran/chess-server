@@ -4,7 +4,7 @@ use bevy::feathers::theme::{InheritableThemeTextColor, ThemedText};
 use bevy::feathers::tokens;
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
-use crate::client::game::GameOverEvent;
+use crate::backend::GameOverEvent;
 use crate::ui::theme::{THEME_BORDER, THEME_GOLD, THEME_SURFACE};
 use crate::ui::{theme, Dialog, Overlay, Screen};
 

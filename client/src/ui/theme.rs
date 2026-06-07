@@ -88,9 +88,8 @@ fn default_button(width: usize, height: usize) -> Node {
     }
 }
 
-/// Feathers only uses the theme for design-token colors. Layout, borders, and shadows remain
-/// native Bevy UI components and are configured by the individual scenes.
-pub fn wood_theme() -> UiTheme {
+/// override GUI theme objects with custom values.
+pub fn chess_theme() -> UiTheme {
     let mut theme = create_dark_theme();
 
     let overrides = [

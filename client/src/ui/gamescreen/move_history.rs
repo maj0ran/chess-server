@@ -1,6 +1,5 @@
-use crate::client::game::ActiveGame;
-use crate::ui::chessgame::ChessSceneItem;
-use crate::ui::theme::{RIGHT_PANEL_RATIO, THEME_BORDER, THEME_SURFACE};
+use crate::backend::ActiveGame;
+use crate::ui::theme::RIGHT_PANEL_RATIO;
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::picking::hover::HoverMap;
 use bevy::prelude::*;

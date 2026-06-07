@@ -8,12 +8,12 @@ use smol::io::{AsyncRead, AsyncWrite};
 use smol::io::{ReadHalf, WriteHalf};
 
 /// A `Connection` provides a generic interface for communicating over a TCP stream.
-/// It can be used both on the server and client sides to send and receive messages
+/// It can be used both on the server and client side to send and receive messages
 /// that implement the `NetMessage` trait. Those messages will be parsed into byte stream
 /// that can be sent over the network.
 pub struct Connection<S> {
     /// `stream` is either a TCP Stream or a TLS stream. Since we are only using TLS, we could
-    /// discard this use of Generics, but our code base once changed from TCP to TLS and this
+    /// discard this use of Generics, but our code base once changed from TCP to TLS, and this
     /// shows best that things are not much different.
     pub stream: S,
     pub buf: Buffer,

@@ -1,12 +1,12 @@
-use super::assets::ChessAssets;
-use super::piece::ChessPiece;
-use super::square::ChessSquare;
-use super::{BOARD_SIZE, PendingMove, RequestMove, SQUARE_SIZE};
-use crate::client::game::{ActiveGame, BoardUpdate};
-use crate::net::network::NetworkSend;
-use crate::ui::Overlay;
-use crate::ui::chessgame::{DESTINATION_COLOR, IngameInitialized, ChessSceneItem, SOURCE_COLOR};
-use crate::ui::{COLOR_LIGHT2, COLOR_MID};
+use super::{BOARD_SIZE,
+            ChessAssets, ChessPiece, ChessSquare, PendingMove, RequestMove, SQUARE_SIZE,
+};
+use crate::backend::net::NetworkSend;
+use crate::backend::{ActiveGame, BoardUpdate};
+use crate::ui::gamescreen::{
+    ChessGameInitialized, ChessSceneItem, DESTINATION_COLOR, SOURCE_COLOR,
+};
+use crate::ui::{COLOR_LIGHT2, COLOR_MID, Overlay};
 use bevy::color::Color;
 use bevy::math::{Vec2, Vec3};
 use bevy::picking::events::PointerClick;
@@ -57,7 +57,7 @@ impl ChessBoard {
 /// Helper method to draw the chessboard. Spawns the `ChessBoard` plane and
 /// 64 `ChessSquare` as children onto it.
 pub fn draw_chessboard(
-    _ev: On<IngameInitialized>,
+    _ev: On<ChessGameInitialized>,
     mut commands: Commands,
     active_game: Res<ActiveGame>,
     board: Single<Entity, With<ChessBoard>>,

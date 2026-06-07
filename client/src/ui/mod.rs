@@ -2,10 +2,12 @@ use bevy::prelude::*;
 
 use crate::ui::theme::THEME_OVERLAY;
 
-pub mod dialogs;
-pub mod chessgame;
-pub mod mainmenu;
+pub mod gamescreen;
+pub mod homescreen;
 pub mod theme;
+
+pub use gamescreen::ChessGamePlugin;
+pub use homescreen::HomescreenPlugin;
 
 pub const COLOR_DARK: Color = Color::srgb(0.125, 0.125, 0.125);
 pub const COLOR_LIGHT2: Color = Color::srgb(0.722, 0.647, 0.443);
@@ -36,13 +38,21 @@ pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(dialogs::DialogsPlugin)
-            .add_systems(Update, setup_dialogs);
+        app
+            .add_plugins((
+                HomescreenPlugin,
+                ChessGamePlugin,
+            ))
+            .add_systems(Update, setup_dialogs)
+            .add_systems(OnExit(Overlay::JoinGame), despawn_dialog);
     }
 }
 
-fn setup_dialogs(mut commands: Commands, dialogs: Query<Entity, Added<Dialog>>) {
-    for entity in dialogs.iter() {
+/// When a dialog is spawned, this system will add a slightly opaque, dark overlay to the
+/// whole screen. This will first, darken the background behind the dialog and second, disable
+/// any clicking on the screen behind the dialog.
+fn setup_dialogs(mut commands: Commands, dialog: Single<Entity, Added<Dialog>>) {
+    let entity = dialog.entity();
         commands.entity(entity).insert((
             Node {
                 position_type: PositionType::Absolute,
@@ -54,5 +64,10 @@ fn setup_dialogs(mut commands: Commands, dialogs: Query<Entity, Added<Dialog>>) 
             },
             BackgroundColor(THEME_OVERLAY),
         ));
+}
+
+fn despawn_dialog(mut commands: Commands, dialogs: Query<Entity, With<Dialog>>) {
+    for entity in &dialogs {
+        commands.entity(entity).despawn();
     }
 }

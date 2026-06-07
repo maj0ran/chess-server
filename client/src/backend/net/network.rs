@@ -1,13 +1,3 @@
-use crate::client::session::*;
-use crate::net::tls::TlsClient;
-use crate::ui::dialogs::create_game::PendingJoinSide;
-use crate::ui::mainmenu::UpdateGamesList;
-
-use crate::client::game::{ActiveGame, BoardUpdate, GameDetails, GameJoinedEvent, GameOverEvent};
-use crate::client::lobby::LobbyState;
-use crate::ui::chessgame::DrawOffered;
-use crate::ui::chessgame::chessboard::board::ResetSelection;
-use crate::ui::chessgame::move_history::{MoveHistoryFullRefresh, MoveHistoryUpdated};
 use bevy::prelude::*;
 use chess_core::NetResult;
 use chess_core::net::connection::Connection;
@@ -17,6 +7,14 @@ use chess_core::protocol::{JoinGameParams, UserRoleSelection};
 use smol::channel::{Receiver, Sender};
 use smol::net::TcpStream;
 use std::collections::HashMap;
+
+use crate::backend::net::TlsClient;
+use crate::backend::{
+    ActiveGame, BoardUpdate, ClientSession, GameDetails, GameJoinedEvent, GameOverEvent, LobbyState,
+};
+use crate::ui::gamescreen::{DrawOffered, MoveHistoryFullRefresh, MoveHistoryUpdated, ResetSelection};
+use crate::ui::homescreen::UpdateGamesList;
+use crate::ui::homescreen::dialogs::create_game::PendingJoinSide;
 
 /// `NetTransport` is the interface to networking.
 /// it holds the tx/rx channels to communicate from the transmit/receive threads to the main/bevy thread.
@@ -56,7 +54,7 @@ impl NetTransport {
 /// Setting up the network tasks for receiving and transmitting messages.
 /// When following the receive/transmit logic, be aware that we have 3 Components:
 /// Client <-> NetTransport <-> Server.
-/// This thread is beste be viewed from the middle perspective, i.e. `NetTransport`:
+/// This thread is best viewed from the middle perspective, i.e. `NetTransport`:
 /// `rx_from_client`: read a message that has been put by the client on `NetTransport`. Gets forwarded to the server.
 /// `tx_to_client`: got a message from server, write it on `NetTransport`. Gets forwarded to the client.
 pub async fn network_thread(

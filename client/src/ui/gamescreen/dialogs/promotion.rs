@@ -6,9 +6,8 @@ use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
 use chess_core::Promotion;
 
-use crate::client::game::ActiveGame;
-use crate::ui::chessgame::chessboard::assets::ChessAssets;
-use crate::ui::chessgame::chessboard::{PendingMove, RequestMove};
+use crate::backend::ActiveGame;
+use crate::ui::gamescreen::chessboard::{ChessAssets, PendingMove, RequestMove};
 use crate::ui::theme;
 use crate::ui::{Dialog, Overlay};
 
