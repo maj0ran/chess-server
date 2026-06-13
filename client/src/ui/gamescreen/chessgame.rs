@@ -18,7 +18,7 @@ use std::f32::consts::PI;
 
 /// Marker component for everything that belongs to the in-game screen.
 #[derive(Component, Clone, Copy, Default)]
-pub struct ChessSceneItem;
+pub struct ChessSceneRootNode;
 
 pub const SOURCE_COLOR: Color = Color::srgb_u8(250, 113, 113);
 pub const DESTINATION_COLOR: Color = Color::srgb_u8(113, 250, 113);
@@ -104,8 +104,9 @@ fn chess_ui_scene() -> impl Scene {
         Node {
             position_type: PositionType::Absolute,
             width: percent(100),
-            height: percent(100) }
-        ChessSceneItem
+            height: percent(100)
+        }
+        ChessSceneRootNode
         Pickable::IGNORE
         InheritableThemeTextColor(tokens::TEXT_MAIN)
         Children [
@@ -178,7 +179,6 @@ fn chess_ui_scene() -> impl Scene {
             ]
             --
             // Right Panel (Move History)
-            ChessSceneItem
             MoveHistory
             Node {
                 position_type: PositionType::Absolute,
@@ -218,14 +218,21 @@ fn setup_chessboard(mut commands: Commands, window_query: Single<(Entity, &Windo
     commands.trigger(ChessGameInitialized);
 }
 
-/// Despawn all entities that are part of the in-game screen.
+/// Despawn all entities that are part of the chess game screen,
+/// that is, the UI and the chessboard.
 /// Obviously happens when we leave a game.
-fn cleanup_chess_scene(mut commands: Commands, query: Query<Entity, With<ChessSceneItem>>) {
+fn cleanup_chess_scene(
+    mut commands: Commands,
+    query_ui: Single<Entity, With<ChessSceneRootNode>>,
+    query_board: Single<Entity, With<ChessBoard>>,
+) {
     log::debug!("Cleaning up chess scene");
 
-    for entity in query.iter() {
-        commands.entity(entity).despawn();
-    }
+    let ui = query_ui.entity();
+    commands.entity(ui).despawn();
+
+    let board = query_board.entity();
+    commands.entity(board).despawn();
 }
 
 fn listen_keyboard_input(
@@ -292,9 +299,10 @@ fn update_player_label(
     }
 }
 
-/// Computes scale and position of all game screen components based on the current window size.
-/// This method is kinda complex due to the need to adjust various UI elements dynamically based on
-/// window size and available screen space.
+/// Triggered when the user resizes the window.
+/// The UI elements will resize automatically as they are created with a
+/// percentage width/height in `chess_ui_scene()`. The board, however,
+/// is not a UI element, so we need to resize it manually.
 fn on_resize(
     mut resize_reader: MessageReader<bevy::window::WindowResized>,
     mut board_transform: Single<&mut Transform, With<ChessBoard>>,
@@ -308,6 +316,11 @@ fn on_resize(
         return;
     };
 
+    resize_board(win_size, &mut board_transform);
+}
+
+/// helper method to resize the board.
+fn resize_board(win_size: Vec2, board_transform: &mut Transform) {
     // Keep the board inside the central area, below the top label, above the bottom label,
     // and away from all four neighboring UI regions.
     let available_width = (win_size.x * BOARD_AREA_RATIO - 2.0 * BOARD_EDGE_GAP).max(1.0);
@@ -316,8 +329,6 @@ fn on_resize(
     let board_size = available_width.min(available_height);
     let scale = board_size / BOARD_SIZE;
 
-    // The board is not a UI element, so it's NOT affected by UiScale.
-    // We scale it manually.
     board_transform.scale = Vec3::splat(scale);
     board_transform.translation.x = (LEFT_PANEL_RATIO - RIGHT_PANEL_RATIO) * win_size.x / 2.0;
 }

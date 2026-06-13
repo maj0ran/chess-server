@@ -4,10 +4,9 @@ use super::{BOARD_SIZE,
 use crate::backend::net::NetworkSend;
 use crate::backend::{ActiveGame, BoardUpdate};
 use crate::ui::gamescreen::{
-    ChessGameInitialized, ChessSceneItem, DESTINATION_COLOR, SOURCE_COLOR,
+    ChessGameInitialized, DESTINATION_COLOR, SOURCE_COLOR,
 };
 use crate::ui::{COLOR_LIGHT2, COLOR_MID, Overlay};
-use bevy::color::Color;
 use bevy::math::{Vec2, Vec3};
 use bevy::picking::events::PointerClick;
 use bevy::prelude::*;
@@ -25,27 +24,24 @@ pub struct ResetSelection;
 #[derive(Event)]
 pub struct RotateBoardEvent;
 
-/// The `ChessBoard` is a simple plane that acts as a reference position for anything else.
-/// The plane alone isn't even chessy - it has no squares. Squares are standalone components
-/// that will be rendered onto the board.
+/// The `ChessBoard` component only holds the user input,
+/// e.g., the selected source and destination squares.
+/// It is spawned together with a `Transform` that gives the board its Geometry (position, scale, rotation)
+/// The actual board is rendered in `draw_chessboard()` where we put 64 `ChessSquare` as children onto it.
 #[derive(Component)]
+#[require(Transform)]
 pub struct ChessBoard {
     selected_src: Option<Entity>,
     selected_dst: Option<Entity>,
 }
 
 impl ChessBoard {
-    pub fn new() -> (ChessSceneItem, ChessBoard, Sprite, Transform) {
+    /// Spawn a Chessboard together with a `Transform`.
+    pub fn new() -> (ChessBoard, Transform) {
         (
-            ChessSceneItem,
             ChessBoard {
                 selected_src: None,
                 selected_dst: None,
-            },
-            Sprite {
-                color: Color::srgb_u8(150, 50, 150),
-                custom_size: Some(Vec2::splat(BOARD_SIZE)),
-                ..default()
             },
             Transform {
                 translation: Vec3::new(0.0, 0.0, 1.0),
@@ -54,9 +50,11 @@ impl ChessBoard {
         )
     }
 }
-/// Helper method to draw the chessboard. Spawns the `ChessBoard` plane and
-/// 64 `ChessSquare` as children onto it.
-pub fn draw_chessboard(
+
+/// Helper method to draw the real chessboard. Gets the "abstract" `ChessBoard` and
+/// draws 64 `ChessSquare` as children onto it. Also registers the observer to make
+/// squares clickable.
+pub(super) fn draw_chessboard(
     _ev: On<ChessGameInitialized>,
     mut commands: Commands,
     active_game: Res<ActiveGame>,
@@ -95,6 +93,7 @@ pub fn draw_chessboard(
         }
     });
 
+    // rotate the board for black
     if active_game.side == UserRoleSelection::Black {
         commands.trigger(RotateBoardEvent);
     }
@@ -104,7 +103,7 @@ pub fn draw_chessboard(
 
 /// Triggered on `BoardUpdate` event which is sent by the client when it receives an update from the server.
 /// Draws all pieces according to the internal board state.
-pub fn draw_pieces(
+pub(super) fn draw_pieces(
     _board_update: On<BoardUpdate>,
     mut commands: Commands,
     assets: Res<ChessAssets>,
@@ -139,7 +138,7 @@ pub fn draw_pieces(
 /// a `RequestMove` event is triggered that is caught by the client to send the move to the server.
 /// When the client receives the answer to the move (accepted or rejected), it will again trigger an event
 /// that is caught by `reset_selections` (below) to undo the coloring.
-pub fn select_square(
+pub(super) fn select_square(
     ev: On<PointerClick>,
     mut commands: Commands,
     mut board: Single<&mut ChessBoard>,
@@ -171,7 +170,7 @@ pub fn select_square(
 /// in the `PendingMove` resource and sets `Overlay::Promotion`, which will spawn the promotion dialog.
 /// When a promotion button on this dialog is clicked, it will load the `PendingMove` resource. There, we
 /// trigger `RequestMove` together with the promotion information.
-pub fn handle_move(
+pub(super) fn handle_move(
     _ev: On<MoveSquaresSelected>,
     mut commands: Commands,
     query: Query<(&ChessSquare, Option<&Children>)>,
@@ -198,12 +197,14 @@ pub fn handle_move(
         Some(p) => {
             let chess_piece = p
                 .last()
-                .ok_or("got children but no actual entity on source square?")?;
+                .ok_or("got children but no actual entity on source square? [BUG]")?;
             let piece = piece_query.get(*chess_piece)?;
-
+            // check if player wants to promote
             let (is_pawn, is_last_rank) = match game.side {
                 UserRoleSelection::White => (piece.id == 'P', dst_sq.name.ends_with('8')),
                 UserRoleSelection::Black => (piece.id == 'p', dst_sq.name.ends_with('1')),
+                // TODO: this is dumb, but we need to do some changes in the protocol
+                // TODO: to split White/Black and other roles.
                 UserRoleSelection::Both => (
                     matches!(piece.id, 'P' | 'p'),
                     (piece.id == 'P' && dst_sq.name.ends_with('8'))
@@ -213,7 +214,7 @@ pub fn handle_move(
                     return Err("Invalid side for moving pieces".into());
                 }
             };
-
+            // if promotion move detected...
             if is_pawn && is_last_rank {
                 let pending_move = PendingMove {
                     src: src_sq.name.clone(),
@@ -238,7 +239,7 @@ pub fn handle_move(
 /// Triggered by the client when it receives a response on a move request.
 /// I.e., the client sends a move to the server, waits for a response, and on the response,
 /// it sends back an event here to reset the selection.
-pub fn reset_selections(
+pub(super) fn reset_selections(
     _ev: On<ResetSelection>,
     mut query: Query<(Entity, &mut ChessSquare, &mut Sprite)>,
     mut board: Single<&mut ChessBoard>,
@@ -257,7 +258,7 @@ pub fn reset_selections(
     board.selected_dst = None;
 }
 
-pub fn on_move_request(ev: On<RequestMove>, mut commands: Commands, active_game: Res<ActiveGame>) {
+pub(super) fn on_move_request(ev: On<RequestMove>, mut commands: Commands, active_game: Res<ActiveGame>) {
     let src = Tile::from(ev.source.as_str());
     let dst = Tile::from(ev.destination.as_str());
     let promotion = ev.promotion;

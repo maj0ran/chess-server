@@ -16,7 +16,7 @@ impl ChessAssets {
 
 /// FromWorld is a mighty trait from bevy that essentially allows us to initialize a resource with
 /// direct access to the whole bevy system. The bevy cookbook mentions that it shouldn't be overused
-/// as it could easily lead to lots of spaghetti. We use it here, because ChessAssets needs
+/// as it could easily lead to lots of spaghetti. We use it here because ChessAssets needs
 /// access to the asset_server during its default initialization when we do `.init_resource()`
 /// in the plugin app builder.
 impl FromWorld for ChessAssets {
