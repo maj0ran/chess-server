@@ -61,7 +61,6 @@ impl Plugin for ChessGamePlugin {
                 Update,
                 (
                     on_resize,
-                    resize_action_button_text,
                     update_draw_offer_button,
                 )
                     .run_if(in_state(Screen::Game)),
@@ -150,7 +149,7 @@ fn chess_ui_scene() -> impl Scene {
             Node {
                 position_type: PositionType::Absolute,
                 height: percent(100),
-                width: percent(10),
+                width: percent(LEFT_PANEL_RATIO * 100.0),
                 left: px(0),
                 flex_direction: FlexDirection::Column,
                 align_items: AlignItems::Center,
@@ -166,13 +165,29 @@ fn chess_ui_scene() -> impl Scene {
             Children [
                 @FeathersButton { @caption: bsn! { @label("R") } }
                 GameActionButton
-                default_button_icon()
+                Node {
+                    width: percent(80),
+                    height: Val::Auto,
+                    aspect_ratio: { Some(1.0) },
+                    justify_content: JustifyContent::Center, // horizontal alignment
+                    align_items: AlignItems::Center, // vertical alignment ... the fuck is up with these CSS property names?!
+                    border: UiRect::all(px(2)),
+                    border_radius: BorderRadius::all(px(8))
+                }
                 on(|_: On<Activate>, mut overlay: ResMut<NextState<Overlay>>| overlay.set(Overlay::Resign))
                 --
                 @FeathersButton { @caption: bsn! { @label("D") ThemedText } }
                 GameActionButton
                 DrawOfferButton
-                default_button_icon()
+                Node {
+                    width: percent(80),
+                    height: Val::Auto,
+                    aspect_ratio: { Some(1.0) },
+                    justify_content: JustifyContent::Center, // horizontal alignment
+                    align_items: AlignItems::Center, // vertical alignment ... the fuck is up with these CSS property names?!
+                    border: UiRect::all(px(2)),
+                    border_radius: BorderRadius::all(px(8))
+                }
                 on(|_: On<Activate>, game: Res<ActiveGame>, mut commands: Commands| {
                     commands.trigger(NetworkSend(ClientMessage::OfferDraw(game.gid)));
                 })
@@ -331,23 +346,6 @@ fn resize_board(win_size: Vec2, board_transform: &mut Transform) {
 
     board_transform.scale = Vec3::splat(scale);
     board_transform.translation.x = (LEFT_PANEL_RATIO - RIGHT_PANEL_RATIO) * win_size.x / 2.0;
-}
-
-fn resize_action_button_text(
-    window: Single<&Window>,
-    buttons: Query<&Children, With<GameActionButton>>,
-    mut text_fonts: Query<&mut TextFont>,
-) {
-    let panel_width = window.width() * LEFT_PANEL_RATIO;
-    let font_size = FontSize::Px((panel_width * 0.14).clamp(8.0, 16.0));
-
-    for children in &buttons {
-        for &child in children {
-            if let Ok(mut text_font) = text_fonts.get_mut(child) {
-                text_font.font_size = font_size;
-            }
-        }
-    }
 }
 
 fn update_draw_offer_button(
