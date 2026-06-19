@@ -1,9 +1,10 @@
 use bevy::color::{Alpha, Color};
 use bevy::feathers::{
     dark_theme::create_dark_theme,
-    theme::{SemanticToken, UiTheme},
+    theme::{SemanticToken, SurfaceLevel, UiTheme},
     tokens,
 };
+use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 
 /// A soft, low-saturation wooden palette used by the client UI.
@@ -12,6 +13,7 @@ pub const THEME_SURFACE: Color = Color::srgb(0.29, 0.22, 0.16);
 pub const THEME_SURFACE_LIGHT: Color = Color::srgb(0.38, 0.30, 0.22);
 pub const THEME_BUTTON: Color = Color::srgb(0.34, 0.27, 0.20);
 pub const THEME_PENDING_DRAW_OFFER: Color = Color::srgb(0.32, 0.52, 0.34);
+pub const THEME_PENDING_DRAW_OFFER_HOVER: Color = Color::srgb(0.40, 0.62, 0.42);
 pub const THEME_BORDER: Color = Color::srgb(0.55, 0.43, 0.29);
 pub const THEME_GOLD: Color = Color::srgb(0.68, 0.54, 0.32);
 pub const THEME_GOLD_LIGHT: Color = Color::srgb(0.82, 0.70, 0.48);
@@ -129,6 +131,19 @@ pub fn chess_theme() -> UiTheme {
         theme.token_assignments.insert(token, sem.clone());
         theme.semantic_base.insert(sem, color);
     }
+
+    // abuse bevy's SurfaceLevel mechanism to give the draw offer button
+    // a contextual theme that is onl activated when a draw offer is pending.
+    let draw_button_overrides = [
+        (tokens::BUTTON_BG, THEME_PENDING_DRAW_OFFER),
+        (tokens::BUTTON_BG_HOVER, THEME_PENDING_DRAW_OFFER_HOVER),
+    ];
+    let mut draw_highlight_theme = HashMap::new();
+    for (token, color) in draw_button_overrides {
+        let sem = SemanticToken::new(token.to_string().into());
+        draw_highlight_theme.insert(sem, color);
+    }
+    theme.semantic_overrides.insert(SurfaceLevel::Higher, draw_highlight_theme);
 
     UiTheme(theme)
 }

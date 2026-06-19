@@ -17,7 +17,7 @@ use crate::ui::homescreen::UpdateGamesList;
 use crate::ui::homescreen::dialogs::create_game::PendingJoinSide;
 
 /// `NetTransport` is the interface to networking.
-/// it holds the tx/rx channels to communicate from the transmit/receive threads to the main/bevy thread.
+/// This resource holds the tx/rx channels to communicate from the transmit/receive threads to the main/bevy thread.
 /// This is basically the mediator between the client and the network thread. On the one side,
 /// `network_thread()` is using this resource to put messages from the remote server into it and receive
 /// messages from the client from it to send them to the remote server.

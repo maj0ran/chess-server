@@ -7,7 +7,7 @@ use crate::ui::theme::*;
 use crate::ui::{Overlay, Screen};
 use bevy::feathers::controls::FeathersButton;
 use bevy::feathers::display::label;
-use bevy::feathers::theme::{InheritableThemeTextColor, ThemedText};
+use bevy::feathers::theme::{InheritableThemeTextColor, SurfaceLevel, ThemeBackgroundColor, ThemeContext, ThemedText, UiTheme};
 use bevy::feathers::tokens;
 use bevy::picking::Pickable;
 use bevy::prelude::*;
@@ -61,7 +61,6 @@ impl Plugin for ChessGamePlugin {
                 Update,
                 (
                     on_resize,
-                    update_draw_offer_button,
                 )
                     .run_if(in_state(Screen::Game)),
             )
@@ -83,15 +82,25 @@ pub struct WhitePlayerLabel;
 #[derive(Component, Clone, Copy, Default)]
 pub struct BlackPlayerLabel;
 #[derive(Component, Clone, Copy, Default)]
-pub struct GameActionButton;
-#[derive(Component, Clone, Copy, Default)]
 pub struct DrawOfferButton;
-#[derive(Component, Clone, Copy, Default)]
-pub struct DrawOfferActive;
 #[derive(Event)]
 pub struct ChessGameInitialized;
 #[derive(Event)]
 pub struct DrawOffered(pub bool);
+
+/// Helper method that gives the 'Resign' and the 'Draw' button the same style.
+fn left_panel_button_node() -> Node {
+    Node {
+        width: percent(80),
+        height: Val::Auto,
+        aspect_ratio: Some(1.0),
+        justify_content: JustifyContent::Center,
+        align_items: AlignItems::Center,
+        border: UiRect::all(px(2)),
+        border_radius: BorderRadius::all(px(8)),
+        ..default()
+    }
+}
 
 /// `chess_ui_scene` creates all the UI elements around the chess game: the player labels,
 /// the panel for resign/draw buttons, and the move history.
@@ -164,30 +173,12 @@ fn chess_ui_scene() -> impl Scene {
             default_ui_shadow()
             Children [
                 @FeathersButton { @caption: bsn! { @label("R") } }
-                GameActionButton
-                Node {
-                    width: percent(80),
-                    height: Val::Auto,
-                    aspect_ratio: { Some(1.0) },
-                    justify_content: JustifyContent::Center, // horizontal alignment
-                    align_items: AlignItems::Center, // vertical alignment ... the fuck is up with these CSS property names?!
-                    border: UiRect::all(px(2)),
-                    border_radius: BorderRadius::all(px(8))
-                }
+                left_panel_button_node()
                 on(|_: On<Activate>, mut overlay: ResMut<NextState<Overlay>>| overlay.set(Overlay::Resign))
                 --
-                @FeathersButton { @caption: bsn! { @label("D") ThemedText } }
-                GameActionButton
+                @FeathersButton { @caption: bsn! { @label("D") } }
                 DrawOfferButton
-                Node {
-                    width: percent(80),
-                    height: Val::Auto,
-                    aspect_ratio: { Some(1.0) },
-                    justify_content: JustifyContent::Center, // horizontal alignment
-                    align_items: AlignItems::Center, // vertical alignment ... the fuck is up with these CSS property names?!
-                    border: UiRect::all(px(2)),
-                    border_radius: BorderRadius::all(px(8))
-                }
+                left_panel_button_node()
                 on(|_: On<Activate>, game: Res<ActiveGame>, mut commands: Commands| {
                     commands.trigger(NetworkSend(ClientMessage::OfferDraw(game.gid)));
                 })
@@ -348,18 +339,6 @@ fn resize_board(win_size: Vec2, board_transform: &mut Transform) {
     board_transform.translation.x = (LEFT_PANEL_RATIO - RIGHT_PANEL_RATIO) * win_size.x / 2.0;
 }
 
-fn update_draw_offer_button(
-    mut buttons: Query<(&mut BackgroundColor, Option<&DrawOfferActive>), With<DrawOfferButton>>,
-) {
-    for (mut background, active) in &mut buttons {
-        background.0 = if active.is_some() {
-            THEME_PENDING_DRAW_OFFER
-        } else {
-            THEME_BUTTON
-        };
-    }
-}
-
 fn on_rotate(
     _ev: On<RotateBoardEvent>,
     mut board: Single<&mut Transform, With<ChessBoard>>,
@@ -400,16 +379,20 @@ fn on_rotate(
     });
 }
 
-fn on_draw_offered(
+pub fn on_draw_offered(
     ev: On<DrawOffered>,
+    button: Single<(Entity, &ThemeBackgroundColor), With<DrawOfferButton>>,
+    theme: Res<UiTheme>,
     mut commands: Commands,
-    button: Single<Entity, With<DrawOfferButton>>,
 ) {
-    log::debug!("Draw offer state changed: {}", ev.0);
-
-    if ev.0 {
-        commands.entity(*button).insert(DrawOfferActive);
+    let (entity, bg_token) = *button;
+    let context = if ev.0 {
+        SurfaceLevel::Higher
     } else {
-        commands.entity(*button).remove::<DrawOfferActive>();
-    }
+        SurfaceLevel::Base
+    };
+    commands.entity(entity).insert((
+        ThemeContext(context),
+        BackgroundColor(theme.context_color(&bg_token.0, context)),
+    ));
 }
