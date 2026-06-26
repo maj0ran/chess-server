@@ -7,23 +7,43 @@ use std::collections::HashMap;
 #[derive(Event)]
 pub struct BoardUpdate;
 
-#[derive(Event)]
+#[derive(Event, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GameJoinedEvent {
     pub gid: GameId,
     pub side: UserRoleSelection,
 }
+
+pub type GameJoined = GameJoinedEvent;
+
+#[derive(Event, Debug, Clone, PartialEq, Eq)]
+pub struct ClientDetailsEvent {
+    pub cid: ClientId,
+    pub name: String,
+}
+
+pub type ClientDetails = ClientDetailsEvent;
 
 #[derive(Event)]
 pub struct GameOverEvent {
     pub reason: GameOverReason,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 pub struct GameDetails {
     pub white_player: Option<ClientId>,
     pub black_player: Option<ClientId>,
     pub _time: u32,
     pub _time_inc: u32,
+}
+
+impl GameDetails {
+    pub fn set_player(&mut self, side: UserRoleSelection, cid: ClientId) {
+        match side {
+            UserRoleSelection::White => self.white_player = Some(cid),
+            UserRoleSelection::Black => self.black_player = Some(cid),
+            _ => {}
+        }
+    }
 }
 
 #[derive(Resource, Debug)]

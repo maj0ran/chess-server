@@ -7,7 +7,10 @@ pub mod session;
 pub mod net;
 
 pub use config::Config;
-pub use game::{ActiveGame, BoardUpdate, GameDetails, GameJoinedEvent, GameOverEvent};
+pub use game::{
+    ActiveGame, BoardUpdate, ClientDetails, ClientDetailsEvent, GameDetails, GameJoined,
+    GameJoinedEvent, GameOverEvent,
+};
 pub use lobby::LobbyState;
 pub use session::ClientSession;
 use crate::backend::net::{poll_network, NetTransport, send_message};

@@ -10,7 +10,8 @@ use std::collections::HashMap;
 
 use crate::backend::net::TlsClient;
 use crate::backend::{
-    ActiveGame, BoardUpdate, ClientSession, GameDetails, GameJoinedEvent, GameOverEvent, LobbyState,
+    ActiveGame, BoardUpdate, ClientDetailsEvent, ClientSession, GameDetails, GameJoinedEvent,
+    GameOverEvent, LobbyState,
 };
 use crate::ui::gamescreen::{DrawOffered, MoveHistoryFullRefresh, MoveHistoryUpdated, ResetSelection};
 use crate::ui::homescreen::UpdateGamesList;
@@ -150,11 +151,21 @@ pub fn poll_network(
                 if let Some(wid) = white_id {
                     if !lobby.has_client_info(wid) {
                         commands.trigger(NetworkSend(ClientMessage::QueryClientDetails(wid)));
+                    } else if let Some(name) = lobby.get_client_info(wid) {
+                        commands.trigger(ClientDetailsEvent {
+                            cid: wid,
+                            name: name.clone(),
+                        });
                     }
                 }
                 if let Some(bid) = black_id {
                     if !lobby.has_client_info(bid) {
                         commands.trigger(NetworkSend(ClientMessage::QueryClientDetails(bid)));
+                    } else if let Some(name) = lobby.get_client_info(bid) {
+                        commands.trigger(ClientDetailsEvent {
+                            cid: bid,
+                            name: name.clone(),
+                        });
                     }
                 }
                 commands.trigger(UpdateGamesList);
@@ -162,8 +173,9 @@ pub fn poll_network(
 
             /* We received information of another client */
             ServerMessage::ClientDetails(cid, name) => {
-                lobby.update_client_info(cid, name);
+                lobby.update_client_info(cid, name.clone());
                 commands.trigger(UpdateGamesList);
+                commands.trigger(ClientDetailsEvent { cid, name });
             }
 
             /* The creator joins the newly created game after receiving its id. */
@@ -181,30 +193,42 @@ pub fn poll_network(
 
             /* Someone (or we) successfully joined a game. */
             ServerMessage::GameJoined(gid, cid, side) => {
-                // the join changed the game details, refresh it
+                // In all cases, query the updated game details.
                 commands.trigger(NetworkSend(ClientMessage::QueryGameDetails(gid)));
 
-                // it is us, so set the active game
-                if session.id == Some(cid) {
-                    let game_info = lobby.get_game_info(gid).copied().unwrap_or(GameDetails {
-                        white_player: None,
-                        black_player: None,
-                        _time: 0,
-                        _time_inc: 0,
-                    });
+                let is_self = session.id == Some(cid);
+                let is_our_game = active_game.as_ref().map_or(false, |game| game.gid == gid);
+
+                if is_self {
+                    // Case 1: We joined a game -> create ActiveGame resource, transition UI, and query board/history.
+                    let mut game_info = lobby.get_game_info(gid).copied().unwrap_or_default();
+                    game_info.set_player(side, cid);
+
                     let game = ActiveGame {
                         gid,
                         side,
                         internal_board: HashMap::new(),
                         game_info,
-
                         move_history: Vec::new(),
                     };
                     commands.insert_resource(game);
-                    // send event to the UI to trigger the switch to the game screen, query game info
                     commands.trigger(GameJoinedEvent { gid, side });
                     commands.trigger(NetworkSend(ClientMessage::QueryBoard(gid)));
                     commands.trigger(NetworkSend(ClientMessage::QueryMoveHistory(gid)));
+                } else if is_our_game {
+                    // Case 2: Someone else joined the game we are in -> update player info and labels.
+                    if let Some(game) = active_game.as_mut() {
+                        game.game_info.set_player(side, cid);
+                        commands.trigger(GameJoinedEvent { gid, side });
+                    }
+                    if let Some(name) = lobby.get_client_info(cid) {
+                        commands.trigger(ClientDetailsEvent {
+                            cid,
+                            name: name.clone(),
+                        });
+                    } else {
+                        commands.trigger(NetworkSend(ClientMessage::QueryClientDetails(cid)));
+                    }
                 }
             }
 
