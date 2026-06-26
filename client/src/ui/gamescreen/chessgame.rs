@@ -1,5 +1,6 @@
 use crate::backend::net::NetworkSend;
-use crate::backend::{ActiveGame, GameJoinedEvent, LobbyState};
+use crate::backend::{ActiveGame, ClientDetailsEvent, GameJoinedEvent, LobbyState};
+pub use crate::backend::{ClientDetails, GameJoined};
 use crate::ui::gamescreen::chessboard::{BOARD_SIZE, ChessBoard, ChessboardPlugin, RotateBoardEvent};
 use crate::ui::gamescreen::dialogs::GamescreenDialogsPlugin;
 use crate::ui::gamescreen::move_history::*;
@@ -12,13 +13,24 @@ use bevy::feathers::tokens;
 use bevy::picking::Pickable;
 use bevy::prelude::*;
 use bevy::ui_widgets::Activate;
-use chess_core::ClientId;
 use chess_core::protocol::messages::ClientMessage;
 use std::f32::consts::PI;
 
 /// Marker component for everything that belongs to the in-game screen.
 #[derive(Component, Clone, Copy, Default)]
 pub struct ChessSceneRootNode;
+#[derive(Component, Clone, Copy, Default)]
+pub struct WhitePlayerLabel;
+#[derive(Component, Clone, Copy, Default)]
+pub struct BlackPlayerLabel;
+#[derive(Component, Clone, Copy, Default)]
+pub struct DrawOfferButton;
+#[derive(Event)]
+pub struct ChessGameInitialized;
+#[derive(Event)]
+pub struct DrawOffered(pub bool);
+
+
 
 pub const SOURCE_COLOR: Color = Color::srgb_u8(250, 113, 113);
 pub const DESTINATION_COLOR: Color = Color::srgb_u8(113, 250, 113);
@@ -41,17 +53,12 @@ impl Plugin for ChessGamePlugin {
             .add_systems(
                 Update,
                 (
-                    update_player_names.run_if(
-                        resource_exists::<ActiveGame>.and_then(
-                            resource_exists_and_changed::<LobbyState>
-                                .or_else(resource_exists_and_changed::<ActiveGame>),
-                        ),
-                    ),
                     (send_scroll_events, resize_move_history_text),
                 )
                     .run_if(in_state(Screen::Game)),
             )
             .add_observer(on_game_joined)
+            .add_observer(update_player_names)
             .add_observer(on_rotate)
             .add_observer(update_move_history)
             .add_observer(refresh_move_history)
@@ -68,26 +75,6 @@ impl Plugin for ChessGamePlugin {
     }
 }
 
-fn on_game_joined(
-    _ev: On<GameJoinedEvent>,
-    mut next_screen: ResMut<NextState<Screen>>,
-    mut next_overlay: ResMut<NextState<Overlay>>,
-) {
-    next_screen.set(Screen::Game);
-    next_overlay.set(Overlay::None);
-}
-
-#[derive(Component, Clone, Copy, Default)]
-pub struct WhitePlayerLabel;
-#[derive(Component, Clone, Copy, Default)]
-pub struct BlackPlayerLabel;
-#[derive(Component, Clone, Copy, Default)]
-pub struct DrawOfferButton;
-#[derive(Event)]
-pub struct ChessGameInitialized;
-#[derive(Event)]
-pub struct DrawOffered(pub bool);
-
 /// Helper method that gives the 'Resign' and the 'Draw' button the same style.
 fn left_panel_button_node() -> Node {
     Node {
@@ -101,7 +88,6 @@ fn left_panel_button_node() -> Node {
         ..default()
     }
 }
-
 /// `chess_ui_scene` creates all the UI elements around the chess game: the player labels,
 /// the panel for resign/draw buttons, and the move history.
 /// The actual chess board is NOT a UI element but a real game element.
@@ -131,9 +117,9 @@ fn chess_ui_scene() -> impl Scene {
                 border: UiRect::all(px(1)),
                 border_radius: BorderRadius::all(px(5))
             }
+            WhitePlayerLabel
             BackgroundColor(THEME_SURFACE)
             BorderColor::all(THEME_BORDER)
-            WhitePlayerLabel
             Children [ Text("Waiting for White...") ThemedText ]
             --
             // Black Player Label
@@ -149,9 +135,9 @@ fn chess_ui_scene() -> impl Scene {
                 border: UiRect::all(px(1)),
                 border_radius: BorderRadius::all(px(5))
             }
+            BlackPlayerLabel
             BackgroundColor(THEME_SURFACE)
             BorderColor::all(THEME_BORDER)
-            BlackPlayerLabel
             Children [ Text("Waiting for Black...") ThemedText ]
             --
             // Left Panel (Game Buttons)
@@ -206,7 +192,12 @@ fn chess_ui_scene() -> impl Scene {
 }
 
 /// Sets up the chess board and triggers the initial board draw.
-fn setup_chessboard(mut commands: Commands, window_query: Single<(Entity, &Window)>) {
+fn setup_chessboard(
+    mut commands: Commands,
+    window_query: Single<(Entity, &Window)>,
+    game: Option<Res<ActiveGame>>,
+    lobby: Res<LobbyState>,
+) {
     log::info!("Setting up chessboard");
 
     commands.spawn(ChessBoard::new());
@@ -221,17 +212,42 @@ fn setup_chessboard(mut commands: Commands, window_query: Single<(Entity, &Windo
         height: win_size.y,
     });
 
+    // after we set up the board, we look into the ActiveGame resource
+    // to see who is connected to the game. If we have their names, we
+    // send the `ClientDetailsEvent` to the UI system, which updates the player labels.
+    // if we don't have their names, we need to send `QueryClientDetails` to the server.
+    if let Some(game) = game {
+        if let Some(white_id) = game.game_info.white_player {
+            if let Some(name) = lobby.get_client_info(white_id) {
+                commands.trigger(ClientDetailsEvent {
+                    cid: white_id,
+                    name: name.clone(),
+                });
+            } else {
+                commands.trigger(NetworkSend(ClientMessage::QueryClientDetails(white_id)));
+            }
+        }
+        if let Some(black_id) = game.game_info.black_player {
+            if let Some(name) = lobby.get_client_info(black_id) {
+                commands.trigger(ClientDetailsEvent {
+                    cid: black_id,
+                    name: name.clone(),
+                });
+            } else {
+                commands.trigger(NetworkSend(ClientMessage::QueryClientDetails(black_id)));
+            }
+        }
+    }
+
     commands.trigger(ChessGameInitialized);
 }
 
 /// Despawn all entities that are part of the chess game screen,
 /// that is, the UI and the chessboard.
 /// Obviously happens when we leave a game.
-fn cleanup_chess_scene(
-    mut commands: Commands,
-    query_ui: Single<Entity, With<ChessSceneRootNode>>,
-    query_board: Single<Entity, With<ChessBoard>>,
-) {
+fn cleanup_chess_scene(mut commands: Commands,
+                       query_ui: Single<Entity, With<ChessSceneRootNode>>,
+                       query_board: Single<Entity, With<ChessBoard>>) {
     log::debug!("Cleaning up chess scene");
 
     let ui = query_ui.entity();
@@ -251,57 +267,57 @@ fn listen_keyboard_input(
     }
 }
 
-fn update_player_names(
-    game: Res<ActiveGame>,
-    lobby: Res<LobbyState>,
-    query_white: Single<&Children, With<WhitePlayerLabel>>,
-    query_black: Single<&Children, (With<BlackPlayerLabel>, Without<WhitePlayerLabel>)>,
-    mut query_text: Query<&mut Text>,
+/// Event Handler for `GameJoinedEvent`.
+/// When we join a game, switch to the game screen and dismiss any overlay.
+pub fn on_game_joined(
+    ev: On<GameJoinedEvent>,
+    screen: Res<State<Screen>>,
+    mut next_screen: ResMut<NextState<Screen>>,
+    mut next_overlay: ResMut<NextState<Overlay>>,
 ) {
-    let game_info = game.game_info;
-
-    update_player_label(
-        &query_white,
-        game_info.white_player,
-        "Waiting for White...",
-        &lobby,
-        &mut query_text,
-    );
-    update_player_label(
-        &query_black,
-        game_info.black_player,
-        "Waiting for Black...",
-        &lobby,
-        &mut query_text,
-    );
+    log::debug!("Received GameJoinedEvent for game ID {}", ev.gid);
+    // When we join a game, switch to the game screen and dismiss any overlay.
+    if *screen.get() != Screen::Game {
+        next_screen.set(Screen::Game);
+        next_overlay.set(Overlay::None);
+    }
 }
 
-fn update_player_label(
-    children: &Children,
-    player_id: Option<ClientId>,
-    waiting_text: &str,
-    lobby: &LobbyState,
-    query_text: &mut Query<&mut Text>,
+pub fn update_player_names(
+    ev: On<ClientDetailsEvent>,
+    game: Option<Res<ActiveGame>>,
+    query_white: Query<&Children, With<WhitePlayerLabel>>,
+    query_black: Query<&Children, (With<BlackPlayerLabel>, Without<WhitePlayerLabel>)>,
+    mut query_text: Query<&mut Text>,
 ) {
-    let Some(&text_entity) = children.first() else {
-        return;
-    };
-    let Ok(mut text) = query_text.get_mut(text_entity) else {
+    let Some(game) = game else {
         return;
     };
 
-    let name = player_id
-        .map(|id| {
-            lobby
-                .get_client_info(id)
-                .cloned()
-                .unwrap_or_else(|| format!("Player {id}"))
-        })
-        .unwrap_or_else(|| waiting_text.to_string());
+    if game.game_info.white_player == Some(ev.cid) {
+        if let Ok(children) = query_white.single() {
+            if let Some(&text_entity) = children.first() {
+                if let Ok(mut text) = query_text.get_mut(text_entity) {
+                    if text.0 != ev.name {
+                        log::debug!("Updating white player name to {}", ev.name);
+                        text.0 = ev.name.clone();
+                    }
+                }
+            }
+        }
+    }
 
-    if text.0 != name {
-        log::debug!("Updating player name to {name}");
-        text.0 = name;
+    if game.game_info.black_player == Some(ev.cid) {
+        if let Ok(children) = query_black.single() {
+            if let Some(&text_entity) = children.first() {
+                if let Ok(mut text) = query_text.get_mut(text_entity) {
+                    if text.0 != ev.name {
+                        log::debug!("Updating black player name to {}", ev.name);
+                        text.0 = ev.name.clone();
+                    }
+                }
+            }
+        }
     }
 }
 

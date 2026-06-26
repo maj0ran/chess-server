@@ -163,6 +163,7 @@ fn game_list_row_scene(label: String, game_id: GameId) -> impl Scene {
         }
         BorderColor::all(THEME_BORDER)
         BackgroundColor(THEME_SURFACE_LIGHT)
+        // clicking on a game will save the Game ID and spawn the JoinGame dialog for further settings.
         on(move |_: On<Activate>, mut next: ResMut<NextState<Overlay>>, mut lobby: ResMut<LobbyState>| {
             lobby.pending_join_game = Some(game_id);
             next.set(Overlay::JoinGame);
