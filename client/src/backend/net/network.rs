@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 use chess_core::NetResult;
+use chess_core::*;
+use ::log;
 use chess_core::net::connection::Connection;
 use chess_core::protocol::messages::{ClientMessage, ServerMessage};
 use chess_core::protocol::parser::NetMessage;
@@ -34,13 +36,13 @@ impl NetTransport {
         let (tx_to_server, rx_from_client) = smol::channel::unbounded();
         let (tx_to_client, rx_from_server) = smol::channel::unbounded();
 
-        log::info!("Connecting to: {}", server_addr);
+        log_proc!(info, "Connecting to: {}", server_addr);
 
         std::thread::spawn(move || {
             match smol::block_on(network_thread(&server_addr, rx_from_client, tx_to_client)) {
                 Ok(_) => {}
                 Err(e) => {
-                    log::error!("Failed to start network thread. Server running? {}", e)
+                    log_proc!(error, "Failed to start network thread. Server running? {}", e)
                 }
             };
         });
@@ -72,7 +74,7 @@ pub async fn network_thread(
 
     let conn = Connection::new(tls_stream);
 
-    log::info!("Network thread started");
+    log_proc!(info, "Network thread started");
 
     let (mut from_server, mut to_server) = conn.split();
 
@@ -80,11 +82,12 @@ pub async fn network_thread(
     std::thread::spawn(move || {
         smol::block_on(async move {
             while let Ok(cmd) = rx_from_client.recv().await {
+                log_send!(debug, "Sent message to server: {:?}", cmd);
                 if let Err(e) = to_server.write_out(&cmd.to_bytes()).await {
-                    log::error!("Failed to send command to server: {}", e);
+                    log_send!(error, "Failed to send command to server: {}", e);
                 }
             }
-            log::info!("Transmit thread shutting down");
+            log_proc!(info, "Transmit thread shutting down");
         });
     });
 
@@ -93,10 +96,10 @@ pub async fn network_thread(
         smol::block_on(async move {
             while let Ok(server_msg) = from_server.read_msg::<ServerMessage>().await {
                 if tx_to_client.send(server_msg).await.is_err() {
-                    log::error!("Failed to send event to UI");
+                    log_recv!(error, "Failed to forward server message from network thread to client!");
                 }
             }
-            log::info!("Receive thread shutting down");
+            log_proc!(info, "Receive thread shutting down");
         });
     });
 
@@ -120,7 +123,7 @@ pub fn poll_network(
     let mut active_game = active_game;
     let pending_join_side = pending_join_side.map(|side| side.0);
     while let Ok(server_msg) = network.rx.try_recv() {
-        log::debug!("Received server message: {:?}", server_msg);
+        log_recv!(debug, "Received message from server: {:?}", server_msg);
 
         match server_msg {
             /* Receive a list of all available games. */
@@ -267,7 +270,7 @@ pub fn poll_network(
                 session.id = Some(cid);
                 let name = session.name.clone();
 
-                log::info!("Assigned session id: {}", cid);
+                log_proc!(info, "Assigned session id: {}", cid);
 
                 commands.trigger(NetworkSend(ClientMessage::SetNickname(name)));
             }
@@ -322,6 +325,6 @@ pub struct NetworkSend(pub ClientMessage);
 pub fn send_message(ev: On<NetworkSend>, net: Res<NetTransport>) {
     let msg = ev.0.clone();
     if let Err(e) = net.tx.try_send(msg) {
-        log::error!("Failed to send message to network thread: {}", e);
+        log_send!(error, "Failed to send message to network thread: {}", e);
     }
 }

@@ -1,4 +1,3 @@
-use log::debug;
 use std::collections::HashMap;
 use std::fmt;
 use std::ops::Index;
@@ -8,6 +7,7 @@ use crate::chess::hash::ZobristHash;
 use crate::chess::pieces::*;
 use crate::piece;
 use chess_core::*;
+use ::log;
 
 /// The chess struct holds all information for a game of chess.
 /// This is basically the same information also encoded in a FEN.
@@ -590,7 +590,7 @@ impl Chess {
             true,
         );
 
-        debug!("executed move: {style_bold}{fg_green}{src}{dst}{style_reset}{fg_reset}!");
+        log_proc!(debug, "executed move: {style_bold}{fg_green}{src}{dst}{style_reset}{fg_reset}!");
         Ok(updated_tiles)
     }
 

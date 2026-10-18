@@ -53,7 +53,7 @@ impl<S: AsyncRead + Unpin> Connection<S> {
             .read_exact(&mut self.buf[..length as usize])
             .await?;
         self.buf.len = length as usize;
-        log::trace!("received frame!: {} (Length: {})", &self.buf, self.buf.len);
+        crate::log_recv!(trace, "frame!: {} (Length: {})", &self.buf, self.buf.len);
 
         T::from_bytes(&self.buf[..self.buf.len])
     }
@@ -77,7 +77,7 @@ impl<S: AsyncWrite + Unpin> Connection<S> {
         buf.extend_from_slice(data);
 
         self.stream.write_all(&buf).await?;
-        log::trace!("sent buffer: {:?} ({} bytes)", buf, data.len());
+        crate::log_send!(trace, "buffer: {:?} ({} bytes)", buf, data.len());
         Ok(())
     }
 }

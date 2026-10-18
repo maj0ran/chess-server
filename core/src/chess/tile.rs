@@ -3,9 +3,8 @@ use std::{
     ops::{Add, Sub},
 };
 
-use log::info;
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Tile {
     pub file: char,
     pub rank: char,
@@ -35,8 +34,6 @@ impl From<u8> for Tile {
     fn from(value: u8) -> Self {
         let file = (value % 8 + 97) as char;
         let rank = (value / 8 + 49) as char;
-
-        info!("{}{}", file, rank);
 
         Tile::new(file, rank).unwrap() // TODO: dirty
     }
@@ -114,5 +111,10 @@ impl fmt::Display for Tile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = self.file.to_string() + &self.rank.to_string();
         write!(f, "{}", s)
+    }
+}
+impl fmt::Debug for Tile {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.to_string())
     }
 }

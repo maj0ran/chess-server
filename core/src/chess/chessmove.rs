@@ -1,9 +1,9 @@
 use crate::tile::Tile;
-use crate::*;
 use std::fmt;
 use std::str::FromStr;
+use ::log;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum Promotion {
     Queen,
     Knight,
@@ -23,7 +23,13 @@ impl fmt::Display for Promotion {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+impl fmt::Debug for Promotion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.to_string())
+    }
+}
+
+#[derive(Clone, Copy, PartialEq)]
 pub struct ChessMove {
     pub src: Tile,
     pub dst: Tile,
@@ -70,33 +76,39 @@ impl fmt::Display for ChessMove {
     }
 }
 
+impl fmt::Debug for ChessMove {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.to_string())
+    }
+}
+
 pub trait ToChessMove {
     fn parse(&self) -> Option<ChessMove>;
 }
 
 impl ToChessMove for String {
     fn parse(&self) -> Option<ChessMove> {
-        log::trace!(
-            "converting {}{}{}{}{} to chess move",
-            fg_blue,
-            style_bold,
-            &self,
-            fg_reset,
-            style_reset
-        );
+   //     crate::log_proc!(trace,
+   //         "converting {}{}{}{}{} to chess move",
+   //         fg_blue,
+   //         style_bold,
+   //         &self,
+   //         fg_reset,
+   //         style_reset
+   //     );
 
         if !(4..=5).contains(&self.len()) {
-            log::warn!("could not parse chess move: {}", self);
+            crate::log_send!(warn, "could not parse chess move: {}", self);
             return None;
         }
 
         let mut iter = self.chars();
         let src = Tile::new(iter.next()?, iter.next()?).or_else(|| {
-            log::warn!("could not parse chess move: {}", self);
+            crate::log_proc!(warn, "could not parse chess move: {}", self);
             None
         })?;
         let dst = Tile::new(iter.next()?, iter.next()?).or_else(|| {
-            log::warn!("could not parse chess move: {}", self);
+            crate::log_proc!(warn, "could not parse chess move: {}", self);
             None
         })?;
 

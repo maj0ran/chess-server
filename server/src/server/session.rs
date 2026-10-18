@@ -2,7 +2,8 @@ use crate::net::tls::TlsStream;
 use chess_core::net::Connection;
 use chess_core::protocol::messages::{ClientMessage, ServerMessage};
 use chess_core::protocol::parser::NetMessage;
-use chess_core::{ClientId, NetError, NetResult};
+use chess_core::*;
+use ::log;
 use smol::channel::{unbounded, Receiver, Sender};
 use smol::future;
 use smol::net::TcpStream;
@@ -50,7 +51,7 @@ impl ClientSession {
 
         match res {
             Ok(_) => {}
-            Err(e) => log::error!("got new client but failed to register with game manager: {e}"),
+            Err(e) => log_proc!(error, "got new client but failed to register with game manager: {e}"),
         }
 
         let mut client = ClientSession {
@@ -65,7 +66,7 @@ impl ClientSession {
             .write_out(&ServerMessage::LoginAccepted(id).to_bytes())
             .await
         {
-            log::error!("failed to send login event to client #{}: {}", id, e);
+            log_send!(error, "failed to send login event to client #{}: {}", id, e);
         }
 
         client
@@ -81,9 +82,9 @@ impl ClientSession {
         srv_tx: &Sender<(ClientId, ClientMessage)>,
         cmd: ClientMessage,
     ) -> Result<()> {
-        log::debug!("receiving message from client: {:?}", cmd);
+        log_recv!(debug, "message from client: {:?}", cmd);
         if let Err(e) = srv_tx.send((id, cmd)).await {
-            log::warn!("error sending client message to GM!: {}", e);
+            log_recv!(warn, "error sending client message to GM!: {}", e);
         };
 
         Ok(())
@@ -95,7 +96,7 @@ impl ClientSession {
         conn: &mut Connection<S>,
         msg: ServerMessage,
     ) -> NetResult<()> {
-        log::debug!("sending message to client: {:?}", msg);
+        log_send!(debug, "message to client: {:?}", msg);
         conn.write_out(&msg.to_bytes()).await
     }
 
@@ -121,7 +122,7 @@ impl ClientSession {
                     Ok(cmd) => {
                         let result = ClientSession::handle_incoming_message(id, &srv_tx, cmd).await;
                         if let Err(e) = result {
-                            log::error!("error handling incoming message: {}", e);
+                            log_recv!(error, "error handling incoming message: {}", e);
                         }
                     }
                     Err(e) => {
@@ -134,7 +135,7 @@ impl ClientSession {
                                 break;
                             }
                         }
-                        log::warn!("failed to read message from client #{}: {}", id, e);
+                        log_recv!(warn, "failed to read message from client #{}: {}", id, e);
                         break;
                     }
                 }
@@ -149,12 +150,12 @@ impl ClientSession {
                         if let Err(e) =
                             ClientSession::handle_outgoing_message(&mut conn_out, msg).await
                         {
-                            log::error!("error sending message to client #{}: {}", id, e);
+                            log_send!(error, "error sending message to client #{}: {}", id, e);
                             break;
                         }
                     }
                     Err(e) => {
-                        log::warn!("error receiving channel message from GM!: {}", e);
+                        log_send!(warn, "error receiving channel message from GM!: {}", e);
                         break;
                     }
                 }

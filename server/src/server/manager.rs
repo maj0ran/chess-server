@@ -5,6 +5,7 @@ use chess_core::protocol::messages::{ClientMessage, ServerMessage};
 use chess_core::protocol::{JoinGameParams, NewGameParams, UserRoleSelection};
 use chess_core::states::{ChessGameState, GameOverReason};
 use chess_core::*;
+use ::log;
 use chrono::prelude::*;
 use smol::channel::{Receiver, Sender};
 use smol::fs::File;
@@ -65,7 +66,7 @@ impl GameManager {
         let id = self.next_game_id;
         self.next_game_id += 1;
 
-        log::info!("create game with id: {} (mode: {})", id, game_params.mode);
+        log_proc!(info, "create game with id: {} (mode: {})", id, game_params.mode);
         ChessGame {
             id,
             chess: Chess::new(),
@@ -115,7 +116,6 @@ impl GameManager {
                             self.handle_leave_game(cid, gid).await;
                         }
                         ClientMessage::SetNickname(name) => {
-                            log::info!("Set nickname for client {} to {}", cid, name);
                             self.handle_set_nickname(cid, name).await;
                         }
                         ClientMessage::QueryBoard(gid) => {
@@ -162,7 +162,7 @@ impl GameManager {
 
             Err(e) => {
                 // TODO: Joining game failed; currently we do not propagate a specific event to client here.
-                log::warn!("JoinGame failed for client {} in game {}: {}", cid, gid, e);
+                log_proc!(warn, "JoinGame failed for client {} in game {}: {}", cid, gid, e);
             }
         }
     }
@@ -245,7 +245,7 @@ impl GameManager {
                         }
                     },
                     None => {
-                        log::warn!("Invalid ChessGameState query for game: {}", gid)
+                        log_proc!(warn, "Invalid ChessGameState query for game: {}", gid);
                     }
                 }
             }
@@ -282,7 +282,7 @@ impl GameManager {
                 self.send_to(cid, msg).await;
             }
             None => {
-                log::warn!("Client asked for invalid game: {}", gid)
+                log_proc!(warn, "Client asked for invalid game: {}", gid);
             }
         }
     }
@@ -304,6 +304,7 @@ impl GameManager {
     /// Setting the nickname of a client.
     async fn handle_set_nickname(&mut self, cid: ClientId, nickname: String) {
         if let Some(c) = self.clients.get_mut(&cid) {
+            log_proc!(info, "Set nickname for client {} to {}", cid, nickname);
             c.name = nickname;
         }
     }

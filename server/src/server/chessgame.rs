@@ -3,6 +3,7 @@ use crate::chess::pieces::Piece;
 use chess_core::protocol::UserRoleSelection;
 use chess_core::states::{ChessGameState, GameOverReason};
 use chess_core::*;
+use ::log;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// A `ChessGame` represents a real chess game between two players.
@@ -232,7 +233,7 @@ impl ChessGame {
         } else if self.black_player == Some(client_id) {
             Some(ChessColor::Black)
         } else {
-            log::warn!("Client is not part of the game");
+            log_proc!(warn, "Client is not part of the game");
             None
         }
     }

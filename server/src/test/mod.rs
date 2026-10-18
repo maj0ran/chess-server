@@ -14,6 +14,8 @@ pub mod testgames {
     use crate::test;
     use chess_core::protocol::messages::ServerMessage;
     use chess_core::protocol::UserRoleSelection;
+    use chess_core::*;
+    use ::log;
     use smol::Timer;
     use smol_macros::test;
 
@@ -68,7 +70,7 @@ pub mod testgames {
                     Err(_) => todo!(),
                 }
             }
-            log::info!("testgame complete");
+            log_proc!(info, "testgame complete");
         }
     }
 
@@ -140,7 +142,7 @@ pub mod testgames {
                 }
                 Timer::after(Duration::from_millis(100)).await;
             }
-            log::info!("test_two_players complete");
+            log_proc!(info, "test_two_players complete");
         }
     }
 

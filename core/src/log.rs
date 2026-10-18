@@ -1,3 +1,5 @@
+pub use ::log;
+
 pub const PREFIX_SEND: &str = "\x1B[35m[SEND]\x1B[39m";
 pub const PREFIX_RECV: &str = "\x1B[36m[RECV]\x1B[39m";
 pub const PREFIX_PROC: &str = "\x1B[94m[PROC]\x1B[39m";

@@ -6,6 +6,8 @@ use crate::ui::gamescreen::dialogs::GamescreenDialogsPlugin;
 use crate::ui::gamescreen::move_history::*;
 use crate::ui::theme::*;
 use crate::ui::{Overlay, Screen};
+use chess_core::*;
+use ::log;
 use bevy::feathers::controls::FeathersButton;
 use bevy::feathers::display::label;
 use bevy::feathers::theme::{InheritableThemeTextColor, SurfaceLevel, ThemeBackgroundColor, ThemeContext, ThemedText, UiTheme};
@@ -198,7 +200,7 @@ fn setup_chessboard(
     game: Option<Res<ActiveGame>>,
     lobby: Res<LobbyState>,
 ) {
-    log::info!("Setting up chessboard");
+    log_proc!(info, "Setting up chessboard");
 
     commands.spawn(ChessBoard::new());
 
@@ -248,7 +250,7 @@ fn setup_chessboard(
 fn cleanup_chess_scene(mut commands: Commands,
                        query_ui: Single<Entity, With<ChessSceneRootNode>>,
                        query_board: Single<Entity, With<ChessBoard>>) {
-    log::debug!("Cleaning up chess scene");
+    log_proc!(debug, "Cleaning up chess scene");
 
     let ui = query_ui.entity();
     commands.entity(ui).despawn();
@@ -275,7 +277,7 @@ pub fn on_game_joined(
     mut next_screen: ResMut<NextState<Screen>>,
     mut next_overlay: ResMut<NextState<Overlay>>,
 ) {
-    log::debug!("Received GameJoinedEvent for game ID {}", ev.gid);
+    log_proc!(debug, "Received GameJoinedEvent for game ID {}", ev.gid);
     // When we join a game, switch to the game screen and dismiss any overlay.
     if *screen.get() != Screen::Game {
         next_screen.set(Screen::Game);
@@ -299,7 +301,7 @@ pub fn update_player_names(
             if let Some(&text_entity) = children.first() {
                 if let Ok(mut text) = query_text.get_mut(text_entity) {
                     if text.0 != ev.name {
-                        log::debug!("Updating white player name to {}", ev.name);
+                        log_proc!(debug, "Updating white player name to {}", ev.name);
                         text.0 = ev.name.clone();
                     }
                 }
@@ -312,7 +314,7 @@ pub fn update_player_names(
             if let Some(&text_entity) = children.first() {
                 if let Ok(mut text) = query_text.get_mut(text_entity) {
                     if text.0 != ev.name {
-                        log::debug!("Updating black player name to {}", ev.name);
+                        log_proc!(debug, "Updating black player name to {}", ev.name);
                         text.0 = ev.name.clone();
                     }
                 }
@@ -363,7 +365,7 @@ fn on_rotate(
     mut commands: Commands,
     window_query: Single<(Entity, &Window)>,
 ) {
-    log::debug!("Rotating game view");
+    log_proc!(debug, "Rotating game view");
 
     // rotate the board 180'
     board.rotate_z(PI);

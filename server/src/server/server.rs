@@ -5,6 +5,8 @@ use chess_core::ClientId;
 use smol::channel::unbounded;
 use smol::net::*;
 use std::sync::Arc;
+use chess_core::*;
+use ::log;
 
 pub type Result<T> = std::result::Result<T, std::io::Error>;
 
@@ -46,13 +48,12 @@ impl Server {
             game_manager.run().await;
         })
         .detach();
-
-        log::info!("start listening on port {}.", port);
+        log_proc!(info, "start listening on port {}.", port);
         let listener = TcpListener::bind(format!("0.0.0.0:{}", port)).await?;
         // listen for incoming connections. An accepted connection will be converted to a client task.
         loop {
             let (socket, addr) = listener.accept().await?;
-            log::info!("accepted connection from {}!", addr);
+            log_proc!(info, "accepted connection from {}!", addr);
 
             let tls_server = self.tls_server.clone();
             let client_tx = client_tx.clone();
@@ -67,7 +68,7 @@ impl Server {
                         net_client.run().await;
                     }
                     Err(e) => {
-                        log::error!("TLS handshake failed for {}: {}", addr, e);
+                        log_proc!(error, "TLS handshake failed for {}: {}", addr, e);
                     }
                 }
             })
