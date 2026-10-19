@@ -15,11 +15,14 @@ pub struct HomescreenDialogsPlugin;
 impl Plugin for HomescreenDialogsPlugin {
     fn build(&self, app: &mut App) {
         app
+            // Create game dialog
             .add_systems(
                 OnEnter(Overlay::CreateGame),
                 (initialize_create_dialog, create_dialog_scene.spawn()).chain(),
             )
-            .add_systems(OnExit(Overlay::CreateGame), cleanup_create_dialog)
-            .add_systems(OnEnter(Overlay::JoinGame), join_dialog_scene.spawn());
+            // Join game dialog
+            .add_systems(
+                OnEnter(Overlay::JoinGame),
+                join_dialog_scene.spawn());
     }
 }

@@ -17,15 +17,19 @@ pub struct GamescreenDialogsPlugin;
 impl Plugin for GamescreenDialogsPlugin {
     fn build(&self, app: &mut App) {
         app.add_observer(on_game_over)
+            // Game over dialog
             .add_systems(
                 OnEnter(Overlay::GameOver),
                 (game_over_dialog_scene.spawn(), set_game_over_message).chain(),
             )
-            .add_systems(OnExit(Overlay::GameOver), cleanup_game_over_dialog)
+            // Promotion dialog
             .add_systems(
                 OnEnter(Overlay::Promotion),
                 (promotion_dialog_scene.spawn(), initialize_promotion_images).chain(),
             )
-            .add_systems(OnEnter(Overlay::Resign), resign_dialog_scene.spawn());
+            // Resign dialog
+            .add_systems(
+                OnEnter(Overlay::Resign),
+                resign_dialog_scene.spawn());
     }
 }

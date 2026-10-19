@@ -195,11 +195,3 @@ fn confirm_create_game(
     commands.insert_resource(PendingJoinSide(settings.side));
     next_overlay.set(Overlay::None);
 }
-
-/// dialog destructor
-pub fn cleanup_create_dialog(mut commands: Commands, query: Query<Entity, With<Dialog>>) {
-    for entity in query.iter() {
-        commands.entity(entity).despawn();
-    }
-    commands.remove_resource::<CreateGameSettings>();
-}

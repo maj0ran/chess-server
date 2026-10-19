@@ -39,7 +39,7 @@ impl Plugin for UiPlugin {
                 ChessGamePlugin,
             ))
             .add_systems(Update, setup_dialogs)
-            .add_systems(OnExit(Overlay::JoinGame), despawn_dialog);
+            .add_systems(OnEnter(Overlay::None), despawn_dialog);
     }
 }
 

@@ -79,11 +79,3 @@ pub(crate) fn set_game_over_message(
 ) {
     text.0 = message.0.clone();
 }
-
-/// Dialog Destructor
-pub fn cleanup_game_over_dialog(mut commands: Commands, query: Query<Entity, With<Dialog>>) {
-    for entity in query.iter() {
-        commands.entity(entity).despawn();
-    }
-    commands.remove_resource::<GameOverMessage>();
-}
