@@ -21,7 +21,7 @@ impl ChessSquare {
         name: String,
         pos: Vec2,
         color: Color,
-    ) -> (ChessSquare, Sprite, Transform, Pickable) {
+    ) -> (ChessSquare, Sprite, Transform) {
         (
             ChessSquare { name, color },
             Sprite {
@@ -33,7 +33,6 @@ impl ChessSquare {
                 translation: pos.extend(1.0),
                 ..default()
             },
-            Pickable::default(),
         )
     }
 }
