@@ -1,12 +1,16 @@
-use bevy::feathers::controls::FeathersButton;
-use bevy::feathers::display::{caption, label};
-use bevy::feathers::theme::{InheritableThemeTextColor, ThemedText};
-use bevy::feathers::tokens;
-use bevy::prelude::*;
-use bevy::ui_widgets::Activate;
-use crate::backend::GameOverEvent;
-use crate::ui::theme::{THEME_BORDER, THEME_GOLD, THEME_SURFACE};
-use crate::ui::{theme, Dialog, Overlay, Screen};
+use bevy::{
+    feathers::controls::FeathersButton,
+    feathers::display::{caption, label},
+    feathers::theme::{InheritableThemeTextColor, ThemedText},
+    feathers::tokens,
+    ui_widgets::Activate,
+};
+
+use crate::{
+    backend::GameOverEvent,
+    ui::*,
+    ui::theme::*,
+};
 
 #[derive(Component, Clone, Copy, Default)]
 pub(crate) struct GameOverMessageText;
@@ -57,7 +61,7 @@ pub fn game_over_dialog_scene() -> impl Scene {
                 BackgroundColor(THEME_GOLD)
                 --
                 @FeathersButton { @caption: bsn! { @caption("OK") } }
-                theme::default_button_size_180()
+                default_button_size_180()
                     on(|_: On<Activate>,
                         mut screen: ResMut<NextState<Screen>>,
                         mut overlay: ResMut<NextState<Overlay>>| {

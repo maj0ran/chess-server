@@ -1,16 +1,13 @@
-use bevy::prelude::*;
-
 pub mod config;
 pub mod game;
 pub mod lobby;
 pub mod session;
 pub mod net;
 
+use bevy::prelude::*;
+
+pub use game::*;
 pub use config::Config;
-pub use game::{
-    ActiveGame, BoardUpdate, ClientDetails, ClientDetailsEvent, GameDetails, GameJoined,
-    GameJoinedEvent, GameOverEvent,
-};
 pub use lobby::LobbyState;
 pub use session::ClientSession;
 use crate::backend::net::{poll_network, NetTransport, send_message};

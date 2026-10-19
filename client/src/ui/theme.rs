@@ -1,11 +1,13 @@
-use bevy::color::{Alpha, Color};
-use bevy::feathers::{
-    dark_theme::create_dark_theme,
-    theme::{SemanticToken, SurfaceLevel, UiTheme},
-    tokens,
+use bevy::{
+    platform::collections::HashMap,
+    feathers::{
+        dark_theme::create_dark_theme,
+        theme::{SemanticToken, SurfaceLevel, UiTheme},
+        tokens,
+    },
+    color::{Alpha, Color},
+    prelude::*
 };
-use bevy::platform::collections::HashMap;
-use bevy::prelude::*;
 
 /// A soft, low-saturation wooden palette used by the client UI.
 pub const THEME_BACKGROUND: Color = Color::srgb(0.18, 0.13, 0.09);

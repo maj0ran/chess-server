@@ -6,17 +6,13 @@ mod piece;
 mod square;
 mod board;
 
+
+pub use board::*;
+use piece::*;
+use square::*;
+
 pub use assets::ChessAssets;
 pub use board::{ChessBoard, ResetSelection, RotateBoardEvent};
-
-use board::{
-    draw_chessboard, draw_pieces, handle_move, on_move_request, reset_selections
-};
-use piece::ChessPiece;
-use square::ChessSquare;
-
-pub const BOARD_SIZE: f32 = 800.0;
-pub const SQUARE_SIZE: f32 = BOARD_SIZE / 8.0;
 
 #[derive(Resource)]
 pub struct PendingMove {

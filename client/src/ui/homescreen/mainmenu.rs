@@ -1,15 +1,20 @@
-use bevy::feathers::controls::*;
-use bevy::feathers::display::*;
-use bevy::feathers::theme::*;
-use bevy::feathers::tokens;
-use bevy::prelude::*;
-use bevy::ui_widgets::*;
+use bevy::{
+    feathers::controls::*,
+    feathers::display::*,
+    feathers::theme::*,
+    feathers::tokens,
+    prelude::*,
+    ui_widgets::*
+};
 
-use crate::backend::LobbyState;
-use crate::backend::net::NetworkSend;
-use crate::ui::homescreen::dialogs::HomescreenDialogsPlugin;
-use crate::ui::theme::{THEME_BACKGROUND, THEME_BORDER, THEME_SURFACE, THEME_SURFACE_LIGHT, chess_theme, default_button_size_180, default_ui_shadow};
-use crate::ui::{Overlay, Screen};
+use crate::{
+    backend::LobbyState,
+    backend::net::NetworkSend,
+    ui::homescreen::dialogs::HomescreenDialogsPlugin,
+    ui::theme::*,
+    ui::{Overlay, Screen},
+};
+
 use chess_core::protocol::messages::ClientMessage;
 use chess_core::{ClientId, GameId};
 

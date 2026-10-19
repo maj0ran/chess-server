@@ -1,8 +1,13 @@
-use crate::backend::ActiveGame;
-use crate::ui::theme::RIGHT_PANEL_RATIO;
-use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
-use bevy::picking::hover::HoverMap;
-use bevy::prelude::*;
+use bevy::{
+    prelude::*,
+    input::mouse::{MouseScrollUnit, MouseWheel},
+    picking::hover::HoverMap,
+};
+
+use crate::{
+    backend::ActiveGame,
+    ui::theme::RIGHT_PANEL_RATIO
+};
 
 #[derive(Event)]
 pub struct MoveHistoryUpdated;

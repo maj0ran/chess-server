@@ -8,7 +8,7 @@ use bevy::window::{WindowResizeConstraints, WindowResolution};
 
 use crate::backend::ClientBackendPlugin;
 use crate::ui::theme::{MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH};
-use crate::ui::{COLOR_DARK, Overlay, Screen, UiPlugin};
+use crate::ui::{Overlay, Screen, UiPlugin};
 
 fn main() {
     // A convenient way to set logging messages is
@@ -44,7 +44,6 @@ fn main() {
             ClientBackendPlugin,
             UiPlugin,
         ))
-        .insert_resource(ClearColor(COLOR_DARK))
         .run();
 }
 

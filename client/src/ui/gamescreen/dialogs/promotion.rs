@@ -1,15 +1,21 @@
-use bevy::feathers::controls::FeathersButton;
-use bevy::feathers::display::label;
-use bevy::feathers::theme::InheritableThemeTextColor;
-use bevy::feathers::tokens;
-use bevy::prelude::*;
-use bevy::ui_widgets::Activate;
+use bevy::{
+    prelude::*,
+    feathers::controls::FeathersButton,
+    feathers::display::label,
+    feathers::theme::InheritableThemeTextColor,
+    feathers::tokens,
+    ui_widgets::Activate,
+};
+
+use crate::{
+    backend::ActiveGame,
+    ui::gamescreen::chessboard::{ChessAssets, PendingMove, RequestMove},
+    ui::theme,
+    ui::{Dialog, Overlay}
+};
+
 use chess_core::Promotion;
 
-use crate::backend::ActiveGame;
-use crate::ui::gamescreen::chessboard::{ChessAssets, PendingMove, RequestMove};
-use crate::ui::theme;
-use crate::ui::{Dialog, Overlay};
 
 #[derive(Component, Clone, Copy)]
 pub(crate) struct PromotionImage(pub Promotion);

@@ -1,4 +1,3 @@
-use chess_core::NetResult;
 use futures_rustls::TlsConnector;
 pub use futures_rustls::TlsStream;
 use futures_rustls::pki_types::CertificateDer;
@@ -8,6 +7,8 @@ use rustls::pki_types::pem::PemObject;
 use smol::io::{AsyncRead, AsyncWrite};
 use std::io;
 use std::sync::Arc;
+
+use chess_core::NetResult;
 
 pub struct TlsClient {
     pub client_config: Arc<ClientConfig>,

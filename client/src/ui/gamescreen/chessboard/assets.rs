@@ -1,6 +1,6 @@
-use bevy::asset::io::embedded::GetAssetServer;
-use bevy::prelude::*;
 use std::collections::HashMap;
+use bevy::prelude::*;
+use bevy::asset::io::embedded::GetAssetServer;
 
 /// Resource to hold all chess piece textures.
 #[derive(Resource)]

@@ -1,14 +1,15 @@
 use bevy::prelude::*;
+use smol::channel::{Receiver, Sender};
+use smol::net::TcpStream;
+use std::collections::HashMap;
+
 use chess_core::NetResult;
-use chess_core::*;
-use ::log;
 use chess_core::net::connection::Connection;
 use chess_core::protocol::messages::{ClientMessage, ServerMessage};
 use chess_core::protocol::parser::NetMessage;
 use chess_core::protocol::{JoinGameParams, UserRoleSelection};
-use smol::channel::{Receiver, Sender};
-use smol::net::TcpStream;
-use std::collections::HashMap;
+use chess_core::*;
+use ::log;
 
 use crate::backend::net::TlsClient;
 use crate::backend::{

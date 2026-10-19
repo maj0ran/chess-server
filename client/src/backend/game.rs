@@ -1,8 +1,10 @@
-use bevy::prelude::{Event, Resource};
+use std::collections::HashMap;
+
+use bevy::prelude::*;
+
 use chess_core::protocol::UserRoleSelection;
 use chess_core::states::GameOverReason;
 use chess_core::{ClientId, GameId};
-use std::collections::HashMap;
 
 #[derive(Event)]
 pub struct BoardUpdate;

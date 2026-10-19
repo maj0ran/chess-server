@@ -1,26 +1,32 @@
-use bevy::feathers::controls::FeathersButton;
-use bevy::feathers::display::{caption, label};
-use bevy::feathers::theme::InheritableThemeTextColor;
-use bevy::feathers::tokens;
-use bevy::prelude::*;
-use bevy::ui_widgets::Activate;
+use bevy::{
+    prelude::*,
+    feathers::controls::FeathersButton,
+    feathers::display::{caption, label},
+    feathers::theme::InheritableThemeTextColor,
+    feathers::tokens,
+    ui_widgets::Activate,
+};
+
+use crate::{
+    backend::LobbyState,
+    backend::net::NetworkSend,
+    ui::theme::*,
+    ui::{Dialog, Overlay},
+};
+
 use chess_core::protocol::messages::ClientMessage;
 use chess_core::protocol::{JoinGameParams, UserRoleSelection};
 
-use crate::backend::LobbyState;
-use crate::backend::net::NetworkSend;
-use crate::ui::theme;
-use crate::ui::{Dialog, Overlay};
 
-/// Visual definition of the Join Game dialog.
+/// Scene definition of the Join Game dialog.
 pub fn join_dialog_scene() -> impl Scene {
     bsn! {
         Dialog
         Children [
-            theme::default_dialog_node()
-            theme::default_ui_shadow()
-            BackgroundColor(theme::THEME_SURFACE)
-            BorderColor::all(theme::THEME_BORDER)
+            default_dialog_node()
+            default_ui_shadow()
+            BackgroundColor(THEME_SURFACE)
+            BorderColor::all(THEME_BORDER)
             InheritableThemeTextColor(tokens::TEXT_MAIN)
             Children [
                 @label("Select Side")
@@ -29,10 +35,10 @@ pub fn join_dialog_scene() -> impl Scene {
                 --
                 // line separator
                 Node { width: percent(100), height: px(1) }
-                BackgroundColor(theme::THEME_GOLD)
+                BackgroundColor(THEME_GOLD)
                 --
                 @FeathersButton { @caption: bsn! { @caption("White") } }
-                theme::default_button_size_180()
+                default_button_size_180()
                 on(|_: On<Activate>,
                     lobby: ResMut<LobbyState>,
                     next: ResMut<NextState<Overlay>>,
@@ -41,7 +47,7 @@ pub fn join_dialog_scene() -> impl Scene {
                 })
                 --
                 @FeathersButton { @caption: bsn! { @caption("Black") } }
-                theme::default_button_size_180()
+                default_button_size_180()
                 on(|_: On<Activate>,
                     lobby: ResMut<LobbyState>,
                     next: ResMut<NextState<Overlay>>,
@@ -50,7 +56,7 @@ pub fn join_dialog_scene() -> impl Scene {
                 })
                 --
                 @FeathersButton { @caption: bsn! { @caption("Random") } }
-                theme::default_button_size_180()
+                default_button_size_180()
                 on(|_: On<Activate>,
                     lobby: ResMut<LobbyState>,
                     next: ResMut<NextState<Overlay>>,
@@ -59,7 +65,7 @@ pub fn join_dialog_scene() -> impl Scene {
                 })
                 --
                 @FeathersButton { @caption: bsn! { @caption("Spectate") } }
-                theme::default_button_size_180()
+                default_button_size_180()
                 on(|_: On<Activate>,
                     lobby: ResMut<LobbyState>,
                     next: ResMut<NextState<Overlay>>,
@@ -69,10 +75,10 @@ pub fn join_dialog_scene() -> impl Scene {
                 --
                 // line separator
                 Node { width: percent(100), height: px(1) }
-                BackgroundColor(theme::THEME_BORDER)
+                BackgroundColor(THEME_BORDER)
                 --
                 @FeathersButton { @caption: bsn! { @caption("Cancel") } }
-                theme::default_button_size_180()
+                default_button_size_180()
                 on(|_: On<Activate>, mut next: ResMut<NextState<Overlay>>| {
                     next.set(Overlay::None);
                 })

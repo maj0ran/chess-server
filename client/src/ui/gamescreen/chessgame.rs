@@ -1,22 +1,34 @@
-use crate::backend::net::NetworkSend;
-use crate::backend::{ActiveGame, ClientDetailsEvent, GameJoinedEvent, LobbyState};
-pub use crate::backend::{ClientDetails, GameJoined};
-use crate::ui::gamescreen::chessboard::{BOARD_SIZE, ChessBoard, ChessboardPlugin, RotateBoardEvent};
-use crate::ui::gamescreen::dialogs::GamescreenDialogsPlugin;
-use crate::ui::gamescreen::move_history::*;
-use crate::ui::theme::*;
-use crate::ui::{Overlay, Screen};
+use bevy::{
+    prelude::*,
+    feathers::controls::FeathersButton,
+    feathers::display::label,
+    feathers::theme::*,
+    feathers::tokens,
+    picking::Pickable,
+    ui_widgets::Activate,
+};
+
+use crate::{
+    backend::{ActiveGame, ClientDetailsEvent, GameJoinedEvent, LobbyState},
+    backend::net::NetworkSend,
+    ui::{
+        Overlay,
+        Screen,
+        theme::*,
+        gamescreen::move_history::*,
+        gamescreen::dialogs::GamescreenDialogsPlugin,
+        gamescreen::chessboard::RotateBoardEvent,
+        gamescreen::chessboard::ChessboardPlugin,
+        gamescreen::chessboard::ChessBoard,
+    }
+};
+
+use chess_core::protocol::messages::ClientMessage;
 use chess_core::*;
 use ::log;
-use bevy::feathers::controls::FeathersButton;
-use bevy::feathers::display::label;
-use bevy::feathers::theme::{InheritableThemeTextColor, SurfaceLevel, ThemeBackgroundColor, ThemeContext, ThemedText, UiTheme};
-use bevy::feathers::tokens;
-use bevy::picking::Pickable;
-use bevy::prelude::*;
-use bevy::ui_widgets::Activate;
-use chess_core::protocol::messages::ClientMessage;
+
 use std::f32::consts::PI;
+use crate::ui::gamescreen::BOARD_SIZE;
 
 /// Marker component for everything that belongs to the in-game screen.
 #[derive(Component, Clone, Copy, Default)]
@@ -31,11 +43,6 @@ pub struct DrawOfferButton;
 pub struct ChessGameInitialized;
 #[derive(Event)]
 pub struct DrawOffered(pub bool);
-
-
-
-pub const SOURCE_COLOR: Color = Color::srgb_u8(250, 113, 113);
-pub const DESTINATION_COLOR: Color = Color::srgb_u8(113, 250, 113);
 
 pub struct ChessGamePlugin;
 

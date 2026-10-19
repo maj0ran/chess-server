@@ -1,18 +1,39 @@
-use super::{BOARD_SIZE,
-            ChessAssets, ChessPiece, ChessSquare, PendingMove, RequestMove, SQUARE_SIZE,
+use super::{ChessAssets, ChessPiece, ChessSquare, PendingMove, RequestMove};
+
+use crate::{
+    backend::net::NetworkSend,
+    backend::{ActiveGame, BoardUpdate},
+    ui::gamescreen::ChessGameInitialized,
+    ui::Overlay,
 };
-use crate::backend::net::NetworkSend;
-use crate::backend::{ActiveGame, BoardUpdate};
-use crate::ui::gamescreen::{
-    ChessGameInitialized, DESTINATION_COLOR, SOURCE_COLOR,
+
+use bevy::{
+    math::Vec2,
+    picking::events::PointerClick,
+    prelude::*,
 };
-use crate::ui::{COLOR_LIGHT2, COLOR_MID, Overlay};
-use bevy::math::{Vec2, Vec3};
-use bevy::picking::events::PointerClick;
-use bevy::prelude::*;
+
 use chess_core::protocol::UserRoleSelection;
 use chess_core::protocol::messages::ClientMessage;
 use chess_core::{ChessMove, Tile};
+
+// default board size
+/*
+    TODO: I am quite unsure if the board should get such a concrete size at all.
+    TODO: Ideally, the board should just be normalized with an unit size. But I'm not sure
+    TODO: where to put all the necessary changes, especially when it comes to rescaling the board relative
+    TODO: to the window size and the remaining space within the UI elements.
+ */
+pub const BOARD_SIZE: f32 = 800.0;
+pub const SQUARE_SIZE: f32 = BOARD_SIZE / 8.0;
+
+// chessboard square colors
+pub const COLOR_LIGHT_SQUARE: Color = Color::srgb(0.722, 0.647, 0.443);
+pub const COLOR_DARK_SQUARE: Color = Color::srgb(0.533, 0.451, 0.349);
+
+// colors for selected squares when moving a piece
+pub const COLOR_SOURCE_SQUARE: Color = Color::srgb_u8(250, 113, 113);
+pub const COLOR_DEST_SQUARE: Color = Color::srgb_u8(113, 250, 113);
 
 #[derive(Event)]
 pub struct MoveSquaresSelected;
@@ -62,9 +83,9 @@ pub(super) fn draw_chessboard(
         for r in 0..8 {
             for f in 0..8 {
                 let color = if (f + r) % 2 == 0 {
-                    COLOR_LIGHT2
+                    COLOR_LIGHT_SQUARE
                 } else {
-                    COLOR_MID
+                    COLOR_DARK_SQUARE
                 };
                 let name = format!("{file}{rank}");
                 parent
@@ -74,6 +95,7 @@ pub(super) fn draw_chessboard(
                             (-BOARD_SIZE / 2.0) + (SQUARE_SIZE / 2.0) + (f as f32 * SQUARE_SIZE),
                             (-BOARD_SIZE / 2.0) + (SQUARE_SIZE / 2.0) + (r as f32 * SQUARE_SIZE),
                         ),
+                        Vec2::splat(SQUARE_SIZE),
                         color,
                     ))
                     .observe(select_square);
@@ -143,13 +165,13 @@ pub(super) fn select_square(
     if board.selected_src.is_none() {
         if let Ok(mut sprite) = query.get_mut(clicked) {
             board.selected_src = Some(clicked);
-            sprite.color = SOURCE_COLOR;
+            sprite.color = COLOR_SOURCE_SQUARE;
         }
     } else if board.selected_dst.is_none()
         && let Ok(mut sprite) = query.get_mut(clicked)
     {
         board.selected_dst = Some(clicked);
-        sprite.color = DESTINATION_COLOR;
+        sprite.color = COLOR_DEST_SQUARE;
         commands.trigger(MoveSquaresSelected);
     }
 }

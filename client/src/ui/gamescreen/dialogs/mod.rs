@@ -1,9 +1,12 @@
-use bevy::app::{App, Plugin};
-use bevy::prelude::*;
-use crate::ui::gamescreen::dialogs::game_over::{cleanup_game_over_dialog, game_over_dialog_scene, on_game_over, set_game_over_message};
-use crate::ui::gamescreen::dialogs::promotion::{initialize_promotion_images, promotion_dialog_scene};
-use crate::ui::gamescreen::dialogs::resign::resign_dialog_scene;
-use crate::ui::{Dialog, Overlay};
+use bevy::{
+    prelude::*,
+    app::{App, Plugin},
+};
+
+use crate::ui::Overlay;
+use game_over::*;
+use promotion::*;
+use resign::*;
 
 pub mod game_over;
 pub mod promotion;

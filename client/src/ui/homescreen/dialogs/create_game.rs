@@ -1,16 +1,22 @@
-use bevy::feathers::controls::{ButtonVariant, FeathersButton};
-use bevy::feathers::display::{caption, label};
-use bevy::feathers::rounded_corners::RoundedCorners;
-use bevy::feathers::theme::InheritableThemeTextColor;
-use bevy::feathers::tokens;
-use bevy::prelude::*;
-use bevy::ui_widgets::Activate;
+use bevy::{
+    prelude::*,
+    feathers::tokens,
+    feathers::theme::InheritableThemeTextColor,
+    feathers::rounded_corners::RoundedCorners,
+    feathers::display::{caption, label},
+    feathers::controls::{ButtonVariant, FeathersButton},
+    ui_widgets::Activate
+};
+
+use crate::{
+    backend::net::NetworkSend,
+    ui::theme,
+    ui::{Dialog, Overlay},
+};
+
 use chess_core::protocol::messages::ClientMessage;
 use chess_core::protocol::{NewGameParams, UserRoleSelection};
 
-use crate::backend::net::NetworkSend;
-use crate::ui::theme;
-use crate::ui::{Dialog, Overlay};
 
 #[derive(Component, Clone, Copy, Default)]
 struct TimeControlOptionGroup;

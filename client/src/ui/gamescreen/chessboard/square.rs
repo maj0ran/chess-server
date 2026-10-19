@@ -1,8 +1,11 @@
+use bevy::{
+    color::Color,
+    math::Vec2,
+    picking::Pickable,
+    prelude::*
+};
+
 use super::SQUARE_SIZE;
-use bevy::color::Color;
-use bevy::math::Vec2;
-use bevy::picking::Pickable;
-use bevy::prelude::*;
 
 /// A single `ChessSquare` that can be rendered onto the board; preferably 64 of them.
 /// A ChessSquare is bundled with:
@@ -20,13 +23,14 @@ impl ChessSquare {
     pub(super) fn new(
         name: String,
         pos: Vec2,
+        size: Vec2,
         color: Color,
     ) -> (ChessSquare, Sprite, Transform) {
         (
             ChessSquare { name, color },
             Sprite {
                 color,
-                custom_size: Some(Vec2::splat(SQUARE_SIZE)),
+                custom_size: Some(size),
                 ..default()
             },
             Transform {

@@ -1,7 +1,7 @@
-use crate::backend::GameDetails;
+use std::collections::HashMap;
 use bevy::prelude::Resource;
 use chess_core::{ClientId, GameId};
-use std::collections::HashMap;
+use crate::backend::GameDetails;
 
 #[derive(Resource, Default)]
 pub struct LobbyState {

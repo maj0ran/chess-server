@@ -1,15 +1,20 @@
-use bevy::feathers::controls::FeathersButton;
-use bevy::feathers::display::{caption, label};
-use bevy::feathers::theme::InheritableThemeTextColor;
-use bevy::feathers::tokens;
-use bevy::prelude::*;
-use bevy::ui_widgets::Activate;
-use chess_core::protocol::messages::ClientMessage;
+use bevy::{
+    prelude::*,
+    feathers::tokens,
+    feathers::theme::InheritableThemeTextColor,
+    feathers::display::{caption, label},
+    feathers::controls::FeathersButton,
+    ui_widgets::Activate
+};
 
-use crate::backend::ActiveGame;
-use crate::backend::net::NetworkSend;
-use crate::ui::theme;
-use crate::ui::{Dialog, Overlay};
+use crate::{
+    backend::ActiveGame,
+    backend::net::NetworkSend,
+    ui::theme,
+    ui::{Dialog, Overlay},
+};
+
+use chess_core::protocol::messages::ClientMessage;
 
 pub fn resign_dialog_scene() -> impl Scene {
     bsn! {

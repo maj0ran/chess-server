@@ -1,17 +1,12 @@
-use bevy::prelude::*;
-
-use crate::ui::theme::THEME_OVERLAY;
-
 pub mod gamescreen;
 pub mod homescreen;
 pub mod theme;
 
-pub use gamescreen::ChessGamePlugin;
-pub use homescreen::HomescreenPlugin;
+use bevy::prelude::*;
 
-pub const COLOR_DARK: Color = Color::srgb(0.125, 0.125, 0.125);
-pub const COLOR_LIGHT2: Color = Color::srgb(0.722, 0.647, 0.443);
-pub const COLOR_MID: Color = Color::srgb(0.533, 0.451, 0.349);
+use crate::ui::theme::THEME_OVERLAY;
+use gamescreen::ChessGamePlugin;
+use homescreen::HomescreenPlugin;
 
 #[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
 pub enum Screen {
