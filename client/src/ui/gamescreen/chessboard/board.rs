@@ -29,7 +29,7 @@ pub struct RotateBoardEvent;
 /// It is spawned together with a `Transform` that gives the board its Geometry (position, scale, rotation)
 /// The actual board is rendered in `draw_chessboard()` where we put 64 `ChessSquare` as children onto it.
 #[derive(Component)]
-#[require(Transform)]
+#[require(Transform, Visibility)]
 pub struct ChessBoard {
     selected_src: Option<Entity>,
     selected_dst: Option<Entity>,
@@ -37,17 +37,11 @@ pub struct ChessBoard {
 
 impl ChessBoard {
     /// Spawn a Chessboard together with a `Transform`.
-    pub fn new() -> (ChessBoard, Transform) {
-        (
+    pub fn new() -> ChessBoard {
             ChessBoard {
                 selected_src: None,
                 selected_dst: None,
-            },
-            Transform {
-                translation: Vec3::new(0.0, 0.0, 1.0),
-                ..default()
-            },
-        )
+            }
     }
 }
 
