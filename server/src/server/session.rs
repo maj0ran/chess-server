@@ -8,8 +8,6 @@ use smol::channel::{unbounded, Receiver, Sender};
 use smol::future;
 use smol::net::TcpStream;
 
-pub type Result<T> = std::result::Result<T, std::io::Error>;
-
 /// Interface for a client session to the internal `GameManager`.
 /// Outside clients are represented by `ClientSession`, and a `ClientSession` will have
 /// this interface to further communicate with the internal `GameManager`.
@@ -72,38 +70,11 @@ impl ClientSession {
         client
     }
 
-    /// Takes a `ClientMessage` that has been received from the remote client and sends it to the internal
-    /// `GameManager` along with the clients ID.
-    /// Note: The original message has no client ID because the client is bound to its
-    /// session. But from here, we forward the message to the `GameManager`,
-    /// so the client ID gets attached here, so the `GameManager` can identify the client.
-    pub async fn handle_incoming_message(
-        id: ClientId,
-        srv_tx: &Sender<(ClientId, ClientMessage)>,
-        cmd: ClientMessage,
-    ) -> Result<()> {
-        log_recv!(debug, "message from client: {:?}", cmd);
-        if let Err(e) = srv_tx.send((id, cmd)).await {
-            log_recv!(warn, "error sending client message to GM!: {}", e);
-        };
-
-        Ok(())
-    }
-
-    /// takes a message that has been received from the internal `GameManager`
-    /// and sends it to the remote client.
-    pub async fn handle_outgoing_message<S: smol::io::AsyncWrite + Unpin>(
-        conn: &mut Connection<S>,
-        msg: ServerMessage,
-    ) -> NetResult<()> {
-        log_send!(debug, "message to client: {:?}", msg);
-        conn.write_out(&msg.to_bytes()).await
-    }
-
     /// Run the `ClientSession`.
     /// Here, we listen periodically for messages from both sides: The remote client and the
     /// internal `GameManager`. `GameManager` messages will be forwarded to the remote client,
     /// and client messages will be forwarded to the `GameManager`.
+    /// listening on either side is done by two separate sub-tasks that run concurrently.
     pub async fn run(self) {
         let id = self.id;
         let srv_tx = self.srv.tx;
@@ -114,16 +85,17 @@ impl ClientSession {
         // we can move each half into their own task, effectively using them
         // concurrently.
         let (mut conn_in, mut conn_out) = self.conn.split();
-        // channel connections for game manager communication.
-        // receiving messages from the remote client and forwarding them to the GameManager
+
+        // Sub-task that first receives a `ClientMessage` from the remote client and then sends it
+        // to the internal `GameManager` along with the client's ID that is attached to this session.
         let listen_on_client = async move {
             loop {
                 match conn_in.read_msg::<ClientMessage>().await {
                     Ok(cmd) => {
-                        let result = ClientSession::handle_incoming_message(id, &srv_tx, cmd).await;
-                        if let Err(e) = result {
-                            log_recv!(error, "error handling incoming message: {}", e);
-                        }
+                        log_recv!(debug, "message from client #{}: {:?}", id, cmd);
+                        if let Err(e) = srv_tx.send((id, cmd)).await {
+                            log_recv!(warn, "error sending client message to GM!: {}", e);
+                        };
                     }
                     Err(e) => {
                         match e {
@@ -142,16 +114,20 @@ impl ClientSession {
             }
         };
 
-        // receiving messages from the GameManager and forwarding them to the network client
+        // Sub-task that first receives messages from the internal `GameManager`
+        // and then sends it to the remote client.
         let listen_on_game_manager = async move {
+            let id = self.id;
             loop {
                 match srv_rx.recv().await {
                     Ok(msg) => {
-                        if let Err(e) =
-                            ClientSession::handle_outgoing_message(&mut conn_out, msg).await
-                        {
-                            log_send!(error, "error sending message to client #{}: {}", id, e);
-                            break;
+                        match conn_out.write_out(&msg.to_bytes()).await {
+                           Ok(_) => {
+                               log_send!(debug, "message to client #{}: {:?}", id, msg);
+                           }
+                           Err(e) => {
+                               log_send!(error, "error sending message to client #{}: {}", id, e);
+                           }
                         }
                     }
                     Err(e) => {
