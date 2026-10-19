@@ -25,3 +25,4 @@ pub const bg_magenta: &str = "\x1B[45m";
 pub const bg_cyan: &str = "\x1B[46m";
 pub const bg_white: &str = "\x1B[47m";
 pub const bg_reset: &str = "\x1B[49m";
+
